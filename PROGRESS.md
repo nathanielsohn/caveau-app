@@ -1,22 +1,22 @@
 # Caveau MVP — Build Progress
 
 > Auto-generated from BUILD_STATUS.json. Do not edit manually.
-> Last updated: Never
+> Last updated: 2026-04-10T22:52:51Z
 
 ## Overview
 
 ```
-░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0% complete (0/14 core features)
+██░░░░░░░░░░░░░░░░░░░░░░░░░░ 7% complete (1/14 core features)
 ```
 
 Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | Status | Count |
 |--------|-------|
-| Completed | 0 |
+| Completed | 1 |
 | In Progress | 0 |
 | Failed | 0 |
-| Pending | 17 |
+| Pending | 16 |
 
 | Stretch Goals | 0/3 completed |
 |---------------|-------|
@@ -25,7 +25,7 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | # | Feature | Status | Duration | Started | Completed | Issue |
 |---|---------|--------|----------|---------|-----------|-------|
-| 01 | Project Scaffold | `pending` | — | — | — | #1 |
+| 01 | Project Scaffold | `completed` | — | — | 2026-04-10 | #1 |
 | 02 | Database Schema & Seed Data | `pending` | — | — | — | #2 |
 | 03 | Navigation Component | `pending` | — | — | — | #3 |
 | 04 | Metric Card Component | `pending` | — | — | — | #4 |
@@ -45,11 +45,11 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 ## Recent Activity
 
-_No completed features yet._
+- **01 — Project Scaffold** completed 2026-04-10
 
 ## Next Up
 
-**01 — Project Scaffold**
+**02 — Database Schema & Seed Data**
 
 ---
 _Run `./build.sh status` for live tracking. Run `./build.sh start` to resume building._
