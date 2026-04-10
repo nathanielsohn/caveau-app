@@ -1,0 +1,148 @@
+{
+  "project": "caveau-app",
+  "total_features": 14,
+  "last_updated": null,
+  "last_completed_feature": null,
+  "features": {
+    "01": {
+      "title": "Project Scaffold",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 1,
+      "files": [],
+      "notes": ""
+    },
+    "02": {
+      "title": "Supabase Schema & Seed Data",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 2,
+      "files": [],
+      "notes": ""
+    },
+    "03": {
+      "title": "Navigation Component",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 3,
+      "files": [],
+      "notes": ""
+    },
+    "04": {
+      "title": "Metric Card Component",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 4,
+      "files": [],
+      "notes": ""
+    },
+    "05": {
+      "title": "Dashboard Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 5,
+      "files": [],
+      "notes": ""
+    },
+    "06": {
+      "title": "Wine Card Component",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 6,
+      "files": [],
+      "notes": ""
+    },
+    "07": {
+      "title": "Collection Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 7,
+      "files": [],
+      "notes": ""
+    },
+    "08": {
+      "title": "Locker Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 8,
+      "files": [],
+      "notes": ""
+    },
+    "09": {
+      "title": "Sensor Charts Component",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 9,
+      "files": [],
+      "notes": ""
+    },
+    "10": {
+      "title": "Alert List Component",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 10,
+      "files": [],
+      "notes": ""
+    },
+    "11": {
+      "title": "Sentinel Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 11,
+      "files": [],
+      "notes": ""
+    },
+    "12": {
+      "title": "Wine Detail Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 12,
+      "files": [],
+      "notes": ""
+    },
+    "13": {
+      "title": "Provenance Certificate Page",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 13,
+      "files": [],
+      "notes": ""
+    },
+    "14": {
+      "title": "Polish & Animations",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "failed_at": null,
+      "github_issue": 14,
+      "files": [],
+      "notes": ""
+    }
+  }
+}
