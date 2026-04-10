@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Facility {
+  id        String   @id @default(uuid())
+  name      String
+  location  String
+  createdAt DateTime @default(now()) @map("created_at")
+  lockers   Locker[]
+
+  @@map("facilities")
+}
+
+model Member {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  tier      String
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+  wines     Wine[]
+  lockers   Locker[]
+
+  @@map("members")
+}
+
+model Wine {
+  id               String                @id @default(uuid())
+  name             String
+  vintage          Int
+  region           String
+  varietal         String
+  producer         String
+  purchasePrice    Decimal               @map("purchase_price") @db.Decimal(10, 2)
+  currentValue     Decimal               @map("current_value") @db.Decimal(10, 2)
+  imageUrl         String?               @map("image_url")
+  tastingNotes     String?               @map("tasting_notes")
+  drinkWindowStart Int?                  @map("drink_window_start")
+  drinkWindowEnd   Int?                  @map("drink_window_end")
+  memberId         String?               @map("member_id")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  member           Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  lockerSlots      LockerSlot[]
+  certificates     ProvenanceCertificate[]
+  valuations       WineValuation[]
+
+  @@index([memberId])
+  @@map("wines")
+}
+
+model WineValuation {
+  id     String   @id @default(uuid())
+  wineId String   @map("wine_id")
+  source String
+  price  Decimal  @db.Decimal(10, 2)
+  date   DateTime
+  wine   Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
+
+  @@index([wineId, date(sort: Desc)])
+  @@map("wine_valuations")
+}
+
+model Locker {
+  id           String                @id @default(uuid())
+  lockerNumber Int                   @unique @map("locker_number")
+  zone         String
+  facilityId   String?               @map("facility_id")
+  memberId     String?               @map("member_id")
+  facility     Facility?             @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  member       Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  slots        LockerSlot[]
+  readings     SensorReading[]
+  alerts       Alert[]
+  certificates ProvenanceCertificate[]
+
+  @@index([facilityId])
+  @@index([memberId])
+  @@map("lockers")
+}
+
+model LockerSlot {
+  id           String    @id @default(uuid())
+  lockerId     String    @map("locker_id")
+  slotPosition Int       @map("slot_position")
+  wineId       String?   @map("wine_id")
+  dateStored   DateTime? @map("date_stored")
+  locker       Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  wine         Wine?     @relation(fields: [wineId], references: [id], onDelete: SetNull)
+
+  @@unique([lockerId, slotPosition])
+  @@map("locker_slots")
+}
+
+model SensorReading {
+  id          Int      @id @default(autoincrement())
+  lockerId    String   @map("locker_id")
+  temperature Decimal  @db.Decimal(5, 2)
+  humidity    Decimal  @db.Decimal(5, 2)
+  vibration   Decimal  @db.Decimal(5, 3)
+  lightLux    Decimal  @map("light_lux") @db.Decimal(5, 2)
+  timestamp   DateTime @default(now())
+  locker      Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+
+  @@index([lockerId, timestamp(sort: Desc)])
+  @@index([timestamp(sort: Desc)])
+  @@map("sensor_readings")
+}
+
+model Alert {
+  id        String   @id @default(uuid())
+  lockerId  String   @map("locker_id")
+  type      String
+  severity  String
+  message   String
+  timestamp DateTime @default(now())
+  resolved  Boolean  @default(false)
+  locker    Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+
+  @@index([lockerId, timestamp(sort: Desc)])
+  @@index([resolved, lockerId])
+  @@map("alerts")
+}
+
+model ProvenanceCertificate {
+  id                String   @id @default(uuid())
+  wineId            String   @map("wine_id")
+  lockerId          String   @map("locker_id")
+  monitoringStart   DateTime @map("monitoring_start")
+  monitoringEnd     DateTime @map("monitoring_end")
+  tempMean          Decimal? @map("temp_mean") @db.Decimal(5, 2)
+  tempMin           Decimal? @map("temp_min") @db.Decimal(5, 2)
+  tempMax           Decimal? @map("temp_max") @db.Decimal(5, 2)
+  humidityMean      Decimal? @map("humidity_mean") @db.Decimal(5, 2)
+  dataIntegrityHash String   @map("data_integrity_hash")
+  certificateNumber String   @unique @map("certificate_number")
+  createdAt         DateTime @default(now()) @map("created_at")
+  wine              Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  locker            Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+
+  @@map("provenance_certificates")
+}

@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Caveau — always dark */
+:root {
+  --background: #0A0A0B;
+  --foreground: #E8E6E1;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0A0B;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A30;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3A40;
+}
+
+@layer components {
+  /* Glassmorphism card — the core Caveau card style */
+  .glass-card {
+    @apply bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 rounded-2xl;
+  }
+
+  /* Gold accent button */
+  .btn-gold {
+    @apply bg-gold text-caveau-black font-semibold px-4 py-2 rounded-xl
+           hover:bg-gold-text transition-colors duration-200;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply border border-[#2A2A30] text-secondary px-4 py-2 rounded-xl
+           hover:border-gold/50 hover:text-primary transition-colors duration-200;
+  }
+
+  /* Status badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-ok {
+    @apply badge bg-ok/10 text-ok;
+  }
+  .badge-warn {
+    @apply badge bg-warn/10 text-warn;
+  }
+  .badge-danger {
+    @apply badge bg-danger/10 text-danger;
+  }
+  .badge-info {
+    @apply badge bg-info/10 text-info;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
