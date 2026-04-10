@@ -66,7 +66,7 @@ Prisma schema is already created in feature 01. Create seed.ts with: 1 facility 
 
 **Important:** The sensor seed script generates ~17K rows. Use Prisma `createMany` for batch insertion — individual `create` calls would be extremely slow. **Batch `createMany` into chunks of ~5,000 rows** to stay under PostgreSQL's 65,535 bind-parameter limit (each row uses ~6 parameters, so 5K rows ≈ 30K parameters per batch).
 
-**Verify:** `npx prisma generate` succeeds. `npx prisma migrate dev --name init` creates migration (requires DATABASE_URL). Seed scripts are valid TypeScript. `npm run build` still exits 0.
+**Verify:** `npx prisma generate` succeeds. `npx prisma migrate dev --name init` creates migration (requires DATABASE_URL). `npx prisma db seed` runs both seed scripts without errors. `npm run build` still exits 0.
 
 ---
 
@@ -112,7 +112,7 @@ Build WineCard component for collection grid: wine image (placeholder), name (se
 ---
 
 ### 07 — Collection Page
-Build wine collection page at `/collection`. Search bar, filter dropdowns (region, varietal, vintage range), grid/list view toggle. Uses WineCard in grid mode. Fetches wines via Prisma with client-side filtering. Includes AddWineForm modal.
+Build wine collection page at `/collection`. Search bar, filter dropdowns (region, varietal, vintage range), grid/list view toggle. Uses WineCard in grid mode. Build as a Server Component that fetches all wines via Prisma, then pass them to a client component that handles search/filter/view-toggle in the browser (no round-trips for filtering). Includes AddWineForm modal.
 
 **Files created/modified:**
 - src/app/collection/page.tsx
@@ -125,7 +125,7 @@ Build wine collection page at `/collection`. Search bar, filter dropdowns (regio
 ---
 
 ### 08 — Locker Page
-Build locker visualization at `/locker`. Header shows locker number, zone, occupancy count. LockerGrid component: 4×8 CSS grid of slots. Empty slots have dashed border. Occupied slots show wine name + varietal color. Click occupied slot → slide-in detail panel with bottle info and link to wine detail.
+Build locker visualization at `/locker`. If the demo member has multiple lockers, show a locker selector (tabs or dropdown); default to the first locker (locker #7 in seed data). Header shows locker number, zone, occupancy count. LockerGrid component: 4×8 CSS grid of slots. Empty slots have dashed border. Occupied slots show wine name + varietal color. Click occupied slot → slide-in detail panel with bottle info (wine name, vintage, region, current value, days stored) and link to wine detail.
 
 **Files created/modified:**
 - src/components/locker-grid.tsx
@@ -158,7 +158,13 @@ Build alert history table: columns for time, type, severity (color-coded badge),
 ### 11 — Sentinel Page
 Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D/30D toggle). 4 condition cards showing current temp/humidity/vibration/light with status colors. Charts from sensor-charts.tsx. Alert history from alert-list.tsx. Live-updating: uses setInterval with sensor simulator from lib/sensors.ts for real-time data, fetches historical from database for longer ranges.
 
-**Important:** Since the page needs `setInterval` for live updates, it must be a `'use client'` component. Client components cannot call Prisma directly — use a Next.js Server Action (defined in a separate `'use server'` file or inline) to fetch historical sensor data for the 6H/24H/7D/30D ranges.
+**Time range behavior (important):**
+- **1H:** Hybrid approach — on initial load, fetch the most recent hour of DB data via Server Action, then accumulate client-side simulated readings on top. Show both combined.
+- **6H/24H/7D/30D:** Query historical `SensorReading` data from the database via Server Action. No client-side simulation for these ranges.
+
+**Live alerts are ephemeral:** When a simulated reading breaches a threshold (temp >59°F or <50°F, humidity <55% or >75%, vibration >0.5 mm/s), display it in the alert list with a "NEW" badge. These live alerts are in-memory only — do NOT write them to the database. Historical alerts from the DB are shown alongside them.
+
+**Important:** Since the page needs `setInterval` for live updates, it must be a `'use client'` component. Client components cannot call Prisma directly — use a Next.js Server Action (defined in a separate `'use server'` file or inline) to fetch historical sensor data and alerts.
 
 **Files created/modified:**
 - src/app/sentinel/page.tsx
@@ -291,7 +297,6 @@ verify, and commit.
 
 1. RDS PostgreSQL instance created (see RDS Setup in SPEC.md)
 2. `.env` file populated with `DATABASE_URL`
-3. `mkdir -p logs` in project root
-4. Node.js 18+ installed
-5. Claude Code CLI installed and authenticated
-6. `coreutils` installed (`brew install coreutils`) — provides `gtimeout`, the safety net against hung features
+3. Node.js 18+ installed
+4. Claude Code CLI installed and authenticated
+5. `coreutils` installed (`brew install coreutils`) — provides `gtimeout`, the safety net against hung features

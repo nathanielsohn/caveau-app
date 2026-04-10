@@ -145,10 +145,10 @@ fi
 # Next up section
 NEXT_FEATURE=$(jq -r '
   .features | to_entries
-  | map(select(.value.status == "pending" or .value.status == "failed"))
+  | map(select((.value.status == "pending" or .value.status == "failed") and .value.stretch != true))
   | sort_by(.key)
   | .[0]
-  | if . then "\(.key) — \(.value.title)" else "All features complete!" end
+  | if . then "\(.key) — \(.value.title)" else "All core features complete! Run ./build.sh start <num> for stretch goals." end
 ' "$STATUS_FILE")
 
 cat >> "$OUTPUT_FILE" << NEXT
