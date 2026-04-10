@@ -10,23 +10,25 @@ Caveau is a web application for managing wine collections, visualizing locker st
 npm install
 cp .env.example .env   # Add your DATABASE_URL
 npx prisma generate
-npx prisma migrate deploy
-npx prisma db seed
 npm run dev
 ```
 
+> Database setup (migrations + seeding) requires Feature 02. See [Getting Started](./docs/GETTING_STARTED.md) for full instructions.
+
 Open [http://localhost:3000](http://localhost:3000).
 
-## Screens
+## Screens (6 planned)
 
-| Screen | Path | Description |
-|--------|------|-------------|
-| Dashboard | `/` | Collection value, conditions, recent alerts |
-| Collection | `/collection` | Wine inventory with search + filters |
-| Locker | `/locker` | Visual 4×8 slot grid with bottle details |
-| Sentinel | `/sentinel` | Live IoT monitoring: temp, humidity, vibration, light |
-| Wine Detail | `/wine/:id` | Full bottle profile with valuation |
-| Certificate | `/certificate/:id` | Provenance certificate with data integrity proof |
+| Screen | Path | Feature | Description |
+|--------|------|---------|-------------|
+| Dashboard | `/` | 05 | Collection value, conditions, recent alerts |
+| Collection | `/collection` | 07 | Wine inventory with search + filters |
+| Locker | `/locker` | 08 | Visual 4×8 slot grid with bottle details |
+| Sentinel | `/sentinel` | 11 | Live IoT monitoring: temp, humidity, vibration, light |
+| Wine Detail | `/wine/:id` | 12 | Full bottle profile with valuation |
+| Certificate | `/certificate/:id` | 13 | Provenance certificate with data integrity proof |
+
+See [PROGRESS.md](./PROGRESS.md) for which features are complete.
 
 ## Stack
 

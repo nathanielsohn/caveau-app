@@ -106,7 +106,18 @@ Modal form for adding a new wine. Fields: name, vintage, region, varietal, produ
 Prisma client singleton. Uses `globalThis` trick to prevent multiple instances in development (hot reload).
 
 ### utils.ts
-Formatting helpers: `formatCurrency`, `formatTemp`, `formatHumidity`, `formatVibration`, `formatLight`, `formatRelativeTime`, `formatDate`, `percentChange`. All accept `Prisma.Decimal | number | string | null`.
+Formatting helpers — all accept `Prisma.Decimal | number | string | null | undefined`:
+- `toNumber()` — convert any value to a JS number
+- `formatCurrency()` — e.g. "$4,800.00"
+- `formatCurrencyCompact()` — e.g. "$4.8K"
+- `formatNumber()` — e.g. "4,800" (configurable decimal places)
+- `formatTemp()` — e.g. "55.2°F"
+- `formatHumidity()` — e.g. "65.0%"
+- `formatVibration()` — e.g. "0.12 mm/s"
+- `formatLight()` — e.g. "0.5 lux"
+- `formatRelativeTime()` — e.g. "2h ago"
+- `formatDate()` — e.g. "Mar 15, 2026"
+- `percentChange()` — percentage difference between two values
 
 ### sensors.ts
 Sensor simulation using the specified formulas (sine wave + gaussian noise via Box-Muller transform). Exports `simulateReading()`, `checkThresholds()`, and `THRESHOLDS` constants.

@@ -70,7 +70,7 @@ Add in Amplify Console → Environment Variables:
 
 ### 3. Build configuration
 
-If the auto-detected build settings don't work, the project includes `amplify.yml`:
+If the auto-detected build settings don't work, create an `amplify.yml` in the project root:
 
 ```yaml
 version: 1

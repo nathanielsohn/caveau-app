@@ -31,14 +31,16 @@ DATABASE_URL=postgresql://username:password@host:5432/caveau
 
 ### 3. Set up database
 
+> **Note:** Migration and seeding require Feature 02 (Database Schema & Seed Data) to be built. If Feature 02 is not yet complete, you can still run the dev server — pages will show empty states or default content.
+
 ```bash
 # Generate Prisma client (TypeScript types from schema)
 npx prisma generate
 
-# Run migrations (creates tables)
+# Run migrations (creates tables) — requires DATABASE_URL
 npx prisma migrate deploy
 
-# Seed demo data (wines, lockers, members, sensors, alerts)
+# Seed demo data (wines, lockers, members, sensors, alerts) — requires Feature 02
 npx prisma db seed
 ```
 

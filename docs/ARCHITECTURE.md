@@ -22,23 +22,25 @@ Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend 
 
 ## Directory Structure
 
+> Files marked with `(planned)` will be created in upcoming features. See [PROGRESS.md](../PROGRESS.md) for current build status.
+
 ```
 caveau-app/
 ├── prisma/                     # Database layer
 │   ├── schema.prisma           # Data models → generates TypeScript types
-│   ├── seed.ts                 # Core seed data (wines, lockers, members)
-│   └── seed-sensors.ts         # Sensor reading history (30 days)
+│   ├── seed.ts                 # Core seed data (planned — Feature 02)
+│   └── seed-sensors.ts         # Sensor reading history (planned — Feature 02)
 ├── src/
 │   ├── app/                    # Next.js App Router pages
-│   │   ├── layout.tsx          # Root layout (fonts, nav shell, metadata)
+│   │   ├── layout.tsx          # Root layout (fonts, dark bg, metadata)
 │   │   ├── globals.css         # Tailwind base + glass-card utilities
-│   │   ├── page.tsx            # Dashboard (/)
-│   │   ├── collection/page.tsx # Wine inventory (/collection)
-│   │   ├── locker/page.tsx     # Locker visualization (/locker)
-│   │   ├── sentinel/page.tsx   # IoT monitoring (/sentinel)
-│   │   ├── wine/[id]/page.tsx  # Wine detail (/wine/:id)
-│   │   └── certificate/[id]/   # Provenance certificate (/certificate/:id)
-│   ├── components/             # Shared UI components
+│   │   ├── page.tsx            # Dashboard (planned — Feature 05)
+│   │   ├── collection/page.tsx # Wine inventory (planned — Feature 07)
+│   │   ├── locker/page.tsx     # Locker visualization (planned — Feature 08)
+│   │   ├── sentinel/page.tsx   # IoT monitoring (planned — Feature 11)
+│   │   ├── wine/[id]/page.tsx  # Wine detail (planned — Feature 12)
+│   │   └── certificate/[id]/   # Provenance certificate (planned — Feature 13)
+│   ├── components/             # Shared UI components (planned — Features 03–10)
 │   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile)
 │   │   ├── metric-card.tsx     # Stat card (icon + value + label)
 │   │   ├── wine-card.tsx       # Wine card for grid/list views

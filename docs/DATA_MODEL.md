@@ -104,29 +104,31 @@ erDiagram
 
 ## Entity Descriptions
 
+> Seed data quantities below describe the **planned** demo data from Feature 02. Until that feature is built, tables will be empty.
+
 ### Facility
-Physical wine storage location. Demo seeds one facility ("Caveau Naples"). Included to support multi-location expansion post-demo.
+Physical wine storage location. Included to support multi-location expansion post-demo. Demo will seed one facility ("Caveau Naples").
 
 ### Member
-A Caveau member. Demo uses one hardcoded user ("Alessandro Marchetti", Black tier). The `role` field (`admin` | `staff` | `member`) is seeded as `member` — it enables RBAC when auth is added.
+A Caveau member. The `role` field (`admin` | `staff` | `member`) enables RBAC when auth is added. Demo will seed one user ("Alessandro Marchetti", Black tier, role: `member`).
 
 ### Wine
-A bottle in a member's collection. 35 wines are seeded across 4 categories: Caveau private label (5), investment-grade (8), mid-range (12), and French classics (10).
+A bottle in a member's collection. Demo will seed 35 wines across 4 categories: Caveau private label (5), investment-grade (8), mid-range (12), and French classics (10).
 
 ### WineValuation
-Price history for a wine. Demo seeds one entry per wine (source: "manual"). Designed for future Liv-ex/Wine-Searcher API integration.
+Price history for a wine. Designed for future Liv-ex/Wine-Searcher API integration. Demo will seed one entry per wine (source: "manual").
 
 ### Locker
-A physical wine locker assigned to a facility and member. Demo seeds 2 lockers (#7 Zone A, #12 Zone B). Each has 32 slots (4 columns × 8 rows).
+A physical wine locker assigned to a facility and member. Each has 32 slots (4 columns x 8 rows). Demo will seed 2 lockers (#7 Zone A, #12 Zone B).
 
 ### LockerSlot
-A position within a locker. 24 of 64 total slots are occupied in the demo. The `[lockerId, slotPosition]` unique constraint prevents double-booking.
+A position within a locker. The `[lockerId, slotPosition]` unique constraint prevents double-booking. Demo will seed 24 of 64 total slots as occupied.
 
 ### SensorReading
-Environmental data from a locker's Sentinel sensor. Uses **autoincrement** IDs (not UUID) for write performance at scale. The seed script generates ~17K rows (30 days at 5-minute intervals for 2 lockers).
+Environmental data from a locker's Sentinel sensor. Uses **autoincrement** IDs (not UUID) for write performance at scale. Demo will seed ~17K rows (30 days at 5-minute intervals for 2 lockers).
 
 ### Alert
-A threshold breach event. 8 historical alerts are seeded. Live alerts from the Sentinel page are in-memory only — they are not written to this table.
+A threshold breach event. Live alerts from the Sentinel page are in-memory only — they are not written to this table. Demo will seed 8 historical alerts.
 
 ### ProvenanceCertificate
 A document certifying storage conditions for a wine. Includes aggregated sensor stats (temp mean/min/max, humidity mean) and a SHA-256 data integrity hash of the sensor readings in the monitoring window.
