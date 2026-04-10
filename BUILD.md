@@ -40,7 +40,7 @@ Create the Next.js 14 project in the current directory (`npx create-next-app@14 
 **Files created:**
 - package.json (via create-next-app, then add deps)
 - tailwind.config.ts
-- next.config.ts
+- next.config.mjs
 - src/app/layout.tsx
 - src/app/globals.css
 - src/lib/prisma.ts
@@ -64,7 +64,7 @@ Prisma schema is already created in feature 01. Create seed.ts with: 1 facility 
 **Files modified:**
 - package.json (add `prisma.seed` config and `tsx` dev dependency)
 
-**Important:** The sensor seed script generates ~17K rows. Use Prisma `createMany` for batch insertion — individual `create` calls would be extremely slow.
+**Important:** The sensor seed script generates ~17K rows. Use Prisma `createMany` for batch insertion — individual `create` calls would be extremely slow. **Batch `createMany` into chunks of ~5,000 rows** to stay under PostgreSQL's 65,535 bind-parameter limit (each row uses ~6 parameters, so 5K rows ≈ 30K parameters per batch).
 
 **Verify:** `npx prisma generate` succeeds. `npx prisma migrate dev --name init` creates migration (requires DATABASE_URL). Seed scripts are valid TypeScript. `npm run build` still exits 0.
 
@@ -118,7 +118,9 @@ Build wine collection page at `/collection`. Search bar, filter dropdowns (regio
 - src/app/collection/page.tsx
 - src/components/add-wine-form.tsx
 
-**Verify:** `npm run build` exits 0. Page renders wine grid. Search filters work client-side. Add wine form opens as modal.
+**Important:** The AddWineForm should submit via a Next.js Server Action (inline `'use server'` function that calls `prisma.wine.create`). No API route is needed — Server Actions handle the form submission directly.
+
+**Verify:** `npm run build` exits 0. Page renders wine grid. Search filters work client-side. Add wine form opens as modal and submits successfully.
 
 ---
 
@@ -154,7 +156,9 @@ Build alert history table: columns for time, type, severity (color-coded badge),
 ---
 
 ### 11 — Sentinel Page
-Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D/30D toggle). 4 condition cards showing current temp/humidity/vibration/light with status colors. Charts from sensor-charts.tsx. Alert history from alert-list.tsx. Live-updating: uses setInterval with sensor simulator from lib/sensors.ts for real-time data, fetches historical from database via Prisma for longer ranges.
+Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D/30D toggle). 4 condition cards showing current temp/humidity/vibration/light with status colors. Charts from sensor-charts.tsx. Alert history from alert-list.tsx. Live-updating: uses setInterval with sensor simulator from lib/sensors.ts for real-time data, fetches historical from database for longer ranges.
+
+**Important:** Since the page needs `setInterval` for live updates, it must be a `'use client'` component. Client components cannot call Prisma directly — use a Next.js Server Action (defined in a separate `'use server'` file or inline) to fetch historical sensor data for the 6H/24H/7D/30D ranges.
 
 **Files created/modified:**
 - src/app/sentinel/page.tsx
@@ -290,3 +294,4 @@ verify, and commit.
 3. `mkdir -p logs` in project root
 4. Node.js 18+ installed
 5. Claude Code CLI installed and authenticated
+6. `coreutils` installed (`brew install coreutils`) — provides `gtimeout`, the safety net against hung features

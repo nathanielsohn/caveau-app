@@ -1,5 +1,6 @@
 #!/bin/bash
 # Caveau MVP — Resumable Build Pipeline
+# Note: Pushes directly to main. If branch protection is enabled, update_docs_and_push will fail.
 #
 # Usage:
 #   ./build.sh start          Start or resume building from next pending feature
@@ -64,6 +65,19 @@ require_env() {
   if [ ! -f ".env" ]; then
     echo "Warning: .env file not found. Database features will fail without DATABASE_URL."
     echo "Create .env with: DATABASE_URL=postgresql://<user>:<password>@<host>:5432/caveau"
+  fi
+}
+
+require_env_strict() {
+  # Features 02+ need DATABASE_URL. Fail fast instead of discovering mid-build.
+  if [ ! -f ".env" ]; then
+    echo "Error: .env file required for database features (02+)."
+    echo "Create .env with: DATABASE_URL=postgresql://<user>:<password>@<host>:5432/caveau"
+    exit 1
+  fi
+  if ! grep -q "DATABASE_URL" .env 2>/dev/null; then
+    echo "Error: DATABASE_URL not found in .env. Required for database features (02+)."
+    exit 1
   fi
 }
 
@@ -328,6 +342,12 @@ cmd_start() {
     fi
 
     TITLE=$(get_feature_title "$CURRENT")
+
+    # Features 02+ need a real DATABASE_URL — fail fast
+    if [ "$CURRENT" != "01" ]; then
+      require_env_strict
+    fi
+
     print_header "Feature $CURRENT: $TITLE"
     echo "Started: $(date)"
 

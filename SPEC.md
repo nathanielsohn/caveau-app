@@ -245,7 +245,7 @@ model ProvenanceCertificate {
 ```
 temp = 55.0 + sin((hour - 5) × π/12) + gaussian(0, 0.1)
 humidity = 65.0 - (temp - 55.0) × 2.0 + gaussian(0, 0.3)
-vibration = 0.1 + (random() < 0.005 ? random() × 1.5 : |gaussian(0, 0.02)|)
+vibration = 0.1 + (random() < 0.005 ? random() * 1.5 : Math.abs(gaussian(0, 0.02)))
 light = random() < 0.001 ? random(50, 200) : max(0, gaussian(0, 0.5))
 ```
 
@@ -288,7 +288,7 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 
 - **~20 source files total.** Each component file may contain multiple related sub-components.
 - Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts)
-- Config files: package.json, next.config.ts, tailwind.config.ts, .env
+- Config files: package.json, next.config.mjs, tailwind.config.ts, .env
 
 ---
 
@@ -341,7 +341,7 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 2. Engine: PostgreSQL 15, Template: Free tier (db.t3.micro, 20GB gp2)
 3. DB instance identifier: `caveau-db`, master username/password of your choice
 4. Public access: Yes (for demo — restrict for production)
-5. Security group: allow inbound PostgreSQL (port 5432) from your IP. For Amplify access, add Amplify's NAT gateway IP (find in VPC console after first deploy). **Avoid `0.0.0.0/0` even for demo** — it exposes the database to the entire internet.
+5. Security group: allow inbound PostgreSQL (port 5432) from your IP. For Amplify access, add Amplify's NAT gateway IP (find in VPC console after first deploy). **Note:** This is a chicken-and-egg problem — you won't know Amplify's NAT IPs until after the first deploy. Initial deploy will fail to connect to RDS; once deployed, find the NAT gateway IPs in the VPC console and add them to the security group, then redeploy. **Avoid `0.0.0.0/0` even for demo** — it exposes the database to the entire internet.
 6. Create database name: `caveau`
 7. Copy the endpoint → set `DATABASE_URL=postgresql://<user>:<password>@<endpoint>:5432/caveau` in `.env`
 8. Run `npx prisma migrate deploy` to push the schema
@@ -358,6 +358,28 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 5. Add environment variables:
    - `DATABASE_URL` (RDS PostgreSQL connection string)
 6. Deploy
+
+**If Amplify's auto-detected build settings don't work** (common with Next.js 14 SSR), create an `amplify.yml` in the project root:
+```yaml
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npx prisma generate
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+```
 
 Custom domain (optional, later): Add in Amplify Console → Domain Management, or use Route 53.
 
@@ -376,7 +398,7 @@ See "What NOT to Build" in CLAUDE.md for the full exclusion list. In short: no a
 3. **Wine Detail** (30s) — "Purchased $4,500, now $4,800. Stored Locker 7."
 4. **Locker** (30s) — "Visual map. Click any slot."
 5. **Sentinel** (90s) — "Live monitoring: temp, humidity, vibration, light. Switch 1H → 7D. Alerts fire if conditions drift."
-6. **Certificate** (45s) — "543 days continuous monitoring, SHA-256 verified. Carfax for wine."
+6. **Certificate** (45s) — "30 days continuous monitoring, SHA-256 verified. Carfax for wine."
 
 ---
 

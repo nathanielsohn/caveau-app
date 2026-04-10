@@ -14,7 +14,6 @@ if [ ! -f "$STATUS_FILE" ]; then
 fi
 
 # Count statuses (core features only for progress tracking)
-TOTAL=$(jq '.total_features' "$STATUS_FILE")
 CORE_TOTAL=$(jq '[.features[] | select(.stretch != true)] | length' "$STATUS_FILE")
 COMPLETED=$(jq '[.features[] | select(.status == "completed")] | length' "$STATUS_FILE")
 CORE_COMPLETED=$(jq '[.features[] | select(.status == "completed" and .stretch != true)] | length' "$STATUS_FILE")
