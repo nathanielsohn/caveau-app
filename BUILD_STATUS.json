@@ -1,7 +1,7 @@
 {
   "project": "caveau-app",
-  "last_updated": "2026-04-10T22:52:51Z",
-  "last_completed_feature": "01",
+  "last_updated": "2026-04-10T23:28:09Z",
+  "last_completed_feature": "02",
   "features": {
     "01": {
       "title": "Project Scaffold",
@@ -44,12 +44,17 @@
     },
     "02": {
       "title": "Database Schema & Seed Data",
-      "status": "pending",
+      "status": "completed",
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-04-10T23:28:09Z",
       "failed_at": null,
       "github_issue": 2,
-      "files": [],
+      "files": [
+        "package-lock.json",
+        "package.json",
+        "prisma/seed-sensors.ts",
+        "prisma/seed.ts"
+      ],
       "notes": ""
     },
     "03": {
