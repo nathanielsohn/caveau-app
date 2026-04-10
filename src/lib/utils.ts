@@ -1,4 +1,5 @@
-import { Decimal } from "@prisma/client/runtime/library";
+import type { Prisma } from "@prisma/client";
+type Decimal = Prisma.Decimal;
 
 type NumericValue = Decimal | number | string | null | undefined;
 
@@ -83,13 +84,13 @@ export function formatDate(date: Date | string): string {
   });
 }
 
-/** Calculate percent change between two values */
+/** Calculate percent change between two values. Returns null when `from` is 0 (infinite change). */
 export function percentChange(
   from: NumericValue,
   to: NumericValue
-): number {
+): number | null {
   const f = toNumber(from);
   const t = toNumber(to);
-  if (f === 0) return 0;
+  if (f === 0) return t === 0 ? 0 : null;
   return ((t - f) / f) * 100;
 }

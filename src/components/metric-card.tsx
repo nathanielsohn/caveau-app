@@ -13,12 +13,18 @@ interface MetricCardProps {
   };
 }
 
-/** Animate a number from 0 to target over ~600ms */
+/** Animate a number from its current value to target over ~600ms */
 function useAnimatedNumber(target: number) {
-  const [current, setCurrent] = useState(0);
+  const [current, setCurrent] = useState(target);
   const rafRef = useRef<number>(0);
+  const previousTarget = useRef(target);
 
   useEffect(() => {
+    const from = previousTarget.current;
+    previousTarget.current = target;
+
+    if (from === target) return;
+
     const duration = 600;
     const start = performance.now();
 
@@ -27,7 +33,7 @@ function useAnimatedNumber(target: number) {
       const progress = Math.min(elapsed / duration, 1);
       // ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setCurrent(target * eased);
+      setCurrent(from + (target - from) * eased);
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(tick);
       }
