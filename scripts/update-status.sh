@@ -19,6 +19,9 @@ if [ -z "$FEATURE" ] || [ -z "$STATUS" ]; then
   exit 1
 fi
 
+# Backup before mutation
+cp "$STATUS_FILE" "${STATUS_FILE}.bak"
+
 # Validate status value
 case "$STATUS" in
   in-progress|completed|failed) ;;

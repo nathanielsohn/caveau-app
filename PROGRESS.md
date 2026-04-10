@@ -23,25 +23,25 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 ## Features
 
-| # | Feature | Status | Started | Completed | Issue |
-|---|---------|--------|---------|-----------|-------|
-| 01 | Project Scaffold | `pending` | — | — | #1 |
-| 02 | Database Schema & Seed Data | `pending` | — | — | #2 |
-| 03 | Navigation Component | `pending` | — | — | #3 |
-| 04 | Metric Card Component | `pending` | — | — | #4 |
-| 05 | Dashboard Page | `pending` | — | — | #5 |
-| 06 | Wine Card Component | `pending` | — | — | #6 |
-| 07 | Collection Page | `pending` | — | — | #7 |
-| 08 | Locker Page | `pending` | — | — | #8 |
-| 09 | Sensor Charts Component | `pending` | — | — | #9 |
-| 10 | Alert List Component | `pending` | — | — | #10 |
-| 11 | Sentinel Page | `pending` | — | — | #11 |
-| 12 | Wine Detail Page | `pending` | — | — | #12 |
-| 13 | Provenance Certificate Page | `pending` | — | — | #13 |
-| 14 | Polish & Animations | `pending` | — | — | #14 |
-| 15 | API Routes (stretch) | `pending` | — | — | — |
-| 16 | Dashboard Analytics (stretch) | `pending` | — | — | — |
-| 17 | Certificate PDF & Public Verification (stretch) | `pending` | — | — | — |
+| # | Feature | Status | Duration | Started | Completed | Issue |
+|---|---------|--------|----------|---------|-----------|-------|
+| 01 | Project Scaffold | `pending` | — | — | — | #1 |
+| 02 | Database Schema & Seed Data | `pending` | — | — | — | #2 |
+| 03 | Navigation Component | `pending` | — | — | — | #3 |
+| 04 | Metric Card Component | `pending` | — | — | — | #4 |
+| 05 | Dashboard Page | `pending` | — | — | — | #5 |
+| 06 | Wine Card Component | `pending` | — | — | — | #6 |
+| 07 | Collection Page | `pending` | — | — | — | #7 |
+| 08 | Locker Page | `pending` | — | — | — | #8 |
+| 09 | Sensor Charts Component | `pending` | — | — | — | #9 |
+| 10 | Alert List Component | `pending` | — | — | — | #10 |
+| 11 | Sentinel Page | `pending` | — | — | — | #11 |
+| 12 | Wine Detail Page | `pending` | — | — | — | #12 |
+| 13 | Provenance Certificate Page | `pending` | — | — | — | #13 |
+| 14 | Polish & Animations | `pending` | — | — | — | #14 |
+| 15 | API Routes (stretch) | `pending` | — | — | — | — |
+| 16 | Dashboard Analytics (stretch) | `pending` | — | — | — | — |
+| 17 | Certificate PDF & Public Verification (stretch) | `pending` | — | — | — | — |
 
 ## Recent Activity
 

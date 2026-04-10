@@ -2,7 +2,7 @@
 # Generates PROGRESS.md from BUILD_STATUS.json
 # Called automatically after each feature build, or manually via: ./build.sh docs
 
-set -e
+set -euo pipefail
 cd "$(dirname "$0")/.."
 
 STATUS_FILE="BUILD_STATUS.json"
@@ -13,17 +13,34 @@ if [ ! -f "$STATUS_FILE" ]; then
   exit 1
 fi
 
-# Count statuses (core features only for progress tracking)
-CORE_TOTAL=$(jq '[.features[] | select(.stretch != true)] | length' "$STATUS_FILE")
-COMPLETED=$(jq '[.features[] | select(.status == "completed")] | length' "$STATUS_FILE")
-CORE_COMPLETED=$(jq '[.features[] | select(.status == "completed" and .stretch != true)] | length' "$STATUS_FILE")
-IN_PROGRESS=$(jq '[.features[] | select(.status == "in-progress")] | length' "$STATUS_FILE")
-FAILED=$(jq '[.features[] | select(.status == "failed")] | length' "$STATUS_FILE")
-PENDING=$(jq '[.features[] | select(.status == "pending")] | length' "$STATUS_FILE")
-STRETCH_TOTAL=$(jq '[.features[] | select(.stretch == true)] | length' "$STATUS_FILE")
-STRETCH_COMPLETED=$(jq '[.features[] | select(.stretch == true and .status == "completed")] | length' "$STATUS_FILE")
-LAST_UPDATED=$(jq -r '.last_updated // "Never"' "$STATUS_FILE")
-LAST_FEATURE=$(jq -r '.last_completed_feature // "None"' "$STATUS_FILE")
+# Single-pass stats computation — one disk read, guaranteed consistent snapshot
+STATS=$(jq '{
+  core_total: [.features[] | select(.stretch != true)] | length,
+  completed: [.features[] | select(.status == "completed")] | length,
+  core_completed: [.features[] | select(.status == "completed" and .stretch != true)] | length,
+  in_progress: [.features[] | select(.status == "in-progress")] | length,
+  failed: [.features[] | select(.status == "failed")] | length,
+  pending: [.features[] | select(.status == "pending")] | length,
+  stretch_total: [.features[] | select(.stretch == true)] | length,
+  stretch_completed: [.features[] | select(.stretch == true and .status == "completed")] | length,
+  core_in_progress: [.features[] | select(.status == "in-progress" and .stretch != true)] | length,
+  core_failed: [.features[] | select(.status == "failed" and .stretch != true)] | length,
+  last_updated: (.last_updated // "Never"),
+  last_feature: (.last_completed_feature // "None")
+}' "$STATUS_FILE")
+
+CORE_TOTAL=$(echo "$STATS" | jq -r '.core_total')
+COMPLETED=$(echo "$STATS" | jq -r '.completed')
+CORE_COMPLETED=$(echo "$STATS" | jq -r '.core_completed')
+IN_PROGRESS=$(echo "$STATS" | jq -r '.in_progress')
+FAILED=$(echo "$STATS" | jq -r '.failed')
+PENDING=$(echo "$STATS" | jq -r '.pending')
+STRETCH_TOTAL=$(echo "$STATS" | jq -r '.stretch_total')
+STRETCH_COMPLETED=$(echo "$STATS" | jq -r '.stretch_completed')
+CORE_IN_PROGRESS=$(echo "$STATS" | jq -r '.core_in_progress')
+CORE_FAILED=$(echo "$STATS" | jq -r '.core_failed')
+LAST_UPDATED=$(echo "$STATS" | jq -r '.last_updated')
+
 if [ "$CORE_TOTAL" -gt 0 ]; then
   PCT=$(( CORE_COMPLETED * 100 / CORE_TOTAL ))
 else
@@ -31,8 +48,6 @@ else
 fi
 
 # Build progress bar (core features only, with in-progress/failed states)
-CORE_IN_PROGRESS=$(jq '[.features[] | select(.status == "in-progress" and .stretch != true)] | length' "$STATUS_FILE")
-CORE_FAILED=$(jq '[.features[] | select(.status == "failed" and .stretch != true)] | length' "$STATUS_FILE")
 BAR_FILLED=$(( CORE_COMPLETED * 2 ))
 BAR_IN_PROGRESS=$(( CORE_IN_PROGRESS * 2 ))
 BAR_FAILED=$(( CORE_FAILED * 2 ))
@@ -78,12 +93,12 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 HEADER
 
-# Feature table
+# Feature table (with duration column)
 cat >> "$OUTPUT_FILE" << 'TABLE_HEADER'
 ## Features
 
-| # | Feature | Status | Started | Completed | Issue |
-|---|---------|--------|---------|-----------|-------|
+| # | Feature | Status | Duration | Started | Completed | Issue |
+|---|---------|--------|----------|---------|-----------|-------|
 TABLE_HEADER
 
 # Iterate features in order
@@ -94,6 +109,7 @@ for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
   STARTED=$(jq -r ".features[\"$key\"].started_at // \"—\"" "$STATUS_FILE")
   DONE=$(jq -r ".features[\"$key\"].completed_at // \"—\"" "$STATUS_FILE")
   ISSUE=$(jq -r ".features[\"$key\"].github_issue // \"—\"" "$STATUS_FILE")
+  DURATION_S=$(jq -r ".features[\"$key\"].duration_seconds // empty" "$STATUS_FILE")
 
   # Status label
   case "$STATUS" in
@@ -109,6 +125,15 @@ for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
     TITLE="$TITLE (stretch)"
   fi
 
+  # Format duration
+  if [ -n "${DURATION_S:-}" ]; then
+    DUR_MIN=$(( DURATION_S / 60 ))
+    DUR_SEC=$(( DURATION_S % 60 ))
+    DURATION="${DUR_MIN}m${DUR_SEC}s"
+  else
+    DURATION="—"
+  fi
+
   # Trim timestamps to date only
   [ "$STARTED" != "—" ] && STARTED=$(echo "$STARTED" | cut -d'T' -f1)
   [ "$DONE" != "—" ] && DONE=$(echo "$DONE" | cut -d'T' -f1)
@@ -120,7 +145,7 @@ for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
     ISSUE_LINK="—"
   fi
 
-  echo "| $key | $TITLE | \`$STATUS_LABEL\` | $STARTED | $DONE | $ISSUE_LINK |" >> "$OUTPUT_FILE"
+  echo "| $key | $TITLE | \`$STATUS_LABEL\` | $DURATION | $STARTED | $DONE | $ISSUE_LINK |" >> "$OUTPUT_FILE"
 done
 
 # Recent activity section
@@ -132,11 +157,11 @@ ACTIVITY_HEADER
 
 # Show last 5 completed features (most recent first)
 ACTIVITY=$(jq -r '
-  [.features | to_entries[] | select(.value.status == "completed") | {key: .key, title: .value.title, completed: .value.completed_at, notes: .value.notes}]
+  [.features | to_entries[] | select(.value.status == "completed") | {key: .key, title: .value.title, completed: .value.completed_at, notes: .value.notes, duration: .value.duration_seconds}]
   | sort_by(.completed) | reverse | .[0:5][]
-  | "- **\(.key) — \(.title)** completed \(.completed | split("T")[0])\(if .notes != "" then " — " + .notes else "" end)"
+  | "- **\(.key) — \(.title)** completed \(.completed | split("T")[0])\(if .duration then " (\(.duration / 60 | floor)m\(.duration % 60)s)" else "" end)\(if .notes != "" then " — " + .notes else "" end)"
 ' "$STATUS_FILE" 2>/dev/null) || true
-if [ -n "$ACTIVITY" ]; then
+if [ -n "${ACTIVITY:-}" ]; then
   echo "$ACTIVITY" >> "$OUTPUT_FILE"
 else
   echo "_No completed features yet._" >> "$OUTPUT_FILE"
