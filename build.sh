@@ -12,6 +12,13 @@
 #   ./build.sh reset-all       Reset all features to pending
 
 set -e
+
+# This script requires bash (uses PIPESTATUS, arrays)
+if [ -z "$BASH_VERSION" ]; then
+  echo "Error: This script requires bash. Run with: bash build.sh or ./build.sh"
+  exit 1
+fi
+
 cd "$(dirname "$0")"
 
 STATUS_FILE="BUILD_STATUS.json"
@@ -35,6 +42,38 @@ require_jq() {
   fi
 }
 
+require_claude() {
+  if ! command -v claude &> /dev/null; then
+    echo "Error: claude CLI is required. Install from: https://claude.ai/download"
+    exit 1
+  fi
+}
+
+require_node() {
+  if ! command -v node &> /dev/null; then
+    echo "Error: node is required. Install from: https://nodejs.org"
+    exit 1
+  fi
+  if ! command -v npm &> /dev/null; then
+    echo "Error: npm is required. Install Node.js from: https://nodejs.org"
+    exit 1
+  fi
+}
+
+require_env() {
+  if [ ! -f ".env" ]; then
+    echo "Warning: .env file not found. Database features will fail without DATABASE_URL."
+    echo "Create .env with: DATABASE_URL=postgresql://<user>:<password>@<host>:5432/caveau"
+  fi
+}
+
+check_gh() {
+  if ! command -v gh &> /dev/null; then
+    echo "Warning: gh CLI not found. GitHub issues will not be auto-closed on feature completion."
+    echo "Install with: brew install gh"
+  fi
+}
+
 require_status_file() {
   if [ ! -f "$STATUS_FILE" ]; then
     echo "Error: $STATUS_FILE not found. Are you in the project root?"
@@ -42,10 +81,50 @@ require_status_file() {
   fi
 }
 
+LOCK_DIR=".build.lock"
+
+acquire_lock() {
+  # Use mkdir for atomic lock acquisition (immune to TOCTOU race conditions)
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$LOCK_DIR/pid"
+    trap 'rm -rf "$LOCK_DIR"' EXIT
+  else
+    # Lock exists — check if the holding process is still alive
+    if [ -f "$LOCK_DIR/pid" ] && kill -0 "$(cat "$LOCK_DIR/pid")" 2>/dev/null; then
+      echo "Error: Build already running (PID $(cat "$LOCK_DIR/pid"))"
+      echo "If this is stale, remove $LOCK_DIR/ manually."
+      exit 1
+    else
+      # Stale lock — reclaim it
+      rm -rf "$LOCK_DIR"
+      if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        echo "Error: Could not reclaim stale lock. Another process may have started."
+        exit 1
+      fi
+      echo $$ > "$LOCK_DIR/pid"
+      trap 'rm -rf "$LOCK_DIR"' EXIT
+    fi
+  fi
+}
+
+check_dependencies() {
+  local TARGET="$1"
+  for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
+    [ "$key" = "$TARGET" ] && break
+    local DEP_STATUS
+    DEP_STATUS=$(get_feature_status "$key")
+    if [ "$DEP_STATUS" != "completed" ]; then
+      echo "Error: Feature $key ($(get_feature_title "$key")) is '$DEP_STATUS' — must be completed before $TARGET"
+      exit 1
+    fi
+  done
+}
+
 get_next_feature() {
   jq -r '
     .features | to_entries
-    | map(select(.value.status == "pending" or .value.status == "failed"))
+    | map(select(.value.status == "pending" or .value.status == "failed" or .value.status == "in-progress"))
+    | map(select(.value.stretch != true))
     | sort_by(.key)
     | .[0].key // empty
   ' "$STATUS_FILE"
@@ -63,12 +142,14 @@ update_docs_and_push() {
   # Regenerate PROGRESS.md
   bash "$SCRIPTS/update-progress.sh"
 
-  # Commit tracking files
+  # Commit tracking files (only if there are changes to commit)
   git add BUILD_STATUS.json PROGRESS.md BUILD_LOG.md 2>/dev/null || true
-  git commit -m "docs: update build progress" --allow-empty 2>/dev/null || true
+  if ! git diff --cached --quiet 2>/dev/null; then
+    git commit -m "docs: update build progress" || echo "Warning: Could not commit tracking files"
+  fi
 
   # Push to GitHub
-  git push origin main 2>/dev/null || echo "Warning: Could not push to GitHub"
+  git push origin main || echo "Warning: Could not push to GitHub. You may need to push manually."
 }
 
 # ── Commands ────────────────────────────────────────────────────
@@ -77,14 +158,18 @@ cmd_status() {
   require_jq
   require_status_file
 
-  TOTAL=$(jq '.total_features' "$STATUS_FILE")
-  COMPLETED=$(jq '[.features[] | select(.status == "completed")] | length' "$STATUS_FILE")
+  CORE_TOTAL=$(jq '[.features[] | select(.stretch != true)] | length' "$STATUS_FILE")
+  CORE_COMPLETED=$(jq '[.features[] | select(.status == "completed" and .stretch != true)] | length' "$STATUS_FILE")
   IN_PROG=$(jq '[.features[] | select(.status == "in-progress")] | length' "$STATUS_FILE")
   FAILED=$(jq '[.features[] | select(.status == "failed")] | length' "$STATUS_FILE")
   PENDING=$(jq '[.features[] | select(.status == "pending")] | length' "$STATUS_FILE")
-  PCT=$(( COMPLETED * 100 / TOTAL ))
+  if [ "$CORE_TOTAL" -gt 0 ]; then
+    PCT=$(( CORE_COMPLETED * 100 / CORE_TOTAL ))
+  else
+    PCT=0
+  fi
 
-  print_header "Caveau Build Status — ${PCT}% complete"
+  print_header "Caveau Build Status — ${PCT}% complete (${CORE_COMPLETED}/${CORE_TOTAL} core)"
 
   # Print each feature
   for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
@@ -103,13 +188,18 @@ cmd_status() {
   done
 
   echo ""
-  echo "  Completed: $COMPLETED | In Progress: $IN_PROG | Failed: $FAILED | Pending: $PENDING"
+  echo "  Core: $CORE_COMPLETED/$CORE_TOTAL completed | In Progress: $IN_PROG | Failed: $FAILED | Pending: $PENDING"
 
   NEXT=$(get_next_feature)
   if [ -n "$NEXT" ]; then
     echo "  Next up: $NEXT — $(get_feature_title "$NEXT")"
   else
-    echo "  All features complete!"
+    STRETCH_REMAINING=$(jq '[.features[] | select(.stretch == true and .status != "completed")] | length' "$STATUS_FILE")
+    if [ "$STRETCH_REMAINING" -gt 0 ]; then
+      echo "  All core features complete! $STRETCH_REMAINING stretch goal(s) remaining."
+    else
+      echo "  All features complete!"
+    fi
   fi
   echo ""
 }
@@ -179,7 +269,12 @@ cmd_retry() {
 
 cmd_start() {
   require_jq
+  require_claude
+  require_node
   require_status_file
+  require_env
+  check_gh
+  acquire_lock
   mkdir -p logs
 
   # Remove any previous stop signal
@@ -193,13 +288,19 @@ cmd_start() {
       echo "Error: Feature $START_FROM not found"
       exit 1
     fi
+    check_dependencies "$START_FROM"
     CURRENT="$START_FROM"
   else
     CURRENT=$(get_next_feature)
   fi
 
   if [ -z "$CURRENT" ]; then
-    print_header "All features are complete!"
+    print_header "All core features are complete!"
+    # Check if stretch goals remain
+    STRETCH_REMAINING=$(jq '[.features[] | select(.stretch == true and .status != "completed")] | length' "$STATUS_FILE")
+    if [ "$STRETCH_REMAINING" -gt 0 ]; then
+      echo "  $STRETCH_REMAINING stretch goal(s) remaining. Run './build.sh start <num>' to build them individually."
+    fi
     cmd_status
     exit 0
   fi
@@ -233,11 +334,34 @@ cmd_start() {
     # Mark as in-progress
     bash "$SCRIPTS/update-status.sh" "$CURRENT" "in-progress"
 
+    # Save pre-build HEAD for file tracking
+    PRE_BUILD_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+    export CAVEAU_PRE_BUILD_SHA="$PRE_BUILD_SHA"
+
     # Run Claude Code for this feature
+    # NOTE: Claude is told to only BUILD, VERIFY, and COMMIT. The pipeline handles
+    # status tracking, progress docs, and pushing — see update_docs_and_push().
+    # Determine timeout command (macOS doesn't ship GNU timeout)
+    TIMEOUT_CMD=""
+    if command -v timeout &> /dev/null; then
+      TIMEOUT_CMD="timeout"
+    elif command -v gtimeout &> /dev/null; then
+      TIMEOUT_CMD="gtimeout"
+    else
+      echo "Warning: timeout/gtimeout not found. Running without timeout guard."
+      echo "Install with: brew install coreutils"
+    fi
+
     set +e
-    claude --print --dangerously-skip-permissions \
-      "Read CLAUDE.md and SPEC.md for full project context. Then read BUILD.md and execute feature $CURRENT exactly as specified. Follow the 5-step process (BUILD, VERIFY, COMMIT, LOG, NEXT). Do not skip any step. Do not build anything beyond what feature $CURRENT specifies." \
-      2>&1 | tee "logs/feature-${CURRENT}.log"
+    if [ -n "$TIMEOUT_CMD" ]; then
+      $TIMEOUT_CMD 1800 claude --print --dangerously-skip-permissions --max-turns 50 \
+        "Read CLAUDE.md and SPEC.md for full project context. Then read BUILD.md and build feature $CURRENT exactly as specified. IMPORTANT: You are running inside the build pipeline. Only do steps 1-4 of the Development Workflow in CLAUDE.md (read context, build, verify, commit). Do NOT run update-status.sh, update-progress.sh, or git push — the pipeline handles those. Do not build anything beyond what feature $CURRENT specifies." \
+        2>&1 | tee "logs/feature-${CURRENT}.log"
+    else
+      claude --print --dangerously-skip-permissions --max-turns 50 \
+        "Read CLAUDE.md and SPEC.md for full project context. Then read BUILD.md and build feature $CURRENT exactly as specified. IMPORTANT: You are running inside the build pipeline. Only do steps 1-4 of the Development Workflow in CLAUDE.md (read context, build, verify, commit). Do NOT run update-status.sh, update-progress.sh, or git push — the pipeline handles those. Do not build anything beyond what feature $CURRENT specifies." \
+        2>&1 | tee "logs/feature-${CURRENT}.log"
+    fi
     EXIT_CODE=${PIPESTATUS[0]}
     set -e
 
@@ -272,7 +396,8 @@ cmd_start() {
       echo ""
       echo "Feature $CURRENT FAILED (exit code $EXIT_CODE)"
       echo "Check logs/feature-${CURRENT}.log for details"
-      echo "Run './build.sh retry' to retry, or './build.sh start' to skip to next."
+      echo "Run './build.sh retry' to retry this feature."
+      echo "To skip it: './build.sh reset $CURRENT' then manually mark as needed, then './build.sh start'."
 
       update_docs_and_push
       exit 1
@@ -305,7 +430,8 @@ case "$COMMAND" in
     echo "Usage: ./build.sh <command> [args]"
     echo ""
     echo "Commands:"
-    echo "  start [num]    Start or resume from next pending feature (or specific feature)"
+    echo "  start [num]    Start or resume from next pending core feature (or specific feature)"
+    echo "                 Stretch goals (15-17) must be started explicitly by number"
     echo "  stop           Stop after current feature finishes"
     echo "  status         Show build progress"
     echo "  retry          Retry the last failed feature"

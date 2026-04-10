@@ -11,7 +11,8 @@ This is a linear build pipeline. There are 14 features listed below in dependenc
 ```
 STEP 1: BUILD
   - Read CLAUDE.md and SPEC.md for context
-  - Read the feature spec from features/<feature-number>.md
+  - Find the feature spec in this file (BUILD.md) — each feature is an inline
+    section below (e.g. "### 01 — Project Scaffold")
   - Write/edit all files specified in the feature spec
   - Follow design conventions in CLAUDE.md exactly
 
@@ -24,15 +25,9 @@ STEP 3: COMMIT
   - `git add` only the files created/modified for this feature
   - `git commit` with message: "feat(<feature-number>): <feature title>"
 
-STEP 4: LOG
-  - Append to BUILD_LOG.md:
-    - Feature number and title
-    - Files created/modified
-    - Status: PASS or FAIL
-    - Any notes or issues encountered
-
-STEP 5: NEXT
-  - Move to the next feature in the list
+STEP 4–5: TRACKING (interactive mode only)
+  - If running interactively (not inside build.sh), update tracking per CLAUDE.md
+  - If running inside the build pipeline, stop here — the pipeline handles the rest
 ```
 
 ---
@@ -40,7 +35,7 @@ STEP 5: NEXT
 ## Feature Manifest (in build order)
 
 ### 01 — Project Scaffold
-Create the Next.js 14 project, install all dependencies, configure Tailwind theme, globals.css, and root layout with fonts. Create all lib files (supabase.ts, types.ts, utils.ts, sensors.ts). Create .env.local template. Initialize BUILD_LOG.md.
+Create the Next.js 14 project in the current directory (`npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir --use-npm --no-import-alias`), install all dependencies (prisma @prisma/client recharts@^2 framer-motion@^11 lucide-react@^0), configure Tailwind theme, globals.css, and root layout with fonts. Create lib files (prisma.ts, utils.ts, sensors.ts). Create Prisma schema matching SPEC.md exactly (includes Facility, WineValuation, Member.role, autoincrement SensorReading.id). Create .env.example template. Initialize BUILD_LOG.md. **Important:** Use `create-next-app@14` (not `@latest`) to ensure the scaffolded files match Next.js 14 conventions. **Important:** Prisma returns `Decimal` fields as `Prisma.Decimal` objects — utils.ts helpers should use `Number()` conversion for formatting.
 
 **Files created:**
 - package.json (via create-next-app, then add deps)
@@ -48,26 +43,30 @@ Create the Next.js 14 project, install all dependencies, configure Tailwind them
 - next.config.ts
 - src/app/layout.tsx
 - src/app/globals.css
-- src/lib/supabase.ts
-- src/lib/types.ts
+- src/lib/prisma.ts
 - src/lib/utils.ts
 - src/lib/sensors.ts
-- .env.local.example
+- prisma/schema.prisma
+- .env.example
 - BUILD_LOG.md
 
 **Verify:** `npm run build` exits 0. Dev server starts. Root page shows default Next.js page (will be replaced later).
 
 ---
 
-### 02 — Supabase Schema & Seed Data
-Create schema.sql with all 7 tables. Create seed.sql with demo member, wines (35), lockers (2), locker slots (24 occupied), alerts (8), and provenance certificates (5). Create seed-sensors.ts script that generates 30 days of sensor readings.
+### 02 — Database Schema & Seed Data
+Prisma schema is already created in feature 01. Create seed.ts with: 1 facility ("Caveau Naples", "Naples, FL"), demo member (role "member"), wines (35), lockers (2, assigned to facility), locker slots (24 occupied), alerts (8), provenance certificates (5), and 1 WineValuation per wine (source "manual", price = currentValue, date = createdAt). Create seed-sensors.ts script that generates 30 days of sensor readings. Configure `prisma db seed` in package.json.
 
 **Files created:**
-- supabase/schema.sql
-- supabase/seed.sql
-- supabase/seed-sensors.ts
+- prisma/seed.ts
+- prisma/seed-sensors.ts
 
-**Verify:** If NEXT_PUBLIC_SUPABASE_URL is set, run schema.sql and seed.sql via the Supabase client. Otherwise, verify files are valid SQL. `npm run build` still exits 0.
+**Files modified:**
+- package.json (add `prisma.seed` config and `tsx` dev dependency)
+
+**Important:** The sensor seed script generates ~17K rows. Use Prisma `createMany` for batch insertion — individual `create` calls would be extremely slow.
+
+**Verify:** `npx prisma generate` succeeds. `npx prisma migrate dev --name init` creates migration (requires DATABASE_URL). Seed scripts are valid TypeScript. `npm run build` still exits 0.
 
 ---
 
@@ -93,12 +92,12 @@ Build reusable MetricCard component: icon, value (with animated number transitio
 ---
 
 ### 05 — Dashboard Page
-Build the dashboard at `/`. Fetches aggregate data from Supabase: total collection value, bottles stored count, current conditions (latest sensor reading), recent alerts. Layout: 4 metric cards in a grid, recent alerts list, top wines by value table.
+Build the dashboard at `/`. Fetches aggregate data via Prisma: total collection value, bottles stored count, current conditions (latest sensor reading), recent alerts. Layout: 4 metric cards in a grid, recent alerts list, top wines by value table.
 
 **Files created/modified:**
 - src/app/page.tsx (replace default with dashboard)
 
-**Verify:** `npm run build` exits 0. Page renders with data from Supabase (or gracefully shows empty state if no DB connection).
+**Verify:** `npm run build` exits 0. Page renders with data from database (or gracefully shows empty state if no DB connection).
 
 ---
 
@@ -113,7 +112,7 @@ Build WineCard component for collection grid: wine image (placeholder), name (se
 ---
 
 ### 07 — Collection Page
-Build wine collection page at `/collection`. Search bar, filter dropdowns (region, varietal, vintage range), grid/list view toggle. Uses WineCard in grid mode. Fetches wines from Supabase with client-side filtering. Includes AddWineForm modal.
+Build wine collection page at `/collection`. Search bar, filter dropdowns (region, varietal, vintage range), grid/list view toggle. Uses WineCard in grid mode. Fetches wines via Prisma with client-side filtering. Includes AddWineForm modal.
 
 **Files created/modified:**
 - src/app/collection/page.tsx
@@ -155,7 +154,7 @@ Build alert history table: columns for time, type, severity (color-coded badge),
 ---
 
 ### 11 — Sentinel Page
-Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D/30D toggle). 4 condition cards showing current temp/humidity/vibration/light with status colors. Charts from sensor-charts.tsx. Alert history from alert-list.tsx. Live-updating: uses setInterval with sensor simulator from lib/sensors.ts for real-time data, fetches historical from Supabase for longer ranges.
+Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D/30D toggle). 4 condition cards showing current temp/humidity/vibration/light with status colors. Charts from sensor-charts.tsx. Alert history from alert-list.tsx. Live-updating: uses setInterval with sensor simulator from lib/sensors.ts for real-time data, fetches historical from database via Prisma for longer ranges.
 
 **Files created/modified:**
 - src/app/sentinel/page.tsx
@@ -165,7 +164,7 @@ Build IoT monitoring dashboard at `/sentinel`. Time range selector (1H/6H/24H/7D
 ---
 
 ### 12 — Wine Detail Page
-Build wine detail at `/wine/[id]`. Fetches wine by ID from Supabase with joined locker_slot data. Layout: wine image + info header, valuation card (purchase vs current, appreciation %), tasting notes, storage location (locker number, slot, days stored), link to provenance certificate.
+Build wine detail at `/wine/[id]`. Fetches wine by ID via Prisma with included lockerSlots relation. Layout: wine image + info header, valuation card (purchase vs current, appreciation %), tasting notes, storage location (locker number, slot, days stored), link to provenance certificate.
 
 **Files created/modified:**
 - src/app/wine/[id]/page.tsx
@@ -203,38 +202,91 @@ Add Framer Motion animations across all pages: fade-in on page load, stagger on 
 
 ---
 
+> **Note:** Stretch goal numbers 15–17 below are build pipeline IDs only. They are unrelated to the post-demo roadmap feature numbers in SPEC.md, which use a separate numbering scheme (15–33).
+
+### 15 — API Routes (stretch goal)
+Create REST API endpoints wrapping existing Prisma queries. These decouple data access from the UI and establish the pattern for future mobile app, POS, and IoT integrations. All routes return JSON. Use Next.js Route Handlers (`app/api/.../route.ts`).
+
+**Endpoints:**
+- `GET /api/wines` — list all wines for the demo member (supports `?search=`, `?region=`, `?varietal=` query params)
+- `GET /api/wines/[id]` — single wine with locker slot and valuations
+- `POST /api/wines` — create a wine (body: name, vintage, region, varietal, producer, purchasePrice)
+- `GET /api/lockers` — list lockers with slots and occupancy counts
+- `GET /api/lockers/[id]/slots` — slots for a specific locker with wine info
+- `GET /api/sensors/latest` — latest sensor reading per locker
+- `GET /api/sensors/history?lockerId=&range=` — historical readings (range: 1h, 6h, 24h, 7d, 30d)
+- `GET /api/alerts` — recent alerts (supports `?resolved=true/false`)
+- `GET /api/certificates/[id]` — certificate with wine and locker data
+
+**Files created:**
+- src/app/api/wines/route.ts
+- src/app/api/wines/[id]/route.ts
+- src/app/api/lockers/route.ts
+- src/app/api/lockers/[id]/slots/route.ts
+- src/app/api/sensors/latest/route.ts
+- src/app/api/sensors/history/route.ts
+- src/app/api/alerts/route.ts
+- src/app/api/certificates/[id]/route.ts
+
+**Verify:** `npm run build` exits 0. `curl http://localhost:3000/api/wines` returns JSON array of wines. `curl http://localhost:3000/api/sensors/latest` returns latest readings.
+
+---
+
+### 16 — Dashboard Analytics (stretch goal)
+Enhance the dashboard (feature 05) with trend charts: collection value over time (line chart using WineValuation data), storage utilization (occupied vs total slots as donut/radial chart), alert frequency over last 30 days (bar chart grouped by day). Replace static metric snapshots with data that shows movement. Use Recharts components already in the stack.
+
+**Files modified:**
+- src/app/page.tsx (add analytics section below existing metric cards)
+
+**Files created:**
+- src/components/dashboard-charts.tsx (collection trend, utilization donut, alert frequency bar)
+
+**Verify:** `npm run build` exits 0. Dashboard shows trend charts below the metric cards. Charts render with seeded data. Mobile layout stacks charts vertically.
+
+---
+
+### 17 — Certificate PDF & Public Verification (stretch goal)
+Enhance the certificate page (feature 13) with a "Download PDF" button and a public verification page. PDF generation via browser print-to-PDF (CSS `@media print` with clean single-page layout) — no server-side PDF library needed for the demo. Public verification page at `/verify/[hash]` displays a minimal certificate summary (wine name, monitoring period, integrity status) without requiring login. Add a QR code to the certificate that links to the verify URL (use a lightweight QR library like `qrcode.react`).
+
+**Files modified:**
+- src/app/certificate/[id]/page.tsx (add download/print button, add QR code)
+- src/components/certificate-doc.tsx (add QR code section, refine print styles)
+
+**Files created:**
+- src/app/verify/[hash]/page.tsx (public verification page — no nav, minimal layout)
+
+**Dependencies added:**
+- `qrcode.react` (lightweight QR code component)
+
+**Verify:** `npm run build` exits 0. Certificate page has a print/download button that produces a clean single-page PDF via browser print. QR code renders on the certificate linking to `/verify/[hash]`. Verify page loads and shows certificate validity.
+
+---
+
 ## Runner Script
 
-`build.sh` — runs each feature sequentially by invoking Claude Code with the feature spec.
+`build.sh` — a resumable build pipeline that runs features sequentially via Claude Code.
 
 ```bash
-#!/bin/bash
-set -e
-
-FEATURES=(01 02 03 04 05 06 07 08 09 10 11 12 13 14)
-
-for f in "${FEATURES[@]}"; do
-  echo "=========================================="
-  echo "Building feature $f..."
-  echo "=========================================="
-
-  claude --print --dangerously-skip-permissions \
-    "Read CLAUDE.md and SPEC.md for full project context. Then read BUILD.md and execute feature $f exactly as specified. Follow the 5-step process (BUILD, VERIFY, COMMIT, LOG, NEXT). Do not skip any step. Do not build anything beyond what feature $f specifies." \
-    2>&1 | tee "logs/feature-${f}.log"
-
-  echo "Feature $f complete."
-  echo ""
-done
-
-echo "All features built."
+./build.sh start          # Start or resume from next pending feature
+./build.sh start 07       # Start from a specific feature (checks dependencies)
+./build.sh stop            # Stop after the current feature finishes
+./build.sh status          # Show current build progress
+./build.sh retry           # Retry the last failed feature
+./build.sh reset <num>     # Reset a feature back to pending
+./build.sh reset-all       # Reset all features to pending
+./build.sh docs            # Regenerate PROGRESS.md
 ```
+
+See `build.sh` for the full implementation. The pipeline handles status tracking,
+progress docs, GitHub issue closure, and pushing — Claude only needs to build,
+verify, and commit.
 
 ---
 
 ## Pre-Requisites (before running the script)
 
-1. Supabase project created with URL and anon key
-2. `.env.local` file populated with Supabase credentials
+1. RDS PostgreSQL instance created (see RDS Setup in SPEC.md)
+2. `.env` file populated with `DATABASE_URL`
 3. `mkdir -p logs` in project root
 4. Node.js 18+ installed
 5. Claude Code CLI installed and authenticated

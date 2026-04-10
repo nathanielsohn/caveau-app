@@ -12,11 +12,21 @@ STATUS="$2"
 NOTES="${3:-}"
 STATUS_FILE="BUILD_STATUS.json"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+CURRENT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
 
 if [ -z "$FEATURE" ] || [ -z "$STATUS" ]; then
   echo "Usage: $0 <feature_number> <status> [notes]"
   exit 1
 fi
+
+# Validate status value
+case "$STATUS" in
+  in-progress|completed|failed) ;;
+  *)
+    echo "Error: Invalid status '$STATUS'. Must be: in-progress, completed, or failed"
+    exit 1
+    ;;
+esac
 
 # Validate feature exists
 EXISTS=$(jq -r ".features[\"$FEATURE\"] // empty" "$STATUS_FILE")
@@ -26,10 +36,10 @@ if [ -z "$EXISTS" ]; then
 fi
 
 # Update status
-jq --arg f "$FEATURE" --arg s "$STATUS" --arg now "$NOW" --arg notes "$NOTES" '
+jq --arg f "$FEATURE" --arg s "$STATUS" --arg now "$NOW" --arg notes "$NOTES" --arg sha "$CURRENT_SHA" '
   .last_updated = $now |
   .features[$f].status = $s |
-  if $s == "in-progress" then .features[$f].started_at = $now
+  if $s == "in-progress" then .features[$f].started_at = $now | .features[$f].pre_build_sha = $sha
   elif $s == "completed" then .features[$f].completed_at = $now | .last_completed_feature = $f
   elif $s == "failed" then .features[$f].failed_at = $now
   else . end |
@@ -47,8 +57,24 @@ if [ "$STATUS" = "completed" ]; then
   fi
 fi
 
-# Capture files modified in this feature's commit
+# Capture files modified in this feature's commits
 if [ "$STATUS" = "completed" ]; then
-  FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null || echo '[]')
+  # Use the pre-build SHA: pipeline env var first, then saved SHA from in-progress marking
+  BASE_SHA="${CAVEAU_PRE_BUILD_SHA:-}"
+  if [ -z "$BASE_SHA" ] || ! git cat-file -t "$BASE_SHA" &>/dev/null; then
+    BASE_SHA=$(jq -r ".features[\"$FEATURE\"].pre_build_sha // empty" "$STATUS_FILE")
+  fi
+  if [ -n "$BASE_SHA" ] && git cat-file -t "$BASE_SHA" &>/dev/null; then
+    FILES=$(git diff --name-only "$BASE_SHA" HEAD 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null || echo '[]')
+  else
+    # Last resort: compare against previous commit
+    if git rev-parse HEAD~1 &>/dev/null; then
+      FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))' 2>/dev/null || echo '[]')
+    else
+      FILES='[]'
+    fi
+  fi
+  # Guard against empty/null FILES from failed git or jq operations
+  [ -z "$FILES" ] && FILES='[]'
   jq --arg f "$FEATURE" --argjson files "$FILES" '.features[$f].files = $files' "$STATUS_FILE" > "${STATUS_FILE}.tmp" && mv "${STATUS_FILE}.tmp" "$STATUS_FILE"
 fi

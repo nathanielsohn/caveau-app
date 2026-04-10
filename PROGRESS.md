@@ -6,22 +6,27 @@
 ## Overview
 
 ```
-██░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0% complete (0/14 features)
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 0% complete (0/14 core features)
 ```
+
+Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | Status | Count |
 |--------|-------|
 | Completed | 0 |
 | In Progress | 0 |
 | Failed | 0 |
-| Pending | 14 |
+| Pending | 17 |
+
+| Stretch Goals | 0/3 completed |
+|---------------|-------|
 
 ## Features
 
 | # | Feature | Status | Started | Completed | Issue |
 |---|---------|--------|---------|-----------|-------|
 | 01 | Project Scaffold | `pending` | — | — | #1 |
-| 02 | Supabase Schema & Seed Data | `pending` | — | — | #2 |
+| 02 | Database Schema & Seed Data | `pending` | — | — | #2 |
 | 03 | Navigation Component | `pending` | — | — | #3 |
 | 04 | Metric Card Component | `pending` | — | — | #4 |
 | 05 | Dashboard Page | `pending` | — | — | #5 |
@@ -34,9 +39,13 @@
 | 12 | Wine Detail Page | `pending` | — | — | #12 |
 | 13 | Provenance Certificate Page | `pending` | — | — | #13 |
 | 14 | Polish & Animations | `pending` | — | — | #14 |
+| 15 | API Routes (stretch) | `pending` | — | — | — |
+| 16 | Dashboard Analytics (stretch) | `pending` | — | — | — |
+| 17 | Certificate PDF & Public Verification (stretch) | `pending` | — | — | — |
 
 ## Recent Activity
 
+_No completed features yet._
 
 ## Next Up
 

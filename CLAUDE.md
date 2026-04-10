@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app for an investor demo. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**This is a demo app, not production.** No real auth, no real APIs, no real IoT devices. All data is seeded or simulated.
+**This is a demo app, not production.** No real auth, no real APIs, no real IoT devices. All data is seeded or simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling post-demo — see "Post-Demo Roadmap" in SPEC.md.
 
 ## Stack
 
@@ -13,25 +13,31 @@ A luxury wine cellar management web app for an investor demo. Demonstrates the f
 - **Recharts v2** (IoT charts)
 - **Framer Motion** (animations)
 - **Lucide React** (icons)
-- **Supabase** (Postgres database, free tier)
+- **RDS PostgreSQL** (AWS free tier database)
+- **Prisma** (ORM, type-safe queries, migrations)
 - **AWS Amplify** (hosting)
 
 ## How to Run
+
+> **Note:** `npm install` and `npm run dev` require feature 01 (Project Scaffold) to be built first, which creates `package.json` and the Next.js project structure.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Requires `.env.local` with:
+Requires `.env` with:
 ```
-NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+DATABASE_URL=postgresql://<user>:<password>@<rds-host>:5432/caveau
 ```
 
 ## Project Structure
 
 ```
+prisma/
+├── schema.prisma               # Data models (generates TypeScript types)
+├── seed.ts                     # Seed data script
+└── seed-sensors.ts             # Sensor reading seed script
 src/
 ├── app/
 │   ├── layout.tsx              # Root layout (fonts, dark bg, nav shell)
@@ -52,11 +58,18 @@ src/
 │   ├── certificate-doc.tsx     # Full certificate layout
 │   └── add-wine-form.tsx       # Add wine modal/form
 └── lib/
-    ├── supabase.ts             # Supabase client singleton
-    ├── types.ts                # TypeScript interfaces for all data models
+    ├── prisma.ts               # Prisma client singleton
     ├── sensors.ts              # Sensor simulation algorithm + thresholds
     └── utils.ts                # Currency, date, number formatters
 ```
+
+### Data Models (key schema notes)
+
+- **Facility** — Multi-location ready. Demo seeds one facility ("Caveau Naples"). Lockers have optional `facilityId`.
+- **Member.role** — `'admin' | 'staff' | 'member'`. Demo uses `'member'`. Enables RBAC in Phase 1.
+- **WineValuation** — Price history table. Demo seeds one entry per wine. Enables valuation charts in Phase 2.
+- **SensorReading.id** — Uses `autoincrement()` (not UUID) for write performance at scale.
+- **Prisma Decimals** — `purchasePrice`, `currentValue`, and all sensor fields return `Prisma.Decimal` objects, not numbers. Always use `Number()` or `.toNumber()` before arithmetic. Format with `utils.ts` helpers for display. Formatting helpers in `utils.ts` should accept `Prisma.Decimal | number | string` defensively to prevent silent `[object Object]` rendering.
 
 ## Design Conventions
 
@@ -71,17 +84,11 @@ src/
 
 ## Sensor Simulation
 
-Live sensor data is generated client-side with `setInterval` (every 5 seconds):
-```
-temp = 55.0 + sin((hour - 5) × π/12) + gaussian(0, 0.1)     // °F
-humidity = 65.0 - (temp - 55.0) × 2.0 + gaussian(0, 0.3)     // %
-vibration = 0.1 + rare spike (0.5% chance)                     // mm/s
-light = 0 normally, rare spike (0.1% chance) for door events   // lux
-```
+Live sensor data is generated client-side with `setInterval` (every 5 seconds). See SPEC.md for the full simulation formulas.
 
 Alert thresholds: temp >59°F or <50°F, humidity <55% or >75%, vibration >0.5 mm/s.
 
-Historical data (30 days) is pre-seeded in Supabase using the same algorithm.
+Historical data (30 days) is pre-seeded in the database using the same algorithm.
 
 ## What NOT to Build
 
@@ -112,17 +119,27 @@ Read `BUILD_STATUS.json` to find the current state. Report which features are do
 
 When the user says to go, follow this process for the next pending feature:
 
-1. **Read context** — Read `BUILD.md` for the feature spec (find the section matching the feature number)
+1. **Read context** — Read `BUILD.md` for the feature spec (find the section matching the feature number in BUILD.md — specs are inline, not in separate files)
 2. **Build** — Create/edit all files specified. Follow design conventions above exactly.
 3. **Verify** — Run `npm run build`. Must exit 0. Fix any errors.
-4. **Update tracking** — Run `./scripts/update-status.sh <number> completed` (or `failed` if it broke)
-5. **Update docs** — Run `./scripts/update-progress.sh`
-6. **Commit** — `git add` the feature files + `BUILD_STATUS.json` + `PROGRESS.md`, commit as `feat(<number>): <title>`
-7. **Push** — `git push origin main`
+4. **Commit** — `git add` the feature files, commit as `feat(<number>): <title>`
+
+**If running interactively** (user is talking to you directly):
+
+5. **Update tracking** — Run `./scripts/update-status.sh <number> completed` (or `failed` if it broke)
+6. **Update docs** — Run `./scripts/update-progress.sh`
+7. **Commit tracking** — `git add BUILD_STATUS.json PROGRESS.md BUILD_LOG.md`, commit as `docs: update build progress`
+8. **Push** — `git push origin main`
+
+**If running inside the build pipeline** (`build.sh`):
+
+Stop after step 4. The pipeline handles status updates, progress docs, and pushing automatically. Do NOT run `update-status.sh`, `update-progress.sh`, or `git push`.
 
 ### 3. Tracking Files
 
 - `BUILD_STATUS.json` — Source of truth. Read this to know what's done/pending/failed.
 - `PROGRESS.md` — Human-readable dashboard, auto-generated. Never edit manually.
-- `BUILD.md` — Feature specs. The section for each feature number describes exactly what to build.
+- `BUILD.md` — Feature specs. Each feature's spec is an inline section in BUILD.md (e.g. "### 01 — Project Scaffold").
+- `BUILD_LOG.md` — Build log with pass/fail results per feature. Created by feature 01, updated by pipeline.
 - GitHub issues #1–#14 map to features 01–14. They auto-close on completion via `update-status.sh`.
+- Features 15–17 are **stretch goals** (API routes, dashboard analytics, certificate PDF + public verify), marked with `"stretch": true` in BUILD_STATUS.json. No GitHub issues. The pipeline skips them automatically — build them individually with `./build.sh start <num>` after 01–14 are done. Note: these numbers are independent from the post-demo roadmap numbering in SPEC.md.

@@ -13,21 +13,45 @@ if [ ! -f "$STATUS_FILE" ]; then
   exit 1
 fi
 
-# Count statuses
+# Count statuses (core features only for progress tracking)
 TOTAL=$(jq '.total_features' "$STATUS_FILE")
+CORE_TOTAL=$(jq '[.features[] | select(.stretch != true)] | length' "$STATUS_FILE")
 COMPLETED=$(jq '[.features[] | select(.status == "completed")] | length' "$STATUS_FILE")
+CORE_COMPLETED=$(jq '[.features[] | select(.status == "completed" and .stretch != true)] | length' "$STATUS_FILE")
 IN_PROGRESS=$(jq '[.features[] | select(.status == "in-progress")] | length' "$STATUS_FILE")
 FAILED=$(jq '[.features[] | select(.status == "failed")] | length' "$STATUS_FILE")
 PENDING=$(jq '[.features[] | select(.status == "pending")] | length' "$STATUS_FILE")
+STRETCH_TOTAL=$(jq '[.features[] | select(.stretch == true)] | length' "$STATUS_FILE")
+STRETCH_COMPLETED=$(jq '[.features[] | select(.stretch == true and .status == "completed")] | length' "$STATUS_FILE")
 LAST_UPDATED=$(jq -r '.last_updated // "Never"' "$STATUS_FILE")
 LAST_FEATURE=$(jq -r '.last_completed_feature // "None"' "$STATUS_FILE")
-PCT=$(( COMPLETED * 100 / TOTAL ))
+if [ "$CORE_TOTAL" -gt 0 ]; then
+  PCT=$(( CORE_COMPLETED * 100 / CORE_TOTAL ))
+else
+  PCT=0
+fi
 
-# Build progress bar
-BAR_FILLED=$(( COMPLETED * 2 ))
-BAR_EMPTY=$(( (TOTAL - COMPLETED) * 2 ))
-PROGRESS_BAR=$(printf '█%.0s' $(seq 1 $BAR_FILLED 2>/dev/null) || true)
-PROGRESS_EMPTY=$(printf '░%.0s' $(seq 1 $BAR_EMPTY 2>/dev/null) || true)
+# Build progress bar (core features only, with in-progress/failed states)
+CORE_IN_PROGRESS=$(jq '[.features[] | select(.status == "in-progress" and .stretch != true)] | length' "$STATUS_FILE")
+CORE_FAILED=$(jq '[.features[] | select(.status == "failed" and .stretch != true)] | length' "$STATUS_FILE")
+BAR_FILLED=$(( CORE_COMPLETED * 2 ))
+BAR_IN_PROGRESS=$(( CORE_IN_PROGRESS * 2 ))
+BAR_FAILED=$(( CORE_FAILED * 2 ))
+BAR_EMPTY=$(( (CORE_TOTAL - CORE_COMPLETED - CORE_IN_PROGRESS - CORE_FAILED) * 2 ))
+PROGRESS_BAR=""
+if [ "$BAR_FILLED" -gt 0 ]; then
+  PROGRESS_BAR=$(printf '█%.0s' $(seq 1 $BAR_FILLED))
+fi
+if [ "$BAR_IN_PROGRESS" -gt 0 ]; then
+  PROGRESS_BAR="${PROGRESS_BAR}$(printf '▓%.0s' $(seq 1 $BAR_IN_PROGRESS))"
+fi
+if [ "$BAR_FAILED" -gt 0 ]; then
+  PROGRESS_BAR="${PROGRESS_BAR}$(printf '▒%.0s' $(seq 1 $BAR_FAILED))"
+fi
+PROGRESS_EMPTY=""
+if [ "$BAR_EMPTY" -gt 0 ]; then
+  PROGRESS_EMPTY=$(printf '░%.0s' $(seq 1 $BAR_EMPTY))
+fi
 
 cat > "$OUTPUT_FILE" << HEADER
 # Caveau MVP — Build Progress
@@ -38,8 +62,10 @@ cat > "$OUTPUT_FILE" << HEADER
 ## Overview
 
 \`\`\`
-${PROGRESS_BAR}${PROGRESS_EMPTY} ${PCT}% complete (${COMPLETED}/${TOTAL} features)
+${PROGRESS_BAR}${PROGRESS_EMPTY} ${PCT}% complete (${CORE_COMPLETED}/${CORE_TOTAL} core features)
 \`\`\`
+
+Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | Status | Count |
 |--------|-------|
@@ -47,6 +73,9 @@ ${PROGRESS_BAR}${PROGRESS_EMPTY} ${PCT}% complete (${COMPLETED}/${TOTAL} feature
 | In Progress | $IN_PROGRESS |
 | Failed | $FAILED |
 | Pending | $PENDING |
+
+| Stretch Goals | ${STRETCH_COMPLETED}/${STRETCH_TOTAL} completed |
+|---------------|-------|
 
 HEADER
 
@@ -62,18 +91,24 @@ TABLE_HEADER
 for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
   TITLE=$(jq -r ".features[\"$key\"].title" "$STATUS_FILE")
   STATUS=$(jq -r ".features[\"$key\"].status" "$STATUS_FILE")
+  IS_STRETCH=$(jq -r ".features[\"$key\"].stretch // false" "$STATUS_FILE")
   STARTED=$(jq -r ".features[\"$key\"].started_at // \"—\"" "$STATUS_FILE")
   DONE=$(jq -r ".features[\"$key\"].completed_at // \"—\"" "$STATUS_FILE")
   ISSUE=$(jq -r ".features[\"$key\"].github_issue // \"—\"" "$STATUS_FILE")
 
-  # Status emoji
+  # Status label
   case "$STATUS" in
-    completed)   ICON="done" ;;
-    in-progress) ICON="building" ;;
-    failed)      ICON="failed" ;;
-    pending)     ICON="pending" ;;
-    *)           ICON="$STATUS" ;;
+    completed)   STATUS_LABEL="completed" ;;
+    in-progress) STATUS_LABEL="building" ;;
+    failed)      STATUS_LABEL="failed" ;;
+    pending)     STATUS_LABEL="pending" ;;
+    *)           STATUS_LABEL="$STATUS" ;;
   esac
+
+  # Mark stretch goals
+  if [ "$IS_STRETCH" = "true" ]; then
+    TITLE="$TITLE (stretch)"
+  fi
 
   # Trim timestamps to date only
   [ "$STARTED" != "—" ] && STARTED=$(echo "$STARTED" | cut -d'T' -f1)
@@ -86,7 +121,7 @@ for key in $(jq -r '.features | keys[]' "$STATUS_FILE" | sort); do
     ISSUE_LINK="—"
   fi
 
-  echo "| $key | $TITLE | \`$ICON\` | $STARTED | $DONE | $ISSUE_LINK |" >> "$OUTPUT_FILE"
+  echo "| $key | $TITLE | \`$STATUS_LABEL\` | $STARTED | $DONE | $ISSUE_LINK |" >> "$OUTPUT_FILE"
 done
 
 # Recent activity section
@@ -97,11 +132,16 @@ cat >> "$OUTPUT_FILE" << 'ACTIVITY_HEADER'
 ACTIVITY_HEADER
 
 # Show last 5 completed features (most recent first)
-jq -r '
+ACTIVITY=$(jq -r '
   [.features | to_entries[] | select(.value.status == "completed") | {key: .key, title: .value.title, completed: .value.completed_at, notes: .value.notes}]
   | sort_by(.completed) | reverse | .[0:5][]
   | "- **\(.key) — \(.title)** completed \(.completed | split("T")[0])\(if .notes != "" then " — " + .notes else "" end)"
-' "$STATUS_FILE" >> "$OUTPUT_FILE" 2>/dev/null || echo "_No completed features yet._" >> "$OUTPUT_FILE"
+' "$STATUS_FILE" 2>/dev/null) || true
+if [ -n "$ACTIVITY" ]; then
+  echo "$ACTIVITY" >> "$OUTPUT_FILE"
+else
+  echo "_No completed features yet._" >> "$OUTPUT_FILE"
+fi
 
 # Next up section
 NEXT_FEATURE=$(jq -r '
