@@ -1,22 +1,22 @@
 # Caveau MVP — Build Progress
 
 > Auto-generated from BUILD_STATUS.json. Do not edit manually.
-> Last updated: 2026-04-10T23:28:09Z
+> Last updated: 2026-04-10T23:40:39Z
 
 ## Overview
 
 ```
-████░░░░░░░░░░░░░░░░░░░░░░░░ 14% complete (2/14 core features)
+██████░░░░░░░░░░░░░░░░░░░░░░ 21% complete (3/14 core features)
 ```
 
 Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | Status | Count |
 |--------|-------|
-| Completed | 2 |
+| Completed | 3 |
 | In Progress | 0 |
 | Failed | 0 |
-| Pending | 15 |
+| Pending | 14 |
 
 | Stretch Goals | 0/3 completed |
 |---------------|-------|
@@ -27,7 +27,7 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 |---|---------|--------|----------|---------|-----------|-------|
 | 01 | Project Scaffold | `completed` | — | — | 2026-04-10 | #1 |
 | 02 | Database Schema & Seed Data | `completed` | — | — | 2026-04-10 | #2 |
-| 03 | Navigation Component | `pending` | — | — | — | #3 |
+| 03 | Navigation Component | `completed` | — | — | 2026-04-10 | #3 |
 | 04 | Metric Card Component | `pending` | — | — | — | #4 |
 | 05 | Dashboard Page | `pending` | — | — | — | #5 |
 | 06 | Wine Card Component | `pending` | — | — | — | #6 |
@@ -45,12 +45,13 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 ## Recent Activity
 
+- **03 — Navigation Component** completed 2026-04-10
 - **02 — Database Schema & Seed Data** completed 2026-04-10
 - **01 — Project Scaffold** completed 2026-04-10
 
 ## Next Up
 
-**03 — Navigation Component**
+**04 — Metric Card Component**
 
 ---
 _Run `./build.sh status` for live tracking. Run `./build.sh start` to resume building._
