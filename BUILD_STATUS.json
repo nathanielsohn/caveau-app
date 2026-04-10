@@ -1,7 +1,7 @@
 {
   "project": "caveau-app",
-  "last_updated": "2026-04-10T23:40:39Z",
-  "last_completed_feature": "03",
+  "last_updated": "2026-04-10T23:43:52Z",
+  "last_completed_feature": "04",
   "features": {
     "01": {
       "title": "Project Scaffold",
@@ -72,12 +72,14 @@
     },
     "04": {
       "title": "Metric Card Component",
-      "status": "pending",
+      "status": "completed",
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-04-10T23:43:52Z",
       "failed_at": null,
       "github_issue": 4,
-      "files": [],
+      "files": [
+        "src/components/metric-card.tsx"
+      ],
       "notes": ""
     },
     "05": {
