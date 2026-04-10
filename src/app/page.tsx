@@ -1,101 +1,124 @@
-import Image from "next/image";
+import { prisma } from "@/lib/prisma";
+import {
+  formatCurrency,
+  formatCurrencyCompact,
+  formatTemp,
+  formatHumidity,
+  toNumber,
+} from "@/lib/utils";
+import DashboardClient from "./dashboard-client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+// Force dynamic rendering — data comes from the database
+export const dynamic = "force-dynamic";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+export default async function DashboardPage() {
+  try {
+    // Fetch all data in parallel
+    const [wines, latestReading, recentAlerts, bottlesStored] =
+      await Promise.all([
+        prisma.wine.findMany({
+          orderBy: { currentValue: "desc" },
+          select: {
+            id: true,
+            name: true,
+            vintage: true,
+            region: true,
+            currentValue: true,
+            purchasePrice: true,
+          },
+        }),
+        prisma.sensorReading.findFirst({
+          orderBy: { timestamp: "desc" },
+        }),
+        prisma.alert.findMany({
+          orderBy: { timestamp: "desc" },
+          take: 5,
+          include: { locker: true },
+        }),
+        prisma.lockerSlot.count({
+          where: { wineId: { not: null } },
+        }),
+      ]);
+
+    // Calculate total collection value
+    const totalValue = wines.reduce(
+      (sum, w) => sum + toNumber(w.currentValue),
+      0
+    );
+
+    // Calculate total purchase price for trend
+    const totalPurchase = wines.reduce(
+      (sum, w) => sum + toNumber(w.purchasePrice),
+      0
+    );
+    const valueTrend =
+      totalPurchase > 0
+        ? ((totalValue - totalPurchase) / totalPurchase) * 100
+        : 0;
+
+    // Serialize data for the client component
+    const metricsData = {
+      totalValue: formatCurrencyCompact(totalValue),
+      valueTrend: Math.round(valueTrend * 10) / 10,
+      bottleCount: bottlesStored,
+      totalSlots: 32,
+      temperature: latestReading
+        ? formatTemp(latestReading.temperature)
+        : "—",
+      humidity: latestReading
+        ? formatHumidity(latestReading.humidity)
+        : "—",
+    };
+
+    const topWines = wines.slice(0, 5).map((w) => ({
+      id: w.id,
+      name: w.name,
+      vintage: w.vintage,
+      region: w.region,
+      currentValue: formatCurrency(w.currentValue),
+      purchasePrice: formatCurrency(w.purchasePrice),
+      appreciation:
+        toNumber(w.purchasePrice) > 0
+          ? Math.round(
+              ((toNumber(w.currentValue) - toNumber(w.purchasePrice)) /
+                toNumber(w.purchasePrice)) *
+                1000
+            ) / 10
+          : 0,
+    }));
+
+    const serializedAlerts = recentAlerts.map((a) => ({
+      id: a.id,
+      type: a.type,
+      severity: a.severity,
+      message: a.message,
+      timestamp: a.timestamp.toISOString(),
+      resolved: a.resolved,
+      lockerNumber: a.locker.lockerNumber,
+    }));
+
+    return (
+      <DashboardClient
+        metrics={metricsData}
+        topWines={topWines}
+        alerts={serializedAlerts}
+      />
+    );
+  } catch {
+    // Graceful fallback when DB is unreachable
+    return (
+      <DashboardClient
+        metrics={{
+          totalValue: "$0",
+          valueTrend: 0,
+          bottleCount: 0,
+          totalSlots: 32,
+          temperature: "—",
+          humidity: "—",
+        }}
+        topWines={[]}
+        alerts={[]}
+      />
+    );
+  }
 }
