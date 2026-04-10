@@ -99,3 +99,30 @@ Historical data (30 days) is pre-seeded in Supabase using the same algorithm.
 - **No premature abstractions.** If something is used once, inline it.
 - **One developer maintains this.** Optimize for readability, not cleverness.
 - **Tried-and-true tech only.** No experimental libraries or bleeding-edge patterns.
+
+## Development Workflow
+
+The user will open Claude Code and ask things like "what's next", "where are we", or "let's keep going". Here's how to handle that:
+
+### 1. Check Status
+
+Read `BUILD_STATUS.json` to find the current state. Report which features are done, which is next, and overall progress (e.g. "5/14 done, next up is feature 06 — Wine Card Component").
+
+### 2. Build a Feature
+
+When the user says to go, follow this process for the next pending feature:
+
+1. **Read context** — Read `BUILD.md` for the feature spec (find the section matching the feature number)
+2. **Build** — Create/edit all files specified. Follow design conventions above exactly.
+3. **Verify** — Run `npm run build`. Must exit 0. Fix any errors.
+4. **Update tracking** — Run `./scripts/update-status.sh <number> completed` (or `failed` if it broke)
+5. **Update docs** — Run `./scripts/update-progress.sh`
+6. **Commit** — `git add` the feature files + `BUILD_STATUS.json` + `PROGRESS.md`, commit as `feat(<number>): <title>`
+7. **Push** — `git push origin main`
+
+### 3. Tracking Files
+
+- `BUILD_STATUS.json` — Source of truth. Read this to know what's done/pending/failed.
+- `PROGRESS.md` — Human-readable dashboard, auto-generated. Never edit manually.
+- `BUILD.md` — Feature specs. The section for each feature number describes exactly what to build.
+- GitHub issues #1–#14 map to features 01–14. They auto-close on completion via `update-status.sh`.
