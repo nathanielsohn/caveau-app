@@ -36,10 +36,12 @@ export default function LockerSelector({ lockers }: LockerSelectorProps) {
 
         {/* Locker tabs — only show if multiple lockers */}
         {lockers.length > 1 && (
-          <div className="flex gap-2">
+          <div className="flex gap-2" role="tablist" aria-label="Locker selector">
             {lockers.map((l, i) => (
               <button
                 key={l.id}
+                role="tab"
+                aria-selected={i === activeIndex}
                 onClick={() => setActiveIndex(i)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
                   i === activeIndex

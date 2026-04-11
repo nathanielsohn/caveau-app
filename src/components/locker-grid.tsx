@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Wine, X, Calendar, MapPin, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -56,10 +56,13 @@ export default function LockerGrid({ slots }: LockerGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
 
   // Build a map of slotPosition → SlotData for the 32 slots
-  const slotMap = new Map<number, SlotData>();
-  for (const slot of slots) {
-    slotMap.set(slot.slotPosition, slot);
-  }
+  const slotMap = useMemo(() => {
+    const map = new Map<number, SlotData>();
+    for (const slot of slots) {
+      map.set(slot.slotPosition, slot);
+    }
+    return map;
+  }, [slots]);
 
   return (
     <div className="relative">
@@ -131,7 +134,8 @@ export default function LockerGrid({ slots }: LockerGridProps) {
               {/* Close button */}
               <button
                 onClick={() => setSelectedSlot(null)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
+                aria-label="Close slot detail"
+                className="absolute top-4 right-4 w-11 h-11 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
               >
                 <X size={16} />
               </button>
@@ -213,6 +217,11 @@ export default function LockerGrid({ slots }: LockerGridProps) {
         }
         .animate-slide-in {
           animation: slideIn 0.3s ease-out;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-slide-in {
+            animation: none;
+          }
         }
       `}</style>
     </div>

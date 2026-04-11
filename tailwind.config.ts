@@ -20,7 +20,7 @@ const config: Config = {
         // Text
         primary: "#E8E6E1",
         secondary: "#9B9A97",
-        muted: "#6B6B76",
+        muted: "#8B8B96",
         // Accents
         gold: {
           DEFAULT: "#FFD166",

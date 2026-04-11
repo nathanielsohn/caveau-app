@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   AreaChart,
   Area,
@@ -29,7 +30,7 @@ interface CollectionValueChartProps {
   data: { date: string; value: number }[];
 }
 
-export function CollectionValueChart({ data }: CollectionValueChartProps) {
+export const CollectionValueChart = memo(function CollectionValueChart({ data }: CollectionValueChartProps) {
   const formatValue = (v: number) => {
     if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
     if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
@@ -62,12 +63,12 @@ export function CollectionValueChart({ data }: CollectionValueChartProps) {
               />
               <XAxis
                 dataKey="date"
-                tick={{ fill: "#6B6B76", fontSize: 11 }}
+                tick={{ fill: "#8B8B96", fontSize: 11 }}
                 axisLine={{ stroke: "#2A2A30" }}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "#6B6B76", fontSize: 11 }}
+                tick={{ fill: "#8B8B96", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={55}
@@ -92,7 +93,7 @@ export function CollectionValueChart({ data }: CollectionValueChartProps) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Storage Utilization Chart (Donut) ─────────────── */
 
@@ -101,7 +102,7 @@ interface StorageUtilizationChartProps {
   total: number;
 }
 
-export function StorageUtilizationChart({
+export const StorageUtilizationChart = memo(function StorageUtilizationChart({
   occupied,
   total,
 }: StorageUtilizationChartProps) {
@@ -174,7 +175,7 @@ export function StorageUtilizationChart({
       </div>
     </div>
   );
-}
+});
 
 /* ── Alert Frequency Chart (Bar) ───────────────────── */
 
@@ -182,7 +183,7 @@ interface AlertFrequencyChartProps {
   data: { date: string; count: number }[];
 }
 
-export function AlertFrequencyChart({ data }: AlertFrequencyChartProps) {
+export const AlertFrequencyChart = memo(function AlertFrequencyChart({ data }: AlertFrequencyChartProps) {
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-medium text-secondary mb-4">
@@ -203,13 +204,13 @@ export function AlertFrequencyChart({ data }: AlertFrequencyChartProps) {
               />
               <XAxis
                 dataKey="date"
-                tick={{ fill: "#6B6B76", fontSize: 11 }}
+                tick={{ fill: "#8B8B96", fontSize: 11 }}
                 axisLine={{ stroke: "#2A2A30" }}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: "#6B6B76", fontSize: 11 }}
+                tick={{ fill: "#8B8B96", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={30}
@@ -232,4 +233,4 @@ export function AlertFrequencyChart({ data }: AlertFrequencyChartProps) {
       </div>
     </div>
   );
-}
+});

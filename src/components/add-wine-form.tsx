@@ -44,7 +44,8 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
           <h2 className="font-serif text-xl text-primary">Add Wine</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-[#1C1C20] transition-colors"
+            aria-label="Close add wine form"
+            className="w-11 h-11 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-[#1C1C20] transition-colors"
           >
             <X size={18} />
           </button>

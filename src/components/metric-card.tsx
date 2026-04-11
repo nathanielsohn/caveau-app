@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -84,20 +84,21 @@ function replaceNumber(
 }
 
 export default function MetricCard({ icon: Icon, value, label, trend, index = 0 }: MetricCardProps) {
+  const prefersReducedMotion = useReducedMotion();
   const targetNum = extractNumber(value);
   const animatedNum = useAnimatedNumber(targetNum);
   const displayValue = replaceNumber(value, animatedNum);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
+      transition={prefersReducedMotion ? { duration: 0 } : {
         duration: 0.35,
         delay: index * 0.08,
         ease: [0.25, 0.1, 0.25, 1],
       }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
       className="glass-card p-5 flex flex-col gap-3 cursor-default"
     >
       <div className="flex items-center justify-between">

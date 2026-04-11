@@ -39,17 +39,14 @@ const TIME_RANGE_HOURS: Record<TimeRange, number> = {
   "30D": 720,
 };
 
+/** Max live readings to keep in memory (1 hour at 5s intervals = 720) */
+const MAX_LIVE_READINGS = 720;
+
 /* ── Helpers ───────────────────────────────────────── */
 
 function formatTimestamp(date: Date | string, range: TimeRange): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  if (range === "1H" || range === "6H") {
-    return d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-  if (range === "24H") {
+  if (range === "1H" || range === "6H" || range === "24H") {
     return d.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -177,10 +174,9 @@ export default function SentinelPage() {
     intervalRef.current = setInterval(() => {
       const reading = simulateReading();
       setLiveReadings((prev) => {
-        // Keep last ~720 readings (1 hour at 5s intervals)
         const updated = [...prev, reading];
-        return updated.length > 720
-          ? updated.slice(updated.length - 720)
+        return updated.length > MAX_LIVE_READINGS
+          ? updated.slice(updated.length - MAX_LIVE_READINGS)
           : updated;
       });
 
@@ -285,12 +281,14 @@ export default function SentinelPage() {
       </div>
 
       {/* Time range selector */}
-      <div className="flex gap-1 mb-6 bg-[#141416]/60 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 mb-6 bg-[#141416]/60 p-1 rounded-xl w-fit" role="tablist" aria-label="Time range">
         {(["1H", "6H", "24H", "7D", "30D"] as TimeRange[]).map((r) => (
           <button
             key={r}
+            role="tab"
+            aria-selected={range === r}
             onClick={() => setRange(r)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 ${
+            className={`px-3 py-1.5 min-h-[44px] min-w-[44px] text-xs font-medium rounded-lg transition-colors duration-200 flex items-center justify-center ${
               range === r
                 ? "bg-gold/20 text-gold"
                 : "text-muted hover:text-secondary"
@@ -302,7 +300,7 @@ export default function SentinelPage() {
       </div>
 
       {/* Condition cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-live="polite" aria-atomic="false">
         {conditions.map((c) => {
           const status = getConditionStatus(c.type, c.raw);
           return (

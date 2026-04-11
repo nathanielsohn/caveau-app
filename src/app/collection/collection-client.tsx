@@ -170,23 +170,23 @@ export default function CollectionClient({
             <div className="ml-auto flex items-center gap-1 bg-caveau-graphite rounded-xl p-1 border border-[#2A2A30]">
               <button
                 onClick={() => setView("grid")}
-                className={`p-1.5 rounded-lg transition-colors ${
+                className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   view === "grid"
                     ? "bg-gold/10 text-gold"
                     : "text-muted hover:text-primary"
                 }`}
-                title="Grid view"
+                aria-label="Grid view"
               >
                 <LayoutGrid size={16} />
               </button>
               <button
                 onClick={() => setView("list")}
-                className={`p-1.5 rounded-lg transition-colors ${
+                className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   view === "list"
                     ? "bg-gold/10 text-gold"
                     : "text-muted hover:text-primary"
                 }`}
-                title="List view"
+                aria-label="List view"
               >
                 <List size={16} />
               </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useSession } from "next-auth/react";
 import {
   AreaChart,
@@ -25,7 +26,7 @@ export interface SensorDataPoint {
 
 /* ── Temperature Chart ─────────────────────────────── */
 
-export function TemperatureChart({ data }: { data: SensorDataPoint[] }) {
+export const TemperatureChart = memo(function TemperatureChart({ data }: { data: SensorDataPoint[] }) {
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-medium text-secondary mb-4">
@@ -47,13 +48,13 @@ export function TemperatureChart({ data }: { data: SensorDataPoint[] }) {
             />
             <XAxis
               dataKey="timestamp"
-              tick={{ fill: "#6B6B76", fontSize: 11 }}
+              tick={{ fill: "#8B8B96", fontSize: 11 }}
               axisLine={{ stroke: "#2A2A30" }}
               tickLine={false}
             />
             <YAxis
               domain={[45, 65]}
-              tick={{ fill: "#6B6B76", fontSize: 11 }}
+              tick={{ fill: "#8B8B96", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               width={35}
@@ -106,11 +107,11 @@ export function TemperatureChart({ data }: { data: SensorDataPoint[] }) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Humidity Chart ─────────────────────────────────── */
 
-export function HumidityChart({ data }: { data: SensorDataPoint[] }) {
+export const HumidityChart = memo(function HumidityChart({ data }: { data: SensorDataPoint[] }) {
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-medium text-secondary mb-4">
@@ -126,13 +127,13 @@ export function HumidityChart({ data }: { data: SensorDataPoint[] }) {
             />
             <XAxis
               dataKey="timestamp"
-              tick={{ fill: "#6B6B76", fontSize: 11 }}
+              tick={{ fill: "#8B8B96", fontSize: 11 }}
               axisLine={{ stroke: "#2A2A30" }}
               tickLine={false}
             />
             <YAxis
               domain={[50, 80]}
-              tick={{ fill: "#6B6B76", fontSize: 11 }}
+              tick={{ fill: "#8B8B96", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               width={35}
@@ -172,11 +173,11 @@ export function HumidityChart({ data }: { data: SensorDataPoint[] }) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Vibration Gauge ───────────────────────────────── */
 
-export function VibrationGauge({ value }: { value: number }) {
+export const VibrationGauge = memo(function VibrationGauge({ value }: { value: number }) {
   // Map vibration value to a 0-100 scale for the bar
   // 0 mm/s = 0%, 1.0 mm/s = 100%
   const percent = Math.min((value / 1.0) * 100, 100);
@@ -222,7 +223,7 @@ export function VibrationGauge({ value }: { value: number }) {
       </div>
     </div>
   );
-}
+});
 
 /* ── Access Log ────────────────────────────────────── */
 

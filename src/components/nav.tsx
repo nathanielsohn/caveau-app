@@ -103,7 +103,7 @@ export default function Nav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 transition-colors duration-200 ${
+                className={`flex flex-col items-center justify-center gap-1 min-w-[44px] min-h-[44px] px-3 py-1.5 transition-colors duration-200 ${
                   isActive ? "text-gold" : "text-muted"
                 }`}
               >
