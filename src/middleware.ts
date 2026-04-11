@@ -25,17 +25,17 @@ function isRateLimited(ip: string): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Content-Security-Policy builder (per-request nonce)               */
+/*  Content-Security-Policy builder                                   */
 /* ------------------------------------------------------------------ */
-function buildCsp(nonce: string): string {
+function buildCsp(): string {
   const isDev = process.env.NODE_ENV === "development";
 
-  // In dev, keep unsafe-eval for HMR / Fast Refresh.
-  // unsafe-inline is a fallback for browsers that don't support nonces;
-  // modern browsers ignore it when a nonce is present.
+  // Next.js App Router injects inline scripts that can't carry nonces
+  // without custom Document wiring. Use 'unsafe-inline' + 'self' which
+  // is still a meaningful restriction (blocks external script injection).
   const scriptSrc = isDev
-    ? `'self' 'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'`
-    : `'self' 'nonce-${nonce}' 'unsafe-inline'`;
+    ? `'self' 'unsafe-inline' 'unsafe-eval'`
+    : `'self' 'unsafe-inline'`;
 
   return [
     `default-src 'self'`,
@@ -53,9 +53,7 @@ function buildCsp(nonce: string): string {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // --- Generate per-request nonce for CSP ---
-  const nonce = btoa(crypto.randomUUID());
-  const csp = buildCsp(nonce);
+  const csp = buildCsp();
 
   // --- Rate-limit auth endpoints (POST only) ---
   const isAuthPost =
@@ -84,11 +82,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/auth");
 
   if (isPublic) {
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-nonce", nonce);
-    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    const res = NextResponse.next();
     res.headers.set("Content-Security-Policy", csp);
-    res.headers.set("x-nonce", nonce);
     return res;
   }
 
@@ -103,11 +98,8 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-nonce", nonce);
-  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  const res = NextResponse.next();
   res.headers.set("Content-Security-Policy", csp);
-  res.headers.set("x-nonce", nonce);
   return res;
 }
 
