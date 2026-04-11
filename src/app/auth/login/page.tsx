@@ -1,12 +1,10 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const [email, setEmail] = useState("");
@@ -20,19 +18,32 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      // Get CSRF token
+      const csrfRes = await fetch("/api/auth/csrf");
+      const { csrfToken } = await csrfRes.json();
+
+      // Sign in via NextAuth credentials callback
+      const res = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          csrfToken,
+          email,
+          password,
+          json: "true",
+        }),
       });
 
-      if (result?.error) {
+      const data = await res.json();
+
+      if (!res.ok || data.url?.includes("error")) {
         setError("Invalid email or password");
         setLoading(false);
-      } else {
-        router.push(callbackUrl);
-        router.refresh();
+        return;
       }
+
+      // Redirect to dashboard
+      window.location.href = callbackUrl;
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
