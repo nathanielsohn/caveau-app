@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Wine, X, Calendar, MapPin, DollarSign } from "lucide-react";
+import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import { assignWineToSlot, removeWineFromSlot } from "@/app/locker/actions";
 
-/** Varietal → accent color for the slot border/glow */
+/** Varietal -> accent color for the slot border/glow */
 function varietalColor(varietal: string): string {
   const v = varietal.toLowerCase();
   if (v.includes("cabernet")) return "#C23152"; // burgundy
@@ -33,8 +35,17 @@ export interface SlotData {
   dateStored: string | null; // serialized Date
 }
 
+export interface UnassignedWine {
+  id: string;
+  name: string;
+  vintage: number;
+  region: string;
+  varietal: string;
+}
+
 interface LockerGridProps {
   slots: SlotData[];
+  unassignedWines: UnassignedWine[];
 }
 
 function daysStored(dateStored: string | null): number {
@@ -52,10 +63,14 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export default function LockerGrid({ slots }: LockerGridProps) {
+export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
+  const [pickerSlot, setPickerSlot] = useState<SlotData | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // Build a map of slotPosition → SlotData for the 32 slots
+  // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
     const map = new Map<number, SlotData>();
     for (const slot of slots) {
@@ -63,6 +78,57 @@ export default function LockerGrid({ slots }: LockerGridProps) {
     }
     return map;
   }, [slots]);
+
+  // Filter unassigned wines by search query
+  const filteredWines = useMemo(() => {
+    if (!searchQuery.trim()) return unassignedWines;
+    const q = searchQuery.toLowerCase();
+    return unassignedWines.filter(
+      (w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.varietal.toLowerCase().includes(q) ||
+        w.region.toLowerCase().includes(q) ||
+        w.vintage.toString().includes(q)
+    );
+  }, [unassignedWines, searchQuery]);
+
+  function handleSlotClick(slot: SlotData | undefined) {
+    if (slot?.wine) {
+      // Occupied slot — open detail panel
+      setSelectedSlot(slot);
+    } else if (slot && !slot.wine && unassignedWines.length > 0) {
+      // Empty slot with available wines — open picker modal
+      setPickerSlot(slot);
+      setSearchQuery("");
+      setActionError(null);
+    }
+  }
+
+  function handleAssignWine(wineId: string) {
+    if (!pickerSlot) return;
+    setActionError(null);
+    startTransition(async () => {
+      const result = await assignWineToSlot(pickerSlot.id, wineId);
+      if (result.error) {
+        setActionError(result.error);
+      } else {
+        setPickerSlot(null);
+      }
+    });
+  }
+
+  function handleRemoveWine() {
+    if (!selectedSlot) return;
+    setActionError(null);
+    startTransition(async () => {
+      const result = await removeWineFromSlot(selectedSlot.id);
+      if (result.error) {
+        setActionError(result.error);
+      } else {
+        setSelectedSlot(null);
+      }
+    });
+  }
 
   return (
     <div className="relative">
@@ -73,20 +139,27 @@ export default function LockerGrid({ slots }: LockerGridProps) {
           const slot = slotMap.get(position);
           const isOccupied = slot?.wine != null;
           const color = isOccupied ? varietalColor(slot!.wine!.varietal) : undefined;
+          const canAssign = !isOccupied && slot && unassignedWines.length > 0;
 
           return (
             <button
               key={position}
-              onClick={() => {
-                if (isOccupied && slot) setSelectedSlot(slot);
-              }}
-              aria-label={isOccupied ? `Slot ${position}: ${slot!.wine!.name}` : `Slot ${position}: empty`}
+              onClick={() => handleSlotClick(slot)}
+              aria-label={
+                isOccupied
+                  ? `Slot ${position}: ${slot!.wine!.name}`
+                  : canAssign
+                  ? `Slot ${position}: empty — tap to assign wine`
+                  : `Slot ${position}: empty`
+              }
               className={`
                 aspect-square rounded-xl flex flex-col items-center justify-center p-1.5
                 transition-all duration-200 text-center
                 ${
                   isOccupied
                     ? "bg-[#141416]/80 backdrop-blur-xl border-2 cursor-pointer hover:scale-105 hover:shadow-lg"
+                    : canAssign
+                    ? "border-2 border-dashed border-gold/30 bg-[#141416]/30 cursor-pointer hover:border-gold/60 hover:bg-gold/5 transition-colors"
                     : "border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30 cursor-default"
                 }
               `}
@@ -95,7 +168,7 @@ export default function LockerGrid({ slots }: LockerGridProps) {
                   ? { borderColor: color, boxShadow: `0 0 12px ${hexToRgba(color!, 0.125)}` }
                   : undefined
               }
-              disabled={!isOccupied}
+              disabled={!isOccupied && !canAssign}
             >
               {isOccupied ? (
                 <>
@@ -111,6 +184,11 @@ export default function LockerGrid({ slots }: LockerGridProps) {
                       : slot!.wine!.name}
                   </span>
                 </>
+              ) : canAssign ? (
+                <>
+                  <Plus size={14} className="text-gold/50 mb-0.5" />
+                  <span className="text-[10px] text-gold/50">{position}</span>
+                </>
               ) : (
                 <span className="text-[10px] text-muted">{position}</span>
               )}
@@ -119,111 +197,231 @@ export default function LockerGrid({ slots }: LockerGridProps) {
         })}
       </div>
 
-      {/* Slide-in detail panel */}
-      {selectedSlot && selectedSlot.wine && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setSelectedSlot(null)}
-          />
+      {/* Slide-in detail panel (occupied slot) */}
+      <AnimatePresence>
+        {selectedSlot && selectedSlot.wine && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => { setSelectedSlot(null); setActionError(null); }}
+            />
 
-          {/* Panel */}
-          <div className="fixed right-0 top-0 h-full w-full sm:w-96 bg-caveau-charcoal border-l border-[#2A2A30]/50 z-50 overflow-y-auto animate-slide-in">
-            <div className="p-6">
-              {/* Close button */}
-              <button
-                onClick={() => setSelectedSlot(null)}
-                aria-label="Close slot detail"
-                className="absolute top-4 right-4 w-11 h-11 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
-              >
-                <X size={16} />
-              </button>
+            {/* Panel */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 h-full w-full sm:w-96 bg-caveau-charcoal border-l border-[#2A2A30]/50 z-50 overflow-y-auto"
+            >
+              <div className="p-6">
+                {/* Close button */}
+                <button
+                  onClick={() => { setSelectedSlot(null); setActionError(null); }}
+                  aria-label="Close slot detail"
+                  className="absolute top-4 right-4 w-11 h-11 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
+                >
+                  <X size={16} />
+                </button>
 
-              {/* Slot number badge */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium mb-6">
-                Slot {selectedSlot.slotPosition}
+                {/* Slot number badge */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium mb-6">
+                  Slot {selectedSlot.slotPosition}
+                </div>
+
+                {/* Wine name */}
+                <h2 className="font-serif text-xl text-primary mb-1">
+                  {selectedSlot.wine.name}
+                </h2>
+                <p className="text-secondary text-sm mb-6">
+                  {selectedSlot.wine.vintage} {selectedSlot.wine.varietal}
+                </p>
+
+                {/* Details */}
+                <div className="space-y-4">
+                  <div className="glass-card p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
+                      <MapPin size={16} className="text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Region</p>
+                      <p className="text-sm text-primary font-medium">
+                        {selectedSlot.wine.region}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
+                      <DollarSign size={16} className="text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Current Value</p>
+                      <p className="text-sm text-primary font-medium">
+                        {formatCurrency(selectedSlot.wine.currentValue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
+                      <Calendar size={16} className="text-gold" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Days Stored</p>
+                      <p className="text-sm text-primary font-medium">
+                        {daysStored(selectedSlot.dateStored)} days
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Link to wine detail */}
+                <Link
+                  href={`/wine/${selectedSlot.wine.id}`}
+                  className="btn-gold w-full mt-6 flex items-center justify-center gap-2 text-sm"
+                >
+                  <Wine size={16} />
+                  View Wine Detail
+                </Link>
+
+                {/* Remove from slot button */}
+                <button
+                  onClick={handleRemoveWine}
+                  disabled={isPending}
+                  className="w-full mt-3 flex items-center justify-center gap-2 text-sm px-4 py-3 rounded-xl border border-[#F87171]/30 text-[#F87171] hover:bg-[#F87171]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Minus size={16} />
+                  )}
+                  Remove from Slot
+                </button>
+
+                {/* Error message */}
+                {actionError && (
+                  <p className="mt-3 text-xs text-[#F87171] text-center">{actionError}</p>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Wine picker modal (empty slot) */}
+      <AnimatePresence>
+        {pickerSlot && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 z-40"
+              onClick={() => { setPickerSlot(null); setActionError(null); }}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed inset-x-4 top-[10%] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md z-50 bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-serif text-lg text-primary">Assign Wine</h3>
+                    <p className="text-xs text-secondary mt-0.5">
+                      Slot {pickerSlot.slotPosition} — select a wine from your collection
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setPickerSlot(null); setActionError(null); }}
+                    aria-label="Close wine picker"
+                    className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search wines..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-[#1C1C20] border border-[#2A2A30]/50 rounded-xl text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/40 transition-colors"
+                  />
+                </div>
               </div>
 
-              {/* Wine name */}
-              <h2 className="font-serif text-xl text-primary mb-1">
-                {selectedSlot.wine.name}
-              </h2>
-              <p className="text-secondary text-sm mb-6">
-                {selectedSlot.wine.vintage} {selectedSlot.wine.varietal}
-              </p>
-
-              {/* Details */}
-              <div className="space-y-4">
-                <div className="glass-card p-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
-                    <MapPin size={16} className="text-gold" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted">Region</p>
-                    <p className="text-sm text-primary font-medium">
-                      {selectedSlot.wine.region}
+              {/* Wine list */}
+              <div className="overflow-y-auto flex-1 p-2">
+                {filteredWines.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <Wine size={24} className="text-muted mx-auto mb-2" />
+                    <p className="text-sm text-muted">
+                      {searchQuery ? "No wines match your search" : "No unassigned wines"}
                     </p>
                   </div>
-                </div>
-
-                <div className="glass-card p-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
-                    <DollarSign size={16} className="text-gold" />
+                ) : (
+                  <div className="space-y-1">
+                    {filteredWines.map((wine) => (
+                      <button
+                        key={wine.id}
+                        onClick={() => handleAssignWine(wine.id)}
+                        disabled={isPending}
+                        className="w-full text-left p-3 rounded-xl hover:bg-gold/5 transition-colors flex items-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: hexToRgba(varietalColor(wine.varietal), 0.15) }}
+                        >
+                          <Wine
+                            size={16}
+                            strokeWidth={1.5}
+                            style={{ color: varietalColor(wine.varietal) }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-primary font-medium truncate group-hover:text-gold transition-colors">
+                            {wine.name}
+                          </p>
+                          <p className="text-xs text-muted truncate">
+                            {wine.vintage} {wine.varietal} &middot; {wine.region}
+                          </p>
+                        </div>
+                        {isPending ? (
+                          <Loader2 size={14} className="text-gold animate-spin shrink-0" />
+                        ) : (
+                          <Plus size={14} className="text-muted group-hover:text-gold transition-colors shrink-0" />
+                        )}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <p className="text-xs text-muted">Current Value</p>
-                    <p className="text-sm text-primary font-medium">
-                      {formatCurrency(selectedSlot.wine.currentValue)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="glass-card p-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
-                    <Calendar size={16} className="text-gold" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted">Days Stored</p>
-                    <p className="text-sm text-primary font-medium">
-                      {daysStored(selectedSlot.dateStored)} days
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Link to wine detail */}
-              <Link
-                href={`/wine/${selectedSlot.wine.id}`}
-                className="btn-gold w-full mt-6 flex items-center justify-center gap-2 text-sm"
-              >
-                <Wine size={16} />
-                View Wine Detail
-              </Link>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Slide-in animation */}
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-slide-in {
-          animation: slideIn 0.3s ease-out;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .animate-slide-in {
-            animation: none;
-          }
-        }
-      `}</style>
+              {/* Error message */}
+              {actionError && (
+                <div className="px-5 pb-4 shrink-0">
+                  <p className="text-xs text-[#F87171] text-center">{actionError}</p>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

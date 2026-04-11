@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
-import LockerGrid, { type SlotData } from "@/components/locker-grid";
+import LockerGrid, { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 
 interface LockerData {
   id: string;
@@ -15,9 +15,10 @@ interface LockerData {
 
 interface LockerSelectorProps {
   lockers: LockerData[];
+  unassignedWines: UnassignedWine[];
 }
 
-export default function LockerSelector({ lockers }: LockerSelectorProps) {
+export default function LockerSelector({ lockers, unassignedWines }: LockerSelectorProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const locker = lockers[activeIndex];
 
@@ -113,7 +114,7 @@ export default function LockerSelector({ lockers }: LockerSelectorProps) {
       </div>
 
       {/* Locker grid */}
-      <LockerGrid slots={locker.slots} />
+      <LockerGrid slots={locker.slots} unassignedWines={unassignedWines} />
     </>
   );
 }

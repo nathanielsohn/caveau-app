@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { Lock } from "lucide-react";
-import { type SlotData } from "@/components/locker-grid";
+import { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 import LockerSelector from "./locker-selector";
 
 export const dynamic = "force-dynamic";
@@ -33,11 +33,34 @@ async function getLockers(memberId: string) {
   return lockers;
 }
 
+/** Fetch wines belonging to the member that are not assigned to any locker slot */
+async function getUnassignedWines(memberId: string): Promise<UnassignedWine[]> {
+  const wines = await prisma.wine.findMany({
+    where: {
+      memberId,
+      lockerSlots: { none: {} },
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      vintage: true,
+      region: true,
+      varietal: true,
+    },
+  });
+
+  return wines;
+}
+
 export default async function LockerPage() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
 
-  const lockers = await getLockers(session.user.id);
+  const [lockers, unassignedWines] = await Promise.all([
+    getLockers(session.user.id),
+    getUnassignedWines(session.user.id),
+  ]);
 
   if (lockers.length === 0) {
     return (
@@ -83,7 +106,7 @@ export default async function LockerPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <LockerSelector lockers={serializedLockers} />
+      <LockerSelector lockers={serializedLockers} unassignedWines={unassignedWines} />
     </div>
   );
 }
