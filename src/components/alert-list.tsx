@@ -1,15 +1,5 @@
 "use client";
 
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle2,
-  Thermometer,
-  Droplets,
-  Activity,
-  Sun,
-} from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 
 export interface AlertItem {
@@ -19,85 +9,58 @@ export interface AlertItem {
   message: string;
   timestamp: Date | string;
   resolved: boolean;
+  isNew?: boolean; // for live alerts
 }
 
-interface AlertListProps {
-  alerts: AlertItem[];
-}
+const severityStyles: Record<string, string> = {
+  critical: "badge-danger",
+  warning: "badge-warn",
+  info: "badge-info",
+};
 
-/** Icon for alert type */
-function TypeIcon({ type }: { type: string }) {
-  switch (type) {
-    case "temperature":
-      return <Thermometer size={14} strokeWidth={1.8} />;
-    case "humidity":
-      return <Droplets size={14} strokeWidth={1.8} />;
-    case "vibration":
-      return <Activity size={14} strokeWidth={1.8} />;
-    case "light":
-      return <Sun size={14} strokeWidth={1.8} />;
-    default:
-      return <AlertCircle size={14} strokeWidth={1.8} />;
-  }
-}
+const typeLabels: Record<string, string> = {
+  temperature: "Temp",
+  humidity: "Humidity",
+  vibration: "Vibration",
+  light: "Light",
+};
 
-/** Severity badge color classes */
-function severityBadgeClass(severity: string): string {
-  switch (severity) {
-    case "critical":
-      return "badge-danger";
-    case "warning":
-      return "badge-warn";
-    case "info":
-    default:
-      return "badge-info";
-  }
-}
-
-/** Severity icon */
-function SeverityIcon({ severity }: { severity: string }) {
-  switch (severity) {
-    case "critical":
-      return <AlertTriangle size={12} />;
-    case "warning":
-      return <AlertCircle size={12} />;
-    case "info":
-    default:
-      return <Info size={12} />;
-  }
-}
-
-export default function AlertList({ alerts }: AlertListProps) {
+export default function AlertList({ alerts }: { alerts: AlertItem[] }) {
   if (alerts.length === 0) {
     return (
-      <div className="glass-card p-8 text-center">
-        <CheckCircle2 className="w-10 h-10 text-ok mx-auto mb-3" />
-        <p className="text-primary font-medium">All Clear</p>
-        <p className="text-sm text-muted mt-1">No alerts to display</p>
+      <div className="glass-card p-6">
+        <h3 className="text-sm font-medium text-secondary mb-4">
+          Alert History
+        </h3>
+        <p className="text-sm text-muted text-center py-6">
+          No alerts recorded.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Desktop table view */}
-      <div className="hidden md:block glass-card overflow-hidden">
-        <table className="w-full text-sm">
+    <div className="glass-card p-5">
+      <h3 className="text-sm font-medium text-secondary mb-4">
+        Alert History
+      </h3>
+      <div className="overflow-x-auto -mx-5">
+        <table className="w-full text-sm min-w-[480px]">
           <thead>
             <tr className="border-b border-[#2A2A30]/50">
-              <th className="text-left text-xs text-muted font-medium px-4 py-3 uppercase tracking-wider">
+              <th className="text-left text-xs text-muted font-medium px-5 pb-3">
                 Time
               </th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3 uppercase tracking-wider">
+              <th className="text-left text-xs text-muted font-medium px-3 pb-3">
                 Type
               </th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3 uppercase tracking-wider">
+              <th className="text-left text-xs text-muted font-medium px-3 pb-3">
                 Severity
               </th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3 uppercase tracking-wider">
+              <th className="text-left text-xs text-muted font-medium px-3 pb-3">
                 Message
               </th>
-              <th className="text-left text-xs text-muted font-medium px-4 py-3 uppercase tracking-wider">
+              <th className="text-left text-xs text-muted font-medium px-5 pb-3">
                 Status
               </th>
             </tr>
@@ -106,87 +69,41 @@ export default function AlertList({ alerts }: AlertListProps) {
             {alerts.map((alert) => (
               <tr
                 key={alert.id}
-                className="border-b border-[#2A2A30]/30 last:border-0 hover:bg-[#1C1C20]/40 transition-colors"
+                className="border-b border-[#2A2A30]/30 last:border-b-0"
               >
-                <td className="px-4 py-3 text-secondary whitespace-nowrap">
+                <td className="px-5 py-3 text-muted whitespace-nowrap">
                   {formatRelativeTime(alert.timestamp)}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1.5 text-secondary capitalize">
-                    <TypeIcon type={alert.type} />
-                    {alert.type}
+                <td className="px-3 py-3 text-secondary whitespace-nowrap">
+                  {typeLabels[alert.type] || alert.type}
+                </td>
+                <td className="px-3 py-3">
+                  <span
+                    className={
+                      severityStyles[alert.severity] || "badge-info"
+                    }
+                  >
+                    {alert.severity}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <span className={severityBadgeClass(alert.severity)}>
-                    <SeverityIcon severity={alert.severity} />
-                    <span className="ml-1 capitalize">{alert.severity}</span>
-                  </span>
+                <td className="px-3 py-3 text-primary">
+                  {alert.message}
                 </td>
-                <td className="px-4 py-3 text-primary">{alert.message}</td>
-                <td className="px-4 py-3">
-                  {alert.resolved ? (
-                    <span className="badge-ok">
-                      <CheckCircle2 size={12} />
-                      <span className="ml-1">Resolved</span>
+                <td className="px-5 py-3">
+                  {alert.isNew ? (
+                    <span className="badge bg-gold/10 text-gold animate-pulse">
+                      NEW
                     </span>
+                  ) : alert.resolved ? (
+                    <span className="text-xs text-ok">Resolved</span>
                   ) : (
-                    <span className="badge-danger">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-danger" />
-                      </span>
-                      <span className="ml-1.5">Active</span>
-                    </span>
+                    <span className="text-xs text-warn">Active</span>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Mobile card view */}
-      <div className="md:hidden space-y-2">
-        {alerts.map((alert) => (
-          <div key={alert.id} className="glass-card p-4 space-y-2.5">
-            {/* Top row: severity + status + time */}
-            <div className="flex items-center justify-between">
-              <span className={severityBadgeClass(alert.severity)}>
-                <SeverityIcon severity={alert.severity} />
-                <span className="ml-1 capitalize">{alert.severity}</span>
-              </span>
-              <div className="flex items-center gap-2">
-                {alert.resolved ? (
-                  <span className="badge-ok">
-                    <CheckCircle2 size={12} />
-                    <span className="ml-1">Resolved</span>
-                  </span>
-                ) : (
-                  <span className="badge-danger">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-danger" />
-                    </span>
-                    <span className="ml-1.5">Active</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Message */}
-            <p className="text-sm text-primary">{alert.message}</p>
-
-            {/* Bottom row: type + time */}
-            <div className="flex items-center justify-between text-xs text-muted">
-              <span className="inline-flex items-center gap-1 capitalize">
-                <TypeIcon type={alert.type} />
-                {alert.type}
-              </span>
-              <span>{formatRelativeTime(alert.timestamp)}</span>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
