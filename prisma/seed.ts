@@ -112,12 +112,12 @@ const alertData = [
   { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 60.1°F (threshold 59°F)', timestamp: daysAgo(6), resolved: true },
   { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
   { type: 'vibration', severity: 'warning', message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
-  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Alessandro Marchetti', timestamp: daysAgo(4), resolved: true },
+  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(4), resolved: true },
   { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
-  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Alessandro Marchetti', timestamp: daysAgo(2), resolved: true },
+  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(2), resolved: true },
   { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
-  { type: 'access', severity: 'info', message: 'Reserve room entry: staff badge — Samuel Pratt-Jalloh', timestamp: daysAgo(1), resolved: true },
-  { type: 'access', severity: 'warning', message: 'After-hours access: member badge scan — Alessandro Marchetti (11:42 PM)', timestamp: daysAgo(0), resolved: true },
+  { type: 'access', severity: 'info', message: 'Reserve room entry: staff badge — Samuel Jalloh', timestamp: daysAgo(1), resolved: true },
+  { type: 'access', severity: 'warning', message: 'After-hours access: member badge scan — Robert Saenz (11:42 PM)', timestamp: daysAgo(0), resolved: true },
   { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
 ];
 
@@ -159,8 +159,8 @@ async function main() {
   // 2. Member
   const member = await prisma.member.create({
     data: {
-      name: 'Alessandro Marchetti',
-      email: 'alessandro@caveau.com',
+      name: 'Robert Saenz',
+      email: 'robert@caveau.com',
       tier: 'black',
       role: 'member',
     },

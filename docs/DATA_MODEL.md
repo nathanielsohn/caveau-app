@@ -110,7 +110,7 @@ erDiagram
 Physical wine storage location. Included to support multi-location expansion post-demo. Demo will seed one facility ("Caveau Naples").
 
 ### Member
-A Caveau member. The `role` field (`admin` | `staff` | `member`) enables RBAC when auth is added. Demo will seed one user ("Alessandro Marchetti", Black tier, role: `member`).
+A Caveau member. The `role` field (`admin` | `staff` | `member`) enables RBAC when auth is added. Demo will seed one user ("Robert Saenz", Black tier, role: `member`).
 
 ### Wine
 A bottle in a member's collection. Seeds 66 wines across 8 categories: Caveau private label (5), investment-grade (8), mid-range (12), French classics (10), Italian icons (10), Spanish/Portuguese (6), New World gems (10), and Champagne (5).

@@ -115,7 +115,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 ## Not Yet Implemented (on roadmap)
 
-- Authentication (currently hardcoded demo user: "Alessandro Marchetti", Black tier)
+- Authentication (currently hardcoded demo user: "Robert Saenz", Black tier)
 - Real API integrations (Liv-ex, Wine-Searcher, etc.)
 - Real IoT device connections
 - Label scanning

@@ -93,7 +93,7 @@ export default function DashboardClient({
           Dashboard
         </h1>
         <p className="text-secondary text-sm mt-1">
-          Welcome back, Alessandro
+          Welcome back, Robert
         </p>
       </div>
 

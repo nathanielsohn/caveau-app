@@ -66,7 +66,7 @@ export default function Nav() {
             Member
           </p>
           <p className="text-sm text-primary font-medium truncate">
-            Alessandro Marchetti
+            Robert Saenz
           </p>
           <p className="text-xs text-gold-text">Black Tier</p>
         </div>

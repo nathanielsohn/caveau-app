@@ -231,7 +231,7 @@ model ProvenanceCertificate {
 
 ### Seed Data
 - 1 facility: "Caveau Naples", location "Naples, FL"
-- 1 member: "Alessandro Marchetti", tier "black", role "member"
+- 1 member: "Robert Saenz", tier "black", role "member"
 - 4 lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D) — all assigned to the facility
 - 66 wines: 5 Caveau private label (matching pitch deck names), 8 investment-grade (DRC, Screaming Eagle, Petrus, etc.), 12 mid-range (Caymus, Silver Oak, etc.), 10 French classics, 10 Italian icons, 6 Spanish/Portuguese, 10 New World gems, 5 Champagne
 - 66 occupied locker slots (of 128 total)

@@ -6,7 +6,7 @@ import LockerSelector from "./locker-selector";
 export const dynamic = "force-dynamic";
 
 /** The hardcoded demo member email */
-const DEMO_MEMBER_EMAIL = "alessandro@caveau.com";
+const DEMO_MEMBER_EMAIL = "robert@caveau.com";
 
 async function getLockers() {
   const member = await prisma.member.findUnique({
