@@ -57,12 +57,22 @@ interface AlertFrequencyPoint {
   count: number;
 }
 
+interface AppreciationWine {
+  id: string;
+  name: string;
+  vintage: number;
+  appreciation: number;
+  currentValue: string;
+}
+
 interface DashboardClientProps {
   metrics: MetricsData;
   topWines: TopWine[];
   alerts: AlertItem[];
   valuationTrend: ValuationPoint[];
   alertFrequency: AlertFrequencyPoint[];
+  topGainers: AppreciationWine[];
+  topLosers: AppreciationWine[];
 }
 
 function severityBadgeClass(severity: string): string {
@@ -84,6 +94,8 @@ export default function DashboardClient({
   alerts,
   valuationTrend,
   alertFrequency,
+  topGainers,
+  topLosers,
 }: DashboardClientProps) {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -282,6 +294,89 @@ export default function DashboardClient({
           )}
         </div>
       </div>
+
+      {/* Portfolio Appreciation */}
+      {(topGainers.length > 0 || topLosers.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Top Gainers */}
+          {topGainers.length > 0 && (
+            <div className="glass-card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={16} className="text-ok" />
+                <h2 className="font-serif text-lg text-primary">
+                  Top Gainers
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {topGainers.map((wine, i) => (
+                  <Link
+                    key={wine.id}
+                    href={`/wine/${wine.id}`}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-caveau-graphite/30 hover:bg-caveau-graphite/50 transition-colors group"
+                  >
+                    <span className="text-xs text-muted font-medium w-5">
+                      #{i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-serif text-sm text-primary truncate group-hover:text-gold transition-colors">
+                        {wine.name}
+                      </p>
+                      <p className="text-xs text-muted">{wine.vintage}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold text-ok">
+                        +{wine.appreciation.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-muted">
+                        {wine.currentValue}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top Losers */}
+          {topLosers.length > 0 && (
+            <div className="glass-card p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={16} className="text-danger rotate-180" />
+                <h2 className="font-serif text-lg text-primary">
+                  Underperformers
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {topLosers.map((wine, i) => (
+                  <Link
+                    key={wine.id}
+                    href={`/wine/${wine.id}`}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-caveau-graphite/30 hover:bg-caveau-graphite/50 transition-colors group"
+                  >
+                    <span className="text-xs text-muted font-medium w-5">
+                      #{i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-serif text-sm text-primary truncate group-hover:text-gold transition-colors">
+                        {wine.name}
+                      </p>
+                      <p className="text-xs text-muted">{wine.vintage}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold text-danger">
+                        {wine.appreciation.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-muted">
+                        {wine.currentValue}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

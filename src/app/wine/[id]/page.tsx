@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import {
@@ -20,6 +21,7 @@ import {
   Grape,
   Building2,
 } from "lucide-react";
+import ValuationChart from "@/components/valuation-chart";
 
 interface WineDetailPageProps {
   params: Promise<{ id: string }>;
@@ -65,6 +67,69 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
 
   // First certificate (if any)
   const certificate = wine.certificates[0] ?? null;
+
+  // Serialize valuations for the client chart
+  const serializedValuations = wine.valuations.map((v) => ({
+    id: v.id,
+    source: v.source,
+    price: toNumber(v.price),
+    date: v.date.toISOString(),
+  }));
+
+  // Server action to add a valuation
+  async function addValuation(formData: FormData) {
+    "use server";
+
+    const sess = await getServerAuth();
+    if (!sess?.user?.id) throw new Error("Not authenticated");
+
+    const priceRaw = formData.get("price") as string | null;
+    const source = (formData.get("source") as string | null) ?? "manual";
+    const dateRaw = formData.get("date") as string | null;
+    const wineId = formData.get("wineId") as string | null;
+
+    if (!wineId) throw new Error("Wine ID is required");
+
+    const priceNum = priceRaw ? parseFloat(priceRaw) : NaN;
+    if (isNaN(priceNum) || priceNum < 0 || priceNum > 10_000_000) {
+      throw new Error("Invalid price");
+    }
+
+    const validSources = ["manual", "liv-ex", "wine-searcher", "auction"];
+    const sourceStr = validSources.includes(source) ? source : "manual";
+
+    const dateVal = dateRaw ? new Date(dateRaw) : new Date();
+    if (isNaN(dateVal.getTime())) {
+      throw new Error("Invalid date");
+    }
+
+    // Verify wine belongs to this member
+    const w = await prisma.wine.findUnique({
+      where: { id: wineId, memberId: sess.user.id },
+      select: { id: true },
+    });
+    if (!w) throw new Error("Wine not found");
+
+    // Create valuation and update wine's current value
+    await prisma.$transaction([
+      prisma.wineValuation.create({
+        data: {
+          wineId,
+          source: sourceStr,
+          price: priceNum,
+          date: dateVal,
+        },
+      }),
+      prisma.wine.update({
+        where: { id: wineId },
+        data: { currentValue: priceNum },
+      }),
+    ]);
+
+    revalidatePath(`/wine/${wineId}`);
+    revalidatePath("/collection");
+    revalidatePath("/");
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -236,6 +301,16 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           )}
         </div>
       </div>
+
+      {/* Price History Chart */}
+      <ValuationChart
+        valuations={serializedValuations}
+        purchasePrice={purchasePrice}
+        currentValue={currentValue}
+        appreciation={appreciation}
+        wineId={wine.id}
+        addValuationAction={addValuation}
+      />
 
       {/* Tasting Notes */}
       <div className="glass-card p-6 space-y-3">

@@ -126,14 +126,10 @@ export default async function DashboardPage() {
         : "—",
     };
 
-    const topWines = wines.slice(0, 5).map((w) => ({
-      id: w.id,
-      name: w.name,
-      vintage: w.vintage,
-      region: w.region,
-      currentValue: formatCurrency(w.currentValue),
-      purchasePrice: formatCurrency(w.purchasePrice),
-      appreciation:
+    // Calculate per-wine appreciation for sorting
+    const winesWithAppreciation = wines.map((w) => ({
+      ...w,
+      appreciationPct:
         toNumber(w.purchasePrice) > 0
           ? Math.round(
               ((toNumber(w.currentValue) - toNumber(w.purchasePrice)) /
@@ -142,6 +138,39 @@ export default async function DashboardPage() {
             ) / 10
           : 0,
     }));
+
+    const topWines = winesWithAppreciation.slice(0, 5).map((w) => ({
+      id: w.id,
+      name: w.name,
+      vintage: w.vintage,
+      region: w.region,
+      currentValue: formatCurrency(w.currentValue),
+      purchasePrice: formatCurrency(w.purchasePrice),
+      appreciation: w.appreciationPct,
+    }));
+
+    // Top gainers and losers by appreciation percentage
+    const sorted = [...winesWithAppreciation].sort(
+      (a, b) => b.appreciationPct - a.appreciationPct
+    );
+    const topGainers = sorted.slice(0, 3).map((w) => ({
+      id: w.id,
+      name: w.name,
+      vintage: w.vintage,
+      appreciation: w.appreciationPct,
+      currentValue: formatCurrency(w.currentValue),
+    }));
+    const topLosers = sorted
+      .slice(-3)
+      .reverse()
+      .filter((w) => w.appreciationPct < 0)
+      .map((w) => ({
+        id: w.id,
+        name: w.name,
+        vintage: w.vintage,
+        appreciation: w.appreciationPct,
+        currentValue: formatCurrency(w.currentValue),
+      }));
 
     const serializedAlerts = recentAlerts.map((a) => ({
       id: a.id,
@@ -172,6 +201,8 @@ export default async function DashboardPage() {
         alerts={serializedAlerts}
         valuationTrend={valuationTrend}
         alertFrequency={alertFrequency}
+        topGainers={topGainers}
+        topLosers={topLosers}
       />
     );
   } catch (error) {
@@ -190,6 +221,8 @@ export default async function DashboardPage() {
         alerts={[]}
         valuationTrend={[]}
         alertFrequency={[]}
+        topGainers={[]}
+        topLosers={[]}
       />
     );
   }
