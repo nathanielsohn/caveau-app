@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { formatCurrency, percentChange } from "@/lib/utils";
 
 export interface WineCardData {
@@ -86,13 +87,13 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
         <WinePlaceholder wine={wine} />
 
         {/* Wine info */}
-        <div className="flex-1 flex flex-col gap-1.5">
+        <div className="flex-1 flex flex-col gap-1">
           <h3 className="font-serif text-sm text-primary leading-snug line-clamp-2 group-hover:text-gold transition-colors duration-200">
             {wine.name}
           </h3>
-          <p className="text-xs text-secondary">{wine.vintage}</p>
-          <div className="flex flex-wrap gap-1.5">
-            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-burgundy/10 text-burgundy border border-burgundy/20">
+          <div className="flex flex-wrap gap-1.5 mt-0.5">
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-burgundy/10 text-burgundy border border-burgundy/20">
+              <MapPin size={8} />
               {wine.region}
             </span>
             {drinkStatus && (
@@ -104,7 +105,7 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
         </div>
 
         {/* Value */}
-        <div className="flex items-center justify-between pt-1 border-t border-[#2A2A30]/30">
+        <div className="flex items-center justify-between pt-2 border-t border-[#2A2A30]/40">
           <span className="text-sm font-semibold text-primary">
             {formatCurrency(wine.currentValue)}
           </span>
