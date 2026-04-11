@@ -11,23 +11,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const resolvedParam = searchParams.get("resolved");
 
-  const lockerIds = await prisma.locker.findMany({
-    where: { memberId: session.user.id },
-    select: { id: true },
-  });
-
-  const where: Record<string, unknown> = {
-    lockerId: { in: lockerIds.map((l) => l.id) },
-  };
-
-  if (resolvedParam === "true") {
-    where.resolved = true;
-  } else if (resolvedParam === "false") {
-    where.resolved = false;
-  }
+  // Single query: filter through locker→member relation instead of separate locker ID lookup
+  const resolvedFilter =
+    resolvedParam === "true" ? true :
+    resolvedParam === "false" ? false :
+    undefined;
 
   const alerts = await prisma.alert.findMany({
-    where,
+    where: {
+      locker: { memberId: session.user.id },
+      ...(resolvedFilter !== undefined && { resolved: resolvedFilter }),
+    },
     orderBy: { timestamp: "desc" },
     take: 100,
     include: {

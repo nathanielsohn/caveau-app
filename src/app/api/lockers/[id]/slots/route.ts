@@ -13,7 +13,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const locker = await prisma.locker.findUnique({
+  const locker = await prisma.locker.findFirst({
     where: { id, memberId: session.user.id },
     include: {
       slots: {

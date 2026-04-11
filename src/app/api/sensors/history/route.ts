@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Verify the locker belongs to this member
-  const locker = await prisma.locker.findUnique({
+  const locker = await prisma.locker.findFirst({
     where: { id: lockerId, memberId: session.user.id },
     select: { id: true },
   });

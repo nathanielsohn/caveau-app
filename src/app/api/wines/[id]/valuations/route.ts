@@ -14,7 +14,7 @@ export async function GET(
   const { id } = await params;
 
   // Verify wine belongs to this member
-  const wine = await prisma.wine.findUnique({
+  const wine = await prisma.wine.findFirst({
     where: { id, memberId: session.user.id },
     select: { id: true },
   });
@@ -51,7 +51,7 @@ export async function POST(
   const { id } = await params;
 
   // Verify wine belongs to this member
-  const wine = await prisma.wine.findUnique({
+  const wine = await prisma.wine.findFirst({
     where: { id, memberId: session.user.id },
     select: { id: true },
   });

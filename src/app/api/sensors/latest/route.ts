@@ -10,32 +10,41 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const lockers = await prisma.locker.findMany({
-    where: { memberId: session.user.id },
-    select: { id: true, lockerNumber: true },
-    orderBy: { lockerNumber: "asc" },
-  });
+  // Single query: get latest sensor reading per locker using DISTINCT ON (PostgreSQL)
+  const results = await prisma.$queryRaw<
+    {
+      locker_id: string;
+      locker_number: number;
+      temperature: number;
+      humidity: number;
+      vibration: number;
+      light_lux: number;
+      timestamp: Date;
+    }[]
+  >`
+    SELECT DISTINCT ON (sr.locker_id)
+      sr.locker_id,
+      l.locker_number,
+      sr.temperature,
+      sr.humidity,
+      sr.vibration,
+      sr.light_lux,
+      sr.timestamp
+    FROM sensor_readings sr
+    JOIN lockers l ON l.id = sr.locker_id
+    WHERE l.member_id = ${session.user.id}
+    ORDER BY sr.locker_id, sr.timestamp DESC
+  `;
 
-  const results = await Promise.all(
-    lockers.map(async (locker) => {
-      const reading = await prisma.sensorReading.findFirst({
-        where: { lockerId: locker.id },
-        orderBy: { timestamp: "desc" },
-      });
+  const serialized = results.map((r) => ({
+    lockerId: r.locker_id,
+    lockerNumber: r.locker_number,
+    temperature: Number(r.temperature),
+    humidity: Number(r.humidity),
+    vibration: Number(r.vibration),
+    lightLux: Number(r.light_lux),
+    timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+  }));
 
-      if (!reading) return null;
-
-      return {
-        lockerId: locker.id,
-        lockerNumber: locker.lockerNumber,
-        temperature: Number(reading.temperature),
-        humidity: Number(reading.humidity),
-        vibration: Number(reading.vibration),
-        lightLux: Number(reading.lightLux),
-        timestamp: reading.timestamp.toISOString(),
-      };
-    })
-  );
-
-  return NextResponse.json(results.filter(Boolean));
+  return NextResponse.json(serialized);
 }

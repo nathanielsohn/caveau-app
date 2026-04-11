@@ -1,6 +1,8 @@
 import { NextAuthOptions, getServerSession as nextAuthGetServerSession } from "next-auth";
+import { NextResponse } from "next/server";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -60,4 +62,27 @@ export const authOptions: NextAuthOptions = {
 
 export function getServerAuth() {
   return nextAuthGetServerSession(authOptions);
+}
+
+/** Role hierarchy: admin > staff > member */
+const ROLE_LEVEL: Record<Role, number> = {
+  [Role.admin]: 3,
+  [Role.staff]: 2,
+  [Role.member]: 1,
+};
+
+/**
+ * Check if a session's role meets the minimum required level.
+ * Returns null if authorized, or a 403 NextResponse if not.
+ */
+export function requireRole(
+  sessionRole: Role | undefined,
+  minimumRole: Role
+): NextResponse | null {
+  const level = sessionRole ? (ROLE_LEVEL[sessionRole] ?? 0) : 0;
+  const required = ROLE_LEVEL[minimumRole];
+  if (level < required) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
 }

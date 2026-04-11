@@ -1,8 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { CheckCircle2, Printer } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { formatDate, formatTemp, formatHumidity } from "@/lib/utils";
+
+const QRCodeSVG = dynamic(
+  () => import("qrcode.react").then((mod) => mod.QRCodeSVG),
+  { ssr: false, loading: () => <div className="w-[80px] h-[80px] bg-[#2A2A30] rounded-lg animate-pulse" /> }
+);
 import type { Decimal } from "@prisma/client/runtime/library";
 
 interface CertificateData {

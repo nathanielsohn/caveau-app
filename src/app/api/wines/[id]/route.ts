@@ -13,7 +13,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const wine = await prisma.wine.findUnique({
+  const wine = await prisma.wine.findFirst({
     where: { id, memberId: session.user.id },
     include: {
       lockerSlots: {

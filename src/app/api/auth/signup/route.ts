@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -18,9 +19,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 403 });
     }
 
-    // NextAuth cookie format: token|hash — extract the token portion
-    const [cookieToken] = csrfCookie.split("|");
+    // NextAuth cookie format: token|hash — verify both token match and hash integrity
+    const separatorIndex = csrfCookie.indexOf("|");
+    if (separatorIndex === -1) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+    }
+
+    const cookieToken = csrfCookie.slice(0, separatorIndex);
+    const cookieHash = csrfCookie.slice(separatorIndex + 1);
+
+    // Verify the submitted token matches the cookie token
     if (csrfToken !== cookieToken) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+    }
+
+    // Verify the hash: sha256(token + secret) must equal the stored hash
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
+
+    const expectedHash = createHash("sha256")
+      .update(`${cookieToken}${secret}`)
+      .digest("hex");
+
+    if (cookieHash !== expectedHash) {
       return NextResponse.json({ error: "Invalid request" }, { status: 403 });
     }
 

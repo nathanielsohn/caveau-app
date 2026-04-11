@@ -83,8 +83,7 @@ model Wine {
   valuations       WineValuation[]
 
   @@index([memberId])
-  @@index([region])
-  @@index([varietal])
+  @@index([memberId, region, varietal])
   @@map("wines")
 }
 

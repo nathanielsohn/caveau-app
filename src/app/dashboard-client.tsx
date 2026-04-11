@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import MetricCard from "@/components/metric-card";
 import {
   CollectionValueChart,
@@ -97,6 +98,9 @@ export default function DashboardClient({
   topGainers,
   topLosers,
 }: DashboardClientProps) {
+  const { data: session } = useSession();
+  const firstName = session?.user?.name?.split(" ")[0] ?? "Member";
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -105,7 +109,7 @@ export default function DashboardClient({
           Dashboard
         </h1>
         <p className="text-secondary text-sm mt-1">
-          Welcome back, Robert
+          Welcome back, {firstName}
         </p>
       </div>
 
