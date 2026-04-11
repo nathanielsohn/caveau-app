@@ -365,7 +365,7 @@ Custom domain (optional): Add in Vercel Dashboard → Settings → Domains.
 
 ## What to Skip
 
-See "What NOT to Build" in CLAUDE.md for the full exclusion list. In short: no auth, no real APIs/IoT, no payments, no tests.
+See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth is now implemented. Still excluded: real API integrations (Liv-ex, Wine-Searcher), real IoT devices, payments, POS, admin panel.
 
 ---
 
@@ -418,7 +418,8 @@ gantt
     Wine valuation engine     :p2c, after p2a, 7d
     Label scanning            :p2d, after p2c, 5d
     Locker check-in/out       :p2e, after p2b, 4d
-    Dashboard analytics       :p2f, after p2e, 4d
+    Add wine from locker slot :p2g, after p2e, 3d
+    Dashboard analytics       :p2f, after p2g, 4d
 
     section Phase 3 — Monetization & Scale
     Membership + payments     :p3a, 2026-05-26, 7d
@@ -471,6 +472,7 @@ Turn it into a business.
 | 33 | Wine marketplace | Member-to-member trading within the platform. Listing, offers, provenance transfer on sale. Commission model. |
 | 34 | Wine disposition tracking | Record when a bottle leaves the collection: sold, transferred, consumed, gifted, or removed. New `status` field on Wine (`in_cellar` default, plus disposition states) and a `WineDisposition` table (event type, date, sale price, recipient, notes). Collection page filters to active wines by default with a "History" toggle to browse past bottles. Dashboard metrics scoped to active wines. Full provenance, valuation history, and storage records preserved. Prerequisite for marketplace (#33) and insurance (#31). |
 | 35 | Locker self-service (member) | Members can assign wines to empty locker slots from the locker page. Tap an empty slot → modal shows unassigned wines in the member's collection → select one → slot is filled. Also allows removing a wine from a slot (returns it to unassigned). Distinct from staff check-in (#25) which uses barcode scanning and audit trails. |
+| 36 | Add wine from locker slot | Extend the empty-slot picker modal (#35) with an "Add New Wine" option. Opens the add-wine form inline (reuses `add-wine-form` component). On submit, creates the wine in the member's collection AND auto-assigns it to the selected slot in one action. Eliminates the round-trip of going to Collection → add wine → back to Locker → assign. Server action creates the wine + updates the slot in a single transaction. |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 
@@ -479,33 +481,33 @@ Full codebase audit identified the items below. Security hotfixes (certificate I
 #### Phase 1 — Foundation (address alongside features 15–20)
 
 **Security hardening:**
-- Rate limiting on `/api/auth/signup` and login (Upstash or middleware-based)
-- Tighten CSP: remove `unsafe-eval`, replace `unsafe-inline` with nonces
-- Add explicit `maxAge` to JWT session config (e.g., 24h)
-- Add CSRF token to signup form (currently only login fetches it)
+- ~~Rate limiting on `/api/auth/signup` and login~~ — DONE: in-memory per-IP limiter (5 req/60s) in middleware. Migrate to Redis for production scaling.
+- Tighten CSP: replace `unsafe-inline` with nonces (blocked by Next.js App Router inline script injection)
+- ~~Add explicit `maxAge` to JWT session config~~ — DONE: set to 4 hours (14400s)
+- ~~Add CSRF token to signup form~~ — DONE: double-submit cookie with SHA-256 hash verification
 
 **Schema integrity:**
-- Define Prisma enums for `Member.role`, `Member.tier`, `Alert.type`, `Alert.severity` (currently bare strings — typos silently accepted)
-- Add `@@unique([wineId, date, source])` on `WineValuation` to prevent duplicate valuations skewing dashboard charts
+- ~~Define Prisma enums for `Member.role`, `Member.tier`, `Alert.type`, `Alert.severity`~~ — DONE: all enum types defined
+- ~~Add `@@unique([wineId, date, source])` on `WineValuation`~~ — DONE
 - Make `Wine.memberId` and `Locker.memberId` non-nullable (currently `SetNull` on delete creates orphaned records)
-- Initialize Prisma migrations (`prisma migrate dev --name init`) to enable rollback and schema history
-- Add missing composite indexes: `(Alert.lockerId, resolved, timestamp)`, `(ProvenanceCertificate.wineId, lockerId)`
+- ~~Initialize Prisma migrations~~ — DONE: baseline migration at `prisma/migrations/0001_init.sql`
+- ~~Add missing composite indexes~~ — DONE: added LockerSlot.wineId, Alert.lockerId standalone, WineDisposition unique constraint
 - Remove low-cardinality indexes on `Member.tier` and `Member.role` (PostgreSQL ignores them anyway)
 
 **Testing:**
-- Add test framework (Vitest or Jest)
-- Unit tests for `lib/sensors.ts` (simulation logic), `lib/utils.ts` (formatters)
+- ~~Add test framework (Vitest or Jest)~~ — DONE: Vitest configured
+- ~~Unit tests for `lib/sensors.ts` (simulation logic), `lib/utils.ts` (formatters)~~ — DONE
 - Integration tests for API routes (auth, wines, sensors, certificates)
 - E2E tests for critical flows (login, add wine, view locker)
 
 **Accessibility (WCAG AA):**
-- Add `aria-label` to all icon-only buttons (grid/list toggle, close, sign out)
-- Fix color contrast: `#6B6B76` muted text on `#0A0A0B` fails 4.5:1 ratio — lighten to ~`#8B8B96`
-- Add visible `:focus-visible` ring on all interactive elements (wine cards, locker slots, links)
-- Increase touch targets to minimum 44x44px (close buttons, time range buttons, view toggles, mobile nav icons)
-- Add `prefers-reduced-motion` media queries around all animations (Framer Motion, CSS shimmer, ping indicator, slide-in panel)
-- Add `role="tablist"` / `role="tab"` to locker selector and sentinel time range buttons
-- Add `aria-live="polite"` region for live sensor updates
+- ~~Add `aria-label` to all icon-only buttons~~ — DONE
+- ~~Fix color contrast: `#6B6B76` muted text~~ — DONE: lightened to `#8B8B96`
+- ~~Add visible `:focus-visible` ring on all interactive elements~~ — DONE
+- ~~Increase touch targets to minimum 44x44px~~ — DONE
+- ~~Add `prefers-reduced-motion` media queries~~ — DONE
+- ~~Add `role="tablist"` / `role="tab"` to locker selector and sentinel time range~~ — DONE
+- ~~Add `aria-live="polite"` region for live sensor updates~~ — DONE
 
 #### Phase 2 — IoT & Data (address alongside features 21–26)
 

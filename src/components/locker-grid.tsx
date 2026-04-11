@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2 } from "lucide-react";
+import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
-import { assignWineToSlot, removeWineFromSlot } from "@/app/locker/actions";
+import { assignWineToSlot, removeWineFromSlot, addWineAndAssignToSlot } from "@/app/locker/actions";
 
 /** Varietal -> accent color for the slot border/glow */
 function varietalColor(varietal: string): string {
@@ -67,8 +67,10 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
   const [pickerSlot, setPickerSlot] = useState<SlotData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const addFormRef = useRef<HTMLFormElement>(null);
 
   // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
@@ -96,10 +98,11 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
     if (slot?.wine) {
       // Occupied slot — open detail panel
       setSelectedSlot(slot);
-    } else if (slot && !slot.wine && unassignedWines.length > 0) {
-      // Empty slot with available wines — open picker modal
+    } else if (slot && !slot.wine) {
+      // Empty slot — open picker modal (can assign existing or add new)
       setPickerSlot(slot);
       setSearchQuery("");
+      setShowAddForm(false);
       setActionError(null);
     }
   }
@@ -113,6 +116,21 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
         setActionError(result.error);
       } else {
         setPickerSlot(null);
+      }
+    });
+  }
+
+  function handleAddWineToSlot(formData: FormData) {
+    if (!pickerSlot) return;
+    setActionError(null);
+    startTransition(async () => {
+      const result = await addWineAndAssignToSlot(pickerSlot.id, formData);
+      if (result.error) {
+        setActionError(result.error);
+      } else {
+        addFormRef.current?.reset();
+        setPickerSlot(null);
+        setShowAddForm(false);
       }
     });
   }
@@ -139,7 +157,7 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
           const slot = slotMap.get(position);
           const isOccupied = slot?.wine != null;
           const color = isOccupied ? varietalColor(slot!.wine!.varietal) : undefined;
-          const canAssign = !isOccupied && slot && unassignedWines.length > 0;
+          const isEmpty = !isOccupied && slot;
 
           return (
             <button
@@ -148,8 +166,8 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
               aria-label={
                 isOccupied
                   ? `Slot ${position}: ${slot!.wine!.name}`
-                  : canAssign
-                  ? `Slot ${position}: empty — tap to assign wine`
+                  : isEmpty
+                  ? `Slot ${position}: empty — tap to assign or add wine`
                   : `Slot ${position}: empty`
               }
               className={`
@@ -158,7 +176,7 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
                 ${
                   isOccupied
                     ? "bg-[#141416]/80 backdrop-blur-xl border-2 cursor-pointer hover:scale-105 hover:shadow-lg"
-                    : canAssign
+                    : isEmpty
                     ? "border-2 border-dashed border-gold/30 bg-[#141416]/30 cursor-pointer hover:border-gold/60 hover:bg-gold/5 transition-colors"
                     : "border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30 cursor-default"
                 }
@@ -168,7 +186,7 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
                   ? { borderColor: color, boxShadow: `0 0 12px ${hexToRgba(color!, 0.125)}` }
                   : undefined
               }
-              disabled={!isOccupied && !canAssign}
+              disabled={!isOccupied && !isEmpty}
             >
               {isOccupied ? (
                 <>
@@ -184,7 +202,7 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
                       : slot!.wine!.name}
                   </span>
                 </>
-              ) : canAssign ? (
+              ) : isEmpty ? (
                 <>
                   <Plus size={14} className="text-gold/50 mb-0.5" />
                   <span className="text-[10px] text-gold/50">{position}</span>
@@ -334,89 +352,185 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               className="fixed inset-x-4 top-[10%] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md z-50 bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
             >
-              {/* Header */}
-              <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-serif text-lg text-primary">Assign Wine</h3>
-                    <p className="text-xs text-secondary mt-0.5">
-                      Slot {pickerSlot.slotPosition} — select a wine from your collection
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { setPickerSlot(null); setActionError(null); }}
-                    aria-label="Close wine picker"
-                    className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                {/* Search */}
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                  <input
-                    type="text"
-                    placeholder="Search wines..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-[#1C1C20] border border-[#2A2A30]/50 rounded-xl text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/40 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Wine list */}
-              <div className="overflow-y-auto flex-1 p-2">
-                {filteredWines.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <Wine size={24} className="text-muted mx-auto mb-2" />
-                    <p className="text-sm text-muted">
-                      {searchQuery ? "No wines match your search" : "No unassigned wines"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    {filteredWines.map((wine) => (
-                      <button
-                        key={wine.id}
-                        onClick={() => handleAssignWine(wine.id)}
-                        disabled={isPending}
-                        className="w-full text-left p-3 rounded-xl hover:bg-gold/5 transition-colors flex items-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: hexToRgba(varietalColor(wine.varietal), 0.15) }}
+              {showAddForm ? (
+                <>
+                  {/* Add wine form header */}
+                  <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => { setShowAddForm(false); setActionError(null); }}
+                          aria-label="Back to wine list"
+                          className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
                         >
-                          <Wine
-                            size={16}
-                            strokeWidth={1.5}
-                            style={{ color: varietalColor(wine.varietal) }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-primary font-medium truncate group-hover:text-gold transition-colors">
-                            {wine.name}
-                          </p>
-                          <p className="text-xs text-muted truncate">
-                            {wine.vintage} {wine.varietal} &middot; {wine.region}
+                          <ArrowLeft size={14} />
+                        </button>
+                        <div>
+                          <h3 className="font-serif text-lg text-primary">Add New Wine</h3>
+                          <p className="text-xs text-secondary mt-0.5">
+                            Slot {pickerSlot.slotPosition} — add &amp; assign in one step
                           </p>
                         </div>
+                      </div>
+                      <button
+                        onClick={() => { setPickerSlot(null); setShowAddForm(false); setActionError(null); }}
+                        aria-label="Close"
+                        className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline add-wine form */}
+                  <div className="overflow-y-auto flex-1 p-5">
+                    {actionError && (
+                      <div className="mb-4 p-3 rounded-xl bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] text-sm">
+                        {actionError}
+                      </div>
+                    )}
+                    <form ref={addFormRef} action={handleAddWineToSlot} className="flex flex-col gap-4">
+                      <div>
+                        <label htmlFor="locker-wine-name" className="block text-sm text-secondary mb-1.5">Wine Name</label>
+                        <input id="locker-wine-name" name="name" type="text" required placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="locker-wine-vintage" className="block text-sm text-secondary mb-1.5">Vintage</label>
+                          <input id="locker-wine-vintage" name="vintage" type="number" required min={1900} max={2030} placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        </div>
+                        <div>
+                          <label htmlFor="locker-wine-region" className="block text-sm text-secondary mb-1.5">Region</label>
+                          <input id="locker-wine-region" name="region" type="text" required placeholder="Bordeaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="locker-wine-varietal" className="block text-sm text-secondary mb-1.5">Varietal</label>
+                          <input id="locker-wine-varietal" name="varietal" type="text" required placeholder="Cabernet Sauvignon" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        </div>
+                        <div>
+                          <label htmlFor="locker-wine-producer" className="block text-sm text-secondary mb-1.5">Producer</label>
+                          <input id="locker-wine-producer" name="producer" type="text" required placeholder="Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor="locker-wine-price" className="block text-sm text-secondary mb-1.5">Purchase Price (USD)</label>
+                        <input id="locker-wine-price" name="purchasePrice" type="number" required min={0} step={0.01} placeholder="250.00" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      </div>
+                      <button type="submit" disabled={isPending} className="btn-gold mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                         {isPending ? (
-                          <Loader2 size={14} className="text-gold animate-spin shrink-0" />
+                          <><Loader2 size={16} className="animate-spin" /> Adding...</>
                         ) : (
-                          <Plus size={14} className="text-muted group-hover:text-gold transition-colors shrink-0" />
+                          <><Plus size={16} /> Add &amp; Assign to Slot</>
                         )}
                       </button>
-                    ))}
+                    </form>
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  {/* Header */}
+                  <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-serif text-lg text-primary">Assign Wine</h3>
+                        <p className="text-xs text-secondary mt-0.5">
+                          Slot {pickerSlot.slotPosition} — select a wine or add a new one
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { setPickerSlot(null); setActionError(null); }}
+                        aria-label="Close wine picker"
+                        className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
 
-              {/* Error message */}
-              {actionError && (
-                <div className="px-5 pb-4 shrink-0">
-                  <p className="text-xs text-[#F87171] text-center">{actionError}</p>
-                </div>
+                    {/* Search */}
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input
+                        type="text"
+                        placeholder="Search wines..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 bg-[#1C1C20] border border-[#2A2A30]/50 rounded-xl text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/40 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Add new wine button */}
+                  <div className="px-2 pt-2 shrink-0">
+                    <button
+                      onClick={() => { setShowAddForm(true); setActionError(null); }}
+                      className="w-full text-left p-3 rounded-xl border border-dashed border-gold/30 hover:border-gold/60 hover:bg-gold/5 transition-colors flex items-center gap-3 group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                        <Plus size={16} className="text-gold" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gold font-medium">Add New Wine</p>
+                        <p className="text-xs text-secondary">Add to collection &amp; assign to this slot</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Wine list */}
+                  <div className="overflow-y-auto flex-1 p-2">
+                    {filteredWines.length === 0 ? (
+                      <div className="py-10 text-center">
+                        <Wine size={24} className="text-muted mx-auto mb-2" />
+                        <p className="text-sm text-muted">
+                          {searchQuery ? "No wines match your search" : "No unassigned wines"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {filteredWines.map((wine) => (
+                          <button
+                            key={wine.id}
+                            onClick={() => handleAssignWine(wine.id)}
+                            disabled={isPending}
+                            className="w-full text-left p-3 rounded-xl hover:bg-gold/5 transition-colors flex items-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div
+                              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: hexToRgba(varietalColor(wine.varietal), 0.15) }}
+                            >
+                              <Wine
+                                size={16}
+                                strokeWidth={1.5}
+                                style={{ color: varietalColor(wine.varietal) }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-primary font-medium truncate group-hover:text-gold transition-colors">
+                                {wine.name}
+                              </p>
+                              <p className="text-xs text-muted truncate">
+                                {wine.vintage} {wine.varietal} &middot; {wine.region}
+                              </p>
+                            </div>
+                            {isPending ? (
+                              <Loader2 size={14} className="text-gold animate-spin shrink-0" />
+                            ) : (
+                              <Plus size={14} className="text-muted group-hover:text-gold transition-colors shrink-0" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error message */}
+                  {actionError && (
+                    <div className="px-5 pb-4 shrink-0">
+                      <p className="text-xs text-[#F87171] text-center">{actionError}</p>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           </>
