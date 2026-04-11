@@ -19,6 +19,9 @@ const navItems = [
 export default function Nav() {
   const pathname = usePathname();
 
+  // Hide nav on certificate pages (standalone printable layout)
+  if (pathname.startsWith("/certificate")) return null;
+
   return (
     <>
       {/* Desktop sidebar */}
