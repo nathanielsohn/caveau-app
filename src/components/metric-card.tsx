@@ -110,6 +110,7 @@ export default function MetricCard({ icon: Icon, value, label, trend, index = 0 
             className={`text-xs font-medium ${
               trend.value >= 0 ? "text-ok" : "text-danger"
             }`}
+            aria-label={`${trend.value >= 0 ? "Up" : "Down"} ${Math.abs(trend.value).toFixed(1)} percent`}
           >
             {trend.value >= 0 ? "+" : ""}
             {trend.value.toFixed(1)}%

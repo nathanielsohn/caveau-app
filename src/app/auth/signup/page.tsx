@@ -76,7 +76,7 @@ export default function SignupPage() {
           <h2 className="font-serif text-xl text-primary mb-6">Sign Up</h2>
 
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="mb-4 px-4 py-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
               {error}
             </div>
           )}
@@ -124,7 +124,7 @@ export default function SignupPage() {
                 required
                 minLength={8}
                 className="w-full px-4 py-3 rounded-xl bg-[#1C1C20] border border-[#2A2A30]/50 text-primary placeholder-muted text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/25 transition-colors"
-                placeholder="At least 8 characters"
+                placeholder="Min 10 chars, upper + lower + number"
               />
             </div>
 

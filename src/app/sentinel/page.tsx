@@ -141,19 +141,19 @@ export default function SentinelPage() {
     setLoading(true);
     setError(null);
     try {
-      const [readings, alerts] = await Promise.all([
+      const [readingsResult, alertsResult] = await Promise.allSettled([
         fetchSensorReadings(TIME_RANGE_HOURS[selectedRange]),
         fetchAlerts(),
       ]);
-      setDbReadings(readings);
-      setDbAlerts(
-        alerts.map((a) => ({
-          ...a,
-          isNew: false,
-        }))
-      );
+      if (readingsResult.status === "fulfilled") setDbReadings(readingsResult.value);
+      if (alertsResult.status === "fulfilled") {
+        setDbAlerts(alertsResult.value.map((a) => ({ ...a, isNew: false })));
+      }
+      const failed = [readingsResult, alertsResult].filter(r => r.status === "rejected");
+      if (failed.length > 0) {
+        setError("Some sensor data failed to load");
+      }
     } catch (err) {
-      console.error("Failed to fetch sensor data:", err);
       setError(err instanceof Error ? err.message : "Failed to load sensor data");
     } finally {
       setLoading(false);
@@ -166,26 +166,29 @@ export default function SentinelPage() {
   }, [range, loadDbData]);
 
   /* ── Live simulation (runs always for current values) */
+  const tickRef = useRef(() => {});
+  tickRef.current = () => {
+    const reading = simulateReading();
+    setLiveReadings((prev) => {
+      const updated = [...prev, reading];
+      return updated.length > MAX_LIVE_READINGS
+        ? updated.slice(-MAX_LIVE_READINGS)
+        : updated;
+    });
+
+    // Check for threshold breaches
+    const newAlerts = checkThresholds(reading);
+    if (newAlerts.length > 0) {
+      setLiveAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
+    }
+  };
+
   useEffect(() => {
     // Generate initial reading
     const initial = simulateReading();
     setLiveReadings([initial]);
 
-    intervalRef.current = setInterval(() => {
-      const reading = simulateReading();
-      setLiveReadings((prev) => {
-        const updated = [...prev, reading];
-        return updated.length > MAX_LIVE_READINGS
-          ? updated.slice(updated.length - MAX_LIVE_READINGS)
-          : updated;
-      });
-
-      // Check for threshold breaches
-      const newAlerts = checkThresholds(reading);
-      if (newAlerts.length > 0) {
-        setLiveAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
-      }
-    }, 5000);
+    intervalRef.current = setInterval(() => tickRef.current(), 5000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -300,7 +303,7 @@ export default function SentinelPage() {
       </div>
 
       {/* Condition cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-live="polite" aria-atomic="false">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-live="polite" aria-atomic="true">
         {conditions.map((c) => {
           const status = getConditionStatus(c.type, c.raw);
           return (

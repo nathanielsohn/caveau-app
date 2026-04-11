@@ -35,14 +35,6 @@ export async function recordDisposition(formData: FormData) {
     }
   }
 
-  // Verify wine belongs to this member and is still in cellar
-  const wine = await prisma.wine.findUnique({
-    where: { id: wineId, memberId: session.user.id },
-    select: { id: true, status: true },
-  });
-  if (!wine) throw new Error("Wine not found");
-  if (wine.status !== "in_cellar") throw new Error("Wine is already disposed");
-
   // Map disposition type to wine status
   const statusMap: Record<string, "sold" | "transferred" | "consumed" | "gifted" | "removed"> = {
     sold: "sold",
@@ -52,9 +44,16 @@ export async function recordDisposition(formData: FormData) {
     removed: "removed",
   };
 
-  // Create disposition record and update wine status in a transaction
-  await prisma.$transaction([
-    prisma.wineDisposition.create({
+  // Verify ownership and update atomically inside a transaction
+  await prisma.$transaction(async (tx) => {
+    const wine = await tx.wine.findUnique({
+      where: { id: wineId, memberId: session.user.id },
+      select: { id: true, status: true },
+    });
+    if (!wine) throw new Error("Wine not found");
+    if (wine.status !== "in_cellar") throw new Error("Wine is already disposed");
+
+    await tx.wineDisposition.create({
       data: {
         wineId,
         memberId: session.user.id,
@@ -64,12 +63,13 @@ export async function recordDisposition(formData: FormData) {
         recipient,
         notes,
       },
-    }),
-    prisma.wine.update({
+    });
+
+    await tx.wine.update({
       where: { id: wineId },
       data: { status: statusMap[type] },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/wine/${wineId}`);
   revalidatePath("/collection");

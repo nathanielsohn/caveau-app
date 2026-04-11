@@ -30,6 +30,7 @@ export default async function DashboardPage() {
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
         orderBy: { currentValue: "desc" },
+        take: 500,
         select: {
           id: true,
           name: true,
@@ -56,9 +57,9 @@ export default async function DashboardPage() {
 
     const lockerIds = memberLockerIds.map((l) => l.id);
 
-    // Fetch data that depends on lockerIds
-    const [latestReading, recentAlerts, valuationRows, alertFrequencyRows] =
-      await Promise.all([
+    // Fetch secondary data — use allSettled so one failure doesn't kill the dashboard
+    const [readingResult, alertsResult, valuationResult, alertFreqResult] =
+      await Promise.allSettled([
         lockerIds.length > 0
           ? prisma.sensorReading.findFirst({
               where: { lockerId: { in: lockerIds } },
@@ -69,7 +70,7 @@ export default async function DashboardPage() {
           where: { lockerId: { in: lockerIds } },
           orderBy: { timestamp: "desc" },
           take: 5,
-          include: { locker: true },
+          include: { locker: { select: { id: true, lockerNumber: true } } },
         }),
         prisma.$queryRaw<{ month: string; total: number }[]>`
           SELECT
@@ -95,6 +96,11 @@ export default async function DashboardPage() {
             `
           : [],
       ]);
+
+    const latestReading = readingResult.status === "fulfilled" ? readingResult.value : null;
+    const recentAlerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
+    const valuationRows = valuationResult.status === "fulfilled" ? valuationResult.value : [];
+    const alertFrequencyRows = alertFreqResult.status === "fulfilled" ? alertFreqResult.value : [];
 
     // Calculate total collection value
     const totalValue = wines.reduce(
@@ -208,22 +214,16 @@ export default async function DashboardPage() {
   } catch (error) {
     console.error("Dashboard data fetch failed:", error);
     return (
-      <DashboardClient
-        metrics={{
-          totalValue: "$0",
-          valueTrend: 0,
-          bottleCount: 0,
-          totalSlots: 32,
-          temperature: "—",
-          humidity: "—",
-        }}
-        topWines={[]}
-        alerts={[]}
-        valuationTrend={[]}
-        alertFrequency={[]}
-        topGainers={[]}
-        topLosers={[]}
-      />
+      <div className="p-6 md:p-10">
+        <div className="glass-card p-10 text-center">
+          <p className="text-danger text-lg font-serif mb-2">
+            Unable to load dashboard
+          </p>
+          <p className="text-secondary text-sm">
+            There was a problem fetching your data. Please refresh the page or try again later.
+          </p>
+        </div>
+      </div>
     );
   }
 }

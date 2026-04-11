@@ -57,6 +57,7 @@ export default async function CollectionPage() {
   const wines = await prisma.wine.findMany({
     where: { memberId: session.user.id },
     orderBy: { createdAt: "desc" },
+    take: 500,
   });
 
   // Serialize Prisma Decimals to plain numbers for the client

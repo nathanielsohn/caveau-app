@@ -11,6 +11,7 @@ async function getLockers(memberId: string) {
   const lockers = await prisma.locker.findMany({
     where: { memberId },
     orderBy: { lockerNumber: "asc" },
+    take: 50,
     include: {
       slots: {
         orderBy: { slotPosition: "asc" },
@@ -41,6 +42,7 @@ async function getUnassignedWines(memberId: string): Promise<UnassignedWine[]> {
       lockerSlots: { none: {} },
     },
     orderBy: { name: "asc" },
+    take: 500,
     select: {
       id: true,
       name: true,

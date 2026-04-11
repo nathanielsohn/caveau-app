@@ -32,7 +32,7 @@ export const TemperatureChart = memo(function TemperatureChart({ data }: { data:
       <h3 className="text-sm font-medium text-secondary mb-4">
         Temperature (°F)
       </h3>
-      <div className="h-56">
+      <div className="h-56" role="img" aria-label="Temperature readings chart">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
@@ -117,7 +117,7 @@ export const HumidityChart = memo(function HumidityChart({ data }: { data: Senso
       <h3 className="text-sm font-medium text-secondary mb-4">
         Humidity (%)
       </h3>
-      <div className="h-56">
+      <div className="h-56" role="img" aria-label="Humidity readings chart">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid
@@ -191,7 +191,7 @@ export const VibrationGauge = memo(function VibrationGauge({ value }: { value: n
       <h3 className="text-sm font-medium text-secondary mb-4">
         Vibration
       </h3>
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3" role="img" aria-label={`Vibration level: ${value.toFixed(2)} mm/s, ${label}`}>
         <p className="text-3xl font-semibold text-primary">
           {value.toFixed(2)}{" "}
           <span className="text-sm text-muted font-normal">mm/s</span>

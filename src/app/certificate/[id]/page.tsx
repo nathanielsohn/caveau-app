@@ -40,41 +40,37 @@ export default async function CertificatePage({
   return (
     <>
       {/* Print styles */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @media print {
-              body {
-                background: white !important;
-                color: #1a1a1a !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .no-print {
-                display: none !important;
-              }
-              .certificate-document {
-                max-width: 100% !important;
-                margin: 0 !important;
-              }
-              .certificate-document > div {
-                border-color: #B8960C !important;
-                box-shadow: inset 0 0 0 2px white, inset 0 0 0 4px #B8960C !important;
-              }
-              .certificate-document > div > div {
-                background: white !important;
-              }
-              .certificate-document * {
-                color-adjust: exact !important;
-              }
-              main {
-                margin-left: 0 !important;
-                padding-bottom: 0 !important;
-              }
-            }
-          `,
-        }}
-      />
+      <style>{`
+        @media print {
+          body {
+            background: white !important;
+            color: #1a1a1a !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .certificate-document {
+            max-width: 100% !important;
+            margin: 0 !important;
+          }
+          .certificate-document > div {
+            border-color: #B8960C !important;
+            box-shadow: inset 0 0 0 2px white, inset 0 0 0 4px #B8960C !important;
+          }
+          .certificate-document > div > div {
+            background: white !important;
+          }
+          .certificate-document * {
+            color-adjust: exact !important;
+          }
+          main {
+            margin-left: 0 !important;
+            padding-bottom: 0 !important;
+          }
+        }
+      `}</style>
 
       {/* Top bar with actions (hidden in print) */}
       <div className="no-print sticky top-0 z-10 bg-caveau-black/90 backdrop-blur border-b border-[#2A2A30]/50">

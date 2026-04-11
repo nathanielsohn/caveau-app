@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /verify/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /collection
+Disallow: /locker
+Disallow: /sentinel
+Disallow: /wine/

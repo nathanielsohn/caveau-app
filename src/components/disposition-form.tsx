@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { X, DollarSign, User, FileText, Calendar, ChevronDown } from "lucide-react";
 
 const DISPOSITION_TYPES = [
@@ -29,6 +29,17 @@ export default function DispositionForm({
   const [type, setType] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -52,15 +63,13 @@ export default function DispositionForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
+      className="fixed inset-0 z-50 m-auto w-full max-w-md p-0 bg-transparent backdrop:bg-black/60 backdrop:backdrop-blur-sm open:flex items-center justify-center"
+    >
       {/* Modal */}
-      <div className="relative w-full max-w-md glass-card p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-full glass-card p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl text-primary">Record Disposition</h2>
@@ -98,6 +107,8 @@ export default function DispositionForm({
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 required
+                aria-required="true"
+                aria-label="Disposition type"
                 className="appearance-none w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">Select type...</option>
@@ -117,7 +128,7 @@ export default function DispositionForm({
           {/* Date */}
           <div>
             <label className="block text-xs text-muted uppercase tracking-wide mb-1.5">
-              <Calendar size={12} className="inline mr-1" />
+              <Calendar size={12} className="inline mr-1" aria-hidden="true" />
               Date
             </label>
             <input
@@ -132,7 +143,7 @@ export default function DispositionForm({
           {showSalePrice && (
             <div>
               <label className="block text-xs text-muted uppercase tracking-wide mb-1.5">
-                <DollarSign size={12} className="inline mr-1" />
+                <DollarSign size={12} className="inline mr-1" aria-hidden="true" />
                 Sale Price
               </label>
               <input
@@ -151,7 +162,7 @@ export default function DispositionForm({
           {showRecipient && (
             <div>
               <label className="block text-xs text-muted uppercase tracking-wide mb-1.5">
-                <User size={12} className="inline mr-1" />
+                <User size={12} className="inline mr-1" aria-hidden="true" />
                 Recipient
               </label>
               <input
@@ -167,7 +178,7 @@ export default function DispositionForm({
           {/* Notes */}
           <div>
             <label className="block text-xs text-muted uppercase tracking-wide mb-1.5">
-              <FileText size={12} className="inline mr-1" />
+              <FileText size={12} className="inline mr-1" aria-hidden="true" />
               Notes
             </label>
             <textarea
@@ -189,6 +200,6 @@ export default function DispositionForm({
           </button>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 }

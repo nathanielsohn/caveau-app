@@ -5,6 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+command -v jq >/dev/null || { echo "Error: jq is required but not installed"; exit 1; }
+
 STATUS_FILE="BUILD_STATUS.json"
 OUTPUT_FILE="PROGRESS.md"
 

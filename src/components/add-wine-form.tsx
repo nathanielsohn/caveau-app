@@ -70,6 +70,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
               name="name"
               type="text"
               required
+              aria-required="true"
               placeholder="e.g. Château Margaux"
               className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
             />
@@ -86,6 +87,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
                 name="vintage"
                 type="number"
                 required
+                aria-required="true"
                 min={1900}
                 max={2030}
                 placeholder="2020"
@@ -101,6 +103,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
                 name="region"
                 type="text"
                 required
+                aria-required="true"
                 placeholder="Bordeaux"
                 className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
               />
@@ -118,6 +121,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
                 name="varietal"
                 type="text"
                 required
+                aria-required="true"
                 placeholder="Cabernet Sauvignon"
                 className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
               />
@@ -131,6 +135,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
                 name="producer"
                 type="text"
                 required
+                aria-required="true"
                 placeholder="Château Margaux"
                 className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
               />
@@ -147,6 +152,7 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
               name="purchasePrice"
               type="number"
               required
+              aria-required="true"
               min={0}
               step={0.01}
               placeholder="250.00"

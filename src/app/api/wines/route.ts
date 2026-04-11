@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
   const wines = await prisma.wine.findMany({
     where,
     orderBy: { createdAt: "desc" },
+    take: 500,
     select: {
       id: true,
       name: true,
@@ -59,47 +60,51 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { name, vintage, region, varietal, producer, purchasePrice } = body;
+  try {
+    const body = await request.json();
+    const { name, vintage, region, varietal, producer, purchasePrice } = body;
 
-  if (!name || !region || !varietal || !producer) {
+    if (!name || !region || !varietal || !producer) {
+      return NextResponse.json(
+        { error: "name, region, varietal, and producer are required" },
+        { status: 400 }
+      );
+    }
+
+    const vintageNum = Number(vintage);
+    if (isNaN(vintageNum) || vintageNum < 1800 || vintageNum > new Date().getFullYear() + 1) {
+      return NextResponse.json(
+        { error: "Invalid vintage year" },
+        { status: 400 }
+      );
+    }
+
+    const priceNum = Number(purchasePrice);
+    if (isNaN(priceNum) || priceNum < 0 || priceNum > 10_000_000) {
+      return NextResponse.json(
+        { error: "Invalid purchase price" },
+        { status: 400 }
+      );
+    }
+
+    const wine = await prisma.wine.create({
+      data: {
+        name: String(name).slice(0, 500),
+        vintage: vintageNum,
+        region: String(region),
+        varietal: String(varietal),
+        producer: String(producer),
+        purchasePrice: priceNum,
+        currentValue: priceNum,
+        memberId: session.user.id,
+      },
+    });
+
     return NextResponse.json(
-      { error: "name, region, varietal, and producer are required" },
-      { status: 400 }
+      { ...wine, purchasePrice: Number(wine.purchasePrice), currentValue: Number(wine.currentValue) },
+      { status: 201 }
     );
+  } catch {
+    return NextResponse.json({ error: "Failed to create wine" }, { status: 500 });
   }
-
-  const vintageNum = Number(vintage);
-  if (isNaN(vintageNum) || vintageNum < 1800 || vintageNum > new Date().getFullYear() + 1) {
-    return NextResponse.json(
-      { error: "Invalid vintage year" },
-      { status: 400 }
-    );
-  }
-
-  const priceNum = Number(purchasePrice);
-  if (isNaN(priceNum) || priceNum < 0 || priceNum > 10_000_000) {
-    return NextResponse.json(
-      { error: "Invalid purchase price" },
-      { status: 400 }
-    );
-  }
-
-  const wine = await prisma.wine.create({
-    data: {
-      name: String(name).slice(0, 500),
-      vintage: vintageNum,
-      region: String(region),
-      varietal: String(varietal),
-      producer: String(producer),
-      purchasePrice: priceNum,
-      currentValue: priceNum,
-      memberId: session.user.id,
-    },
-  });
-
-  return NextResponse.json(
-    { ...wine, purchasePrice: Number(wine.purchasePrice), currentValue: Number(wine.currentValue) },
-    { status: 201 }
-  );
 }

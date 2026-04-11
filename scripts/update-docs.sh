@@ -5,6 +5,15 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Cross-platform sed -i (macOS requires '' arg, GNU does not)
+sedi() {
+  if sed --version 2>/dev/null | grep -q 'GNU'; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
 DOCS_DIR="$PROJECT_ROOT/docs"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M')
 
@@ -37,7 +46,7 @@ update_architecture() {
 
   # Update the timestamp line in ARCHITECTURE.md
   if [ -f "$DOCS_DIR/ARCHITECTURE.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/ARCHITECTURE.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/ARCHITECTURE.md"
     echo "  Updated ARCHITECTURE.md ($SRC_COUNT source files)"
   fi
 }
@@ -51,7 +60,7 @@ update_data_model() {
       MODEL_COUNT=$(grep -c "^model " "$PROJECT_ROOT/prisma/schema.prisma" || true)
     fi
 
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DATA_MODEL.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DATA_MODEL.md"
     echo "  Updated DATA_MODEL.md ($MODEL_COUNT models)"
   fi
 }
@@ -59,7 +68,7 @@ update_data_model() {
 # --- COMPONENT_GUIDE.md: update component statuses ---
 update_component_guide() {
   if [ -f "$DOCS_DIR/COMPONENT_GUIDE.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/COMPONENT_GUIDE.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/COMPONENT_GUIDE.md"
 
     # Update component statuses based on file existence
     local COMPONENTS=("nav.tsx" "metric-card.tsx" "wine-card.tsx" "locker-grid.tsx" "sensor-charts.tsx" "alert-list.tsx" "certificate-doc.tsx" "add-wine-form.tsx")
@@ -78,7 +87,7 @@ update_component_guide() {
 # --- GETTING_STARTED.md: just timestamp ---
 update_getting_started() {
   if [ -f "$DOCS_DIR/GETTING_STARTED.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/GETTING_STARTED.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/GETTING_STARTED.md"
     echo "  Updated GETTING_STARTED.md"
   fi
 }
@@ -86,7 +95,7 @@ update_getting_started() {
 # --- DESIGN_SYSTEM.md: just timestamp ---
 update_design_system() {
   if [ -f "$DOCS_DIR/DESIGN_SYSTEM.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DESIGN_SYSTEM.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DESIGN_SYSTEM.md"
     echo "  Updated DESIGN_SYSTEM.md"
   fi
 }
@@ -94,7 +103,7 @@ update_design_system() {
 # --- DEPLOYMENT.md: just timestamp ---
 update_deployment() {
   if [ -f "$DOCS_DIR/DEPLOYMENT.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DEPLOYMENT.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/DEPLOYMENT.md"
     echo "  Updated DEPLOYMENT.md"
   fi
 }
@@ -102,7 +111,7 @@ update_deployment() {
 # --- API.md: update if API routes exist ---
 update_api() {
   if [ -f "$DOCS_DIR/API.md" ]; then
-    sed -i '' "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/API.md"
+    sedi "s/^> Last updated:.*/> Last updated: $TIMESTAMP | $LAST_FEATURE/" "$DOCS_DIR/API.md"
 
     local API_COUNT=0
     if [ -d "$PROJECT_ROOT/src/app/api" ]; then

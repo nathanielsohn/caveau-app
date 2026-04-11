@@ -42,7 +42,7 @@ export const CollectionValueChart = memo(function CollectionValueChart({ data }:
       <h3 className="text-sm font-medium text-secondary mb-4">
         Collection Value Trend
       </h3>
-      <div className="h-64">
+      <div className="h-64" role="img" aria-label="Collection value trend chart">
         {data.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted text-sm">
             No valuation data available
@@ -121,7 +121,7 @@ export const StorageUtilizationChart = memo(function StorageUtilizationChart({
       <h3 className="text-sm font-medium text-secondary mb-4">
         Storage Utilization
       </h3>
-      <div className="h-64 flex flex-col items-center justify-center">
+      <div className="h-64 flex flex-col items-center justify-center" role="img" aria-label={`Storage utilization: ${percent}% occupied`}>
         <div className="relative w-full h-48">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -189,7 +189,7 @@ export const AlertFrequencyChart = memo(function AlertFrequencyChart({ data }: A
       <h3 className="text-sm font-medium text-secondary mb-4">
         Alert Frequency (Last 30 Days)
       </h3>
-      <div className="h-52">
+      <div className="h-52" role="img" aria-label="Alert frequency bar chart for the last 30 days">
         {data.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted text-sm">
             No alerts in the last 30 days

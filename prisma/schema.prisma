@@ -149,6 +149,7 @@ model LockerSlot {
   wine         Wine?     @relation(fields: [wineId], references: [id], onDelete: SetNull)
 
   @@unique([lockerId, slotPosition])
+  @@index([wineId])
   @@map("locker_slots")
 }
 
@@ -177,6 +178,7 @@ model Alert {
   resolved  Boolean  @default(false)
   locker    Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
+  @@index([lockerId, timestamp(sort: Desc)])
   @@index([resolved, lockerId, timestamp(sort: Desc)])
   @@map("alerts")
 }
@@ -211,9 +213,10 @@ model WineDisposition {
   recipient String?
   notes     String?
   createdAt DateTime        @default(now()) @map("created_at")
-  wine      Wine            @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  wine      Wine            @relation(fields: [wineId], references: [id], onDelete: Restrict)
   member    Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@unique([wineId, type, date])
   @@index([wineId])
   @@index([memberId])
   @@map("wine_dispositions")

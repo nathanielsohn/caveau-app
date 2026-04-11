@@ -57,16 +57,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    if (password.length < 10) {
+      return NextResponse.json({ error: "Password must be at least 10 characters" }, { status: 400 });
+    }
+
+    // Require at least one uppercase, one lowercase, and one digit
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      return NextResponse.json(
+        { error: "Password must include uppercase, lowercase, and a number" },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.member.findUnique({ where: { email: emailNormalized } });
     if (existing) {
-      return NextResponse.json({ error: "Unable to create account" }, { status: 409 });
+      // Return 201 to prevent user enumeration — don't reveal whether account exists
+      return NextResponse.json({ success: true }, { status: 201 });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
 
     await prisma.member.create({
       data: {
@@ -80,7 +89,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error("[SIGNUP_ERROR]", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
