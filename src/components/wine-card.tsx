@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Wine } from "lucide-react";
 import { formatCurrency, percentChange } from "@/lib/utils";
 
 export interface WineCardData {
@@ -25,6 +24,57 @@ function getDrinkStatus(start?: number | null, end?: number | null): { label: st
   return null;
 }
 
+function getWineAccent(varietal: string, region: string): string {
+  if (region === "Champagne") return "#C9A55C";
+  const whites = ["Chardonnay", "Sauvignon Blanc", "Riesling", "Sémillon", "Pinot Gris"];
+  if (whites.includes(varietal)) return "#B89B6A";
+  return "#7A2842";
+}
+
+function WinePlaceholder({ wine }: { wine: WineCardData }) {
+  const accent = getWineAccent(wine.varietal, wine.region);
+
+  return (
+    <div className="aspect-[3/4] w-full rounded-xl bg-[#0C0C0E] relative overflow-hidden flex items-center justify-center">
+      {/* Radial glow */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(ellipse at 50% 25%, ${accent}30, transparent 70%)`,
+        }}
+      />
+      {/* Bottle silhouette */}
+      <svg
+        className="absolute h-[60%] opacity-[0.07]"
+        viewBox="0 0 50 160"
+        fill={accent}
+      >
+        <path d="M22 6h6v2h1v22c6 4 9 12 9 22v84c0 7-4 12-11 12H23c-7 0-11-5-11-12V52c0-10 3-18 9-22V8h1V6z" />
+      </svg>
+      {/* Label content */}
+      <div className="relative z-10 flex flex-col items-center text-center px-4 gap-2">
+        <p className="text-[9px] tracking-[0.25em] uppercase text-[#908F93] font-medium line-clamp-2 leading-relaxed">
+          {wine.producer}
+        </p>
+        <div
+          className="w-8 h-px"
+          style={{ backgroundColor: accent, opacity: 0.5 }}
+        />
+        <p className="font-serif text-3xl text-[#E0E0E3] leading-none">
+          {wine.vintage}
+        </p>
+        <div
+          className="w-8 h-px"
+          style={{ backgroundColor: accent, opacity: 0.5 }}
+        />
+        <p className="text-[9px] tracking-[0.2em] uppercase text-[#706F73]">
+          {wine.varietal}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function WineCard({ wine }: { wine: WineCardData }) {
   const change = percentChange(wine.purchasePrice, wine.currentValue) ?? 0;
   const drinkStatus = getDrinkStatus(wine.drinkWindowStart, wine.drinkWindowEnd);
@@ -32,20 +82,8 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
   return (
     <Link href={`/wine/${wine.id}`} className="block group">
       <div className="glass-card p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5">
-        {/* Wine image placeholder */}
-        <div className="aspect-[3/4] w-full rounded-xl bg-caveau-graphite flex items-center justify-center overflow-hidden">
-          {wine.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={wine.imageUrl}
-              alt={wine.name}
-              className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          ) : (
-            <Wine className="w-10 h-10 text-burgundy/60" strokeWidth={1.2} />
-          )}
-        </div>
+        {/* Wine label */}
+        <WinePlaceholder wine={wine} />
 
         {/* Wine info */}
         <div className="flex-1 flex flex-col gap-1.5">

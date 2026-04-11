@@ -38,6 +38,7 @@ async function getMemberLockerId(): Promise<string | null> {
 
 /**
  * Fetch sensor readings for the member's locker within a time range.
+ * For longer ranges, downsamples to ~500 evenly-spaced points.
  * Returns data with Prisma Decimals converted to plain numbers.
  */
 export async function fetchSensorReadings(
@@ -54,11 +55,24 @@ export async function fetchSensorReadings(
       timestamp: { gte: since },
     },
     orderBy: { timestamp: "asc" },
-    // Limit to avoid huge payloads for 30D range
-    take: hoursBack <= 24 ? 500 : 1000,
   });
 
-  return readings.map((r) => ({
+  // Downsample to ~500 points for large datasets
+  const TARGET_POINTS = 500;
+  let sampled = readings;
+  if (readings.length > TARGET_POINTS) {
+    const step = readings.length / TARGET_POINTS;
+    sampled = [];
+    for (let i = 0; i < TARGET_POINTS; i++) {
+      sampled.push(readings[Math.floor(i * step)]);
+    }
+    // Always include the last reading
+    if (sampled[sampled.length - 1] !== readings[readings.length - 1]) {
+      sampled.push(readings[readings.length - 1]);
+    }
+  }
+
+  return sampled.map((r) => ({
     temperature: Number(r.temperature),
     humidity: Number(r.humidity),
     vibration: Number(r.vibration),
