@@ -72,6 +72,7 @@ export default async function CollectionPage() {
     imageUrl: w.imageUrl,
     drinkWindowStart: w.drinkWindowStart,
     drinkWindowEnd: w.drinkWindowEnd,
+    status: w.status,
   }));
 
   // Extract unique regions and varietals for filter dropdowns

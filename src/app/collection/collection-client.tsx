@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History } from "lucide-react";
 import WineCard, { type WineCardData } from "@/components/wine-card";
 import AddWineForm from "@/components/add-wine-form";
 import { formatCurrency } from "@/lib/utils";
@@ -29,9 +29,14 @@ export default function CollectionClient({
   const [vintageMax, setVintageMax] = useState<number | "">("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const filtered = useMemo(() => {
     return wines.filter((w) => {
+      // Filter by status: default shows only in_cellar, history shows disposed
+      const isInCellar = !w.status || w.status === "in_cellar";
+      if (!showHistory && !isInCellar) return false;
+      if (showHistory && isInCellar) return false;
       // Search by name
       if (search && !w.name.toLowerCase().includes(search.toLowerCase())) {
         return false;
@@ -45,7 +50,7 @@ export default function CollectionClient({
       if (vintageMax !== "" && w.vintage > vintageMax) return false;
       return true;
     });
-  }, [wines, search, regionFilter, varietalFilter, vintageMin, vintageMax]);
+  }, [wines, search, regionFilter, varietalFilter, vintageMin, vintageMax, showHistory]);
 
   const totalValue = useMemo(
     () => filtered.reduce((sum, w) => sum + w.currentValue, 0),
@@ -57,7 +62,9 @@ export default function CollectionClient({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-primary">Collection</h1>
+          <h1 className="font-serif text-2xl md:text-3xl text-primary">
+            {showHistory ? "Disposition History" : "Collection"}
+          </h1>
           <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center gap-1.5 text-secondary">
               <Package size={14} className="text-burgundy" />
@@ -70,13 +77,26 @@ export default function CollectionClient({
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="btn-gold flex items-center gap-2 self-start sm:self-auto"
-        >
-          <Plus size={16} />
-          Add Wine
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium border transition-all ${
+              showHistory
+                ? "bg-gold/10 text-gold border-gold/30"
+                : "bg-caveau-graphite text-secondary border-[#2A2A30] hover:border-gold/30 hover:text-primary"
+            }`}
+          >
+            <History size={16} />
+            History
+          </button>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="btn-gold flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Add Wine
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -199,7 +219,9 @@ export default function CollectionClient({
       {filtered.length === 0 ? (
         <div className="glass-card p-12 text-center">
           <WineIcon className="w-12 h-12 text-muted/40 mx-auto mb-3" strokeWidth={1} />
-          <p className="text-secondary text-sm">No wines match your filters</p>
+          <p className="text-secondary text-sm">
+            {showHistory ? "No disposed wines yet" : "No wines match your filters"}
+          </p>
           <button
             onClick={() => {
               setSearch("");
@@ -241,6 +263,19 @@ export default function CollectionClient({
                   {wine.vintage} &middot; {wine.region} &middot; {wine.varietal}
                 </p>
               </div>
+
+              {/* Status badge for disposed wines */}
+              {wine.status && wine.status !== "in_cellar" && (
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 ${
+                  wine.status === "sold" ? "bg-gold/10 text-gold border-gold/20" :
+                  wine.status === "transferred" ? "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20" :
+                  wine.status === "consumed" ? "bg-burgundy/10 text-burgundy border-burgundy/20" :
+                  wine.status === "gifted" ? "bg-ok/10 text-ok border-ok/20" :
+                  "bg-danger/10 text-danger border-danger/20"
+                }`}>
+                  {wine.status.charAt(0).toUpperCase() + wine.status.slice(1)}
+                </span>
+              )}
 
               {/* Value */}
               <div className="text-right flex-shrink-0">
