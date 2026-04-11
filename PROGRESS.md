@@ -1,7 +1,7 @@
 # Caveau MVP — Build Progress
 
 > Auto-generated from BUILD_STATUS.json. Do not edit manually.
-> Last updated: 2026-04-11T01:00:00Z
+> Last updated: 2026-04-11T01:33:04Z
 
 ## Overview
 
@@ -13,12 +13,12 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 
 | Status | Count |
 |--------|-------|
-| Completed | 14 |
+| Completed | 17 |
 | In Progress | 0 |
 | Failed | 0 |
-| Pending | 1 |
+| Pending | 0 |
 
-| Stretch Goals | 2/3 completed |
+| Stretch Goals | 3/3 completed |
 |---------------|-------|
 
 ## Features
@@ -39,21 +39,21 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 | 12 | Wine Detail Page | `completed` | — | — | 2026-04-11 | #12 |
 | 13 | Provenance Certificate Page | `completed` | — | — | 2026-04-11 | #13 |
 | 14 | Polish & Animations | `completed` | — | — | 2026-04-11 | #14 |
-| 15 | API Routes (stretch) | `pending` | — | — | — | — |
+| 15 | API Routes (stretch) | `completed` | — | — | 2026-04-11 | — |
 | 16 | Dashboard Analytics (stretch) | `completed` | — | — | 2026-04-11 | — |
 | 17 | Certificate PDF & Public Verification (stretch) | `completed` | — | — | 2026-04-11 | — |
 
 ## Recent Activity
 
-- **17 — Certificate PDF & Public Verification** completed 2026-04-11
-- **16 — Dashboard Analytics** completed 2026-04-11
+- **15 — API Routes** completed 2026-04-11 — Stretch goal — build if demo features finish early
+- **17 — Certificate PDF & Public Verification** completed 2026-04-11 — QR codes on certificates, /verify/[hash] public verification page
+- **16 — Dashboard Analytics** completed 2026-04-11 — Collection value trend, storage utilization donut, alert frequency bar chart
 - **14 — Polish & Animations** completed 2026-04-11
 - **13 — Provenance Certificate Page** completed 2026-04-11
-- **12 — Wine Detail Page** completed 2026-04-11
 
 ## Next Up
 
-**All core features + 2/3 stretch goals complete. Only stretch 15 (API Routes) remains.**
+**All core features complete! Run ./build.sh start <num> for stretch goals.**
 
 ---
 _Run `./build.sh status` for live tracking. Run `./build.sh start` to resume building._

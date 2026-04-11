@@ -1,7 +1,7 @@
 {
   "project": "caveau-app",
-  "last_updated": "2026-04-11T00:16:36Z",
-  "last_completed_feature": "14",
+  "last_updated": "2026-04-11T01:33:04Z",
+  "last_completed_feature": "15",
   "features": {
     "01": {
       "title": "Project Scaffold",
@@ -294,13 +294,22 @@
     },
     "15": {
       "title": "API Routes",
-      "status": "pending",
+      "status": "completed",
       "stretch": true,
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-04-11T01:33:04Z",
       "failed_at": null,
       "github_issue": null,
-      "files": [],
+      "files": [
+        "src/app/api/alerts/route.ts",
+        "src/app/api/certificates/[id]/route.ts",
+        "src/app/api/lockers/[id]/slots/route.ts",
+        "src/app/api/lockers/route.ts",
+        "src/app/api/sensors/history/route.ts",
+        "src/app/api/sensors/latest/route.ts",
+        "src/app/api/wines/[id]/route.ts",
+        "src/app/api/wines/route.ts"
+      ],
       "notes": "Stretch goal — build if demo features finish early"
     },
     "16": {
