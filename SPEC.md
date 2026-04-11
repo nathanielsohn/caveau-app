@@ -232,13 +232,13 @@ model ProvenanceCertificate {
 ### Seed Data
 - 1 facility: "Caveau Naples", location "Naples, FL"
 - 1 member: "Alessandro Marchetti", tier "black", role "member"
-- 2 lockers: #7 (Zone A), #12 (Zone B) — both assigned to the facility
-- 35 wines: 5 Caveau private label, 8 investment-grade (DRC, Screaming Eagle, Petrus, etc.), 12 mid-range (Caymus, Silver Oak, etc.), 10 French classics
-- 24 occupied locker slots
-- 30 days of sensor readings at 5-min intervals (~17K rows)
-- 8 historical alerts
-- 5 provenance certificates for top wines
-- 1 initial WineValuation per wine (source: "manual", price = currentValue, date = createdAt) — establishes the pattern for future price tracking
+- 4 lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D) — all assigned to the facility
+- 66 wines: 5 Caveau private label (matching pitch deck names), 8 investment-grade (DRC, Screaming Eagle, Petrus, etc.), 12 mid-range (Caymus, Silver Oak, etc.), 10 French classics, 10 Italian icons, 6 Spanish/Portuguese, 10 New World gems, 5 Champagne
+- 66 occupied locker slots (of 128 total)
+- 30 days of sensor readings at 5-min intervals (~34K rows across 4 lockers)
+- 20 historical alerts (including access/badge scan events)
+- 11 provenance certificates across multiple lockers
+- 4-6 WineValuations per wine (329 total) with sources: "manual", "liv-ex", "wine-searcher", "auction" — powers dashboard analytics trend chart
 
 ### Sensor Simulation (client-side)
 ```
@@ -262,7 +262,7 @@ Live updates via `setInterval` every 5 seconds. No SSE/WebSocket needed.
 
 ### Alert Generation
 
-**Historical alerts (seed data):** The 8 historical alerts are manually seeded in `seed.ts` with realistic timestamps spread across the past 30 days. They do not need to match actual sensor reading threshold breaches — they are demo data.
+**Historical alerts (seed data):** The 20 historical alerts are manually seeded in `seed.ts` with realistic timestamps spread across the past 30 days. They include environmental threshold breaches (temperature, humidity, vibration) and access events (member/staff badge scans, after-hours access). They do not need to match actual sensor reading threshold breaches — they are demo data.
 
 **Live alerts (client-side):** The Sentinel page evaluates thresholds on each simulated reading (every 5 seconds). When a reading breaches a threshold (temp >59°F or <50°F, humidity <55% or >75%, vibration >0.5 mm/s), display an alert in the alert list with a "NEW" badge. Live alerts are ephemeral (in-memory state only, not written to the database).
 
@@ -443,7 +443,7 @@ Turn it into a business.
 | Concern | Demo State | Production Path |
 |---------|-----------|-----------------|
 | Database | RDS db.t3.micro (free tier) | RDS db.t3.medium+ with read replicas. Connection pooling via PgBouncer or Prisma Accelerate. |
-| Sensor data | ~17K rows (30 days, 2 lockers) | Millions of rows/year. Partition by month, rollup aggregation, TimescaleDB extension if needed. |
+| Sensor data | ~34K rows (30 days, 4 lockers) | Millions of rows/year. Partition by month, rollup aggregation, TimescaleDB extension if needed. |
 | Images | No images (placeholder URLs) | S3 + CloudFront. Lambda@Edge for on-the-fly resizing. |
 | Auth | Hardcoded demo user | NextAuth.js with JWT sessions. Row-level security via Prisma middleware or PostgreSQL RLS. |
 | Hosting | Vercel (free tier) | Vercel Pro for more bandwidth, or self-host on AWS with Docker/ECS for full control. |

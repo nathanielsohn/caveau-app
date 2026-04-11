@@ -55,7 +55,7 @@ Create the Next.js 14 project in the current directory (`npx create-next-app@14 
 ---
 
 ### 02 — Database Schema & Seed Data
-Prisma schema is already created in feature 01. Create seed.ts with: 1 facility ("Caveau Naples", "Naples, FL"), demo member (role "member"), wines (35), lockers (2, assigned to facility), locker slots (24 occupied), alerts (8), provenance certificates (5), and 1 WineValuation per wine (source "manual", price = currentValue, date = createdAt). Create seed-sensors.ts script that generates 30 days of sensor readings. Configure `prisma db seed` in package.json.
+Prisma schema is already created in feature 01. Create seed.ts with: 1 facility ("Caveau Naples", "Naples, FL"), demo member (role "member"), wines (66 across Caveau private label, investment grade, mid-range, French, Italian, Spanish/Portuguese, New World, and Champagne categories), lockers (4 across zones A–D, assigned to facility), locker slots (66 occupied of 128 total), alerts (20 including access events), provenance certificates (11 across multiple lockers), and 4-6 WineValuations per wine with sources "manual", "liv-ex", "wine-searcher", "auction" over 12 months. Create seed-sensors.ts script that generates 30 days of sensor readings. Configure `prisma db seed` in package.json.
 
 **Files created:**
 - prisma/seed.ts

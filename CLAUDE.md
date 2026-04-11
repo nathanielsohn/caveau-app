@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core features are complete. The app is transitioning from demo to production. Auth, real APIs, and IoT device connections are not yet implemented but are on the roadmap (see "Post-Demo Roadmap" in SPEC.md). Data is currently seeded/simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling.
+**Current state:** All 14 core features + stretch goals 16 (Dashboard Analytics) and 17 (Certificate PDF + Public Verify) are complete. Only stretch 15 (API Routes) remains pending. Auth, real APIs, and IoT device connections are not yet implemented but are on the roadmap (see "Post-Demo Roadmap" in SPEC.md). Data is currently seeded/simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling.
 
 ## Stack
 
@@ -60,17 +60,22 @@ src/
 │   ├── wine/[id]/
 │   │   ├── page.tsx            # Wine detail
 │   │   └── loading.tsx
-│   └── certificate/[id]/
-│       ├── page.tsx            # Provenance certificate
+│   ├── certificate/[id]/
+│   │   ├── page.tsx            # Provenance certificate (with QR code)
+│   │   └── loading.tsx
+│   └── verify/[hash]/
+│       ├── page.tsx            # Public certificate verification
+│       ├── layout.tsx          # Minimal layout (no sidebar nav)
 │       └── loading.tsx
 ├── components/
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile)
 │   ├── metric-card.tsx         # Animated stat card (icon + value + label)
-│   ├── wine-card.tsx           # Wine card for grid/list views
+│   ├── wine-card.tsx           # Wine card with drink window badges
 │   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel
-│   ├── sensor-charts.tsx       # All Recharts (temp, humidity, vibration, light)
+│   ├── sensor-charts.tsx       # Recharts (temp, humidity, vibration, access log)
+│   ├── dashboard-charts.tsx    # Analytics (value trend, utilization, alert freq)
 │   ├── alert-list.tsx          # Alert history table
-│   ├── certificate-doc.tsx     # Full certificate layout
+│   ├── certificate-doc.tsx     # Certificate layout + QR code
 │   ├── add-wine-form.tsx       # Add wine modal/form
 │   └── skeleton.tsx            # Loading skeleton primitives
 └── lib/
@@ -83,7 +88,7 @@ src/
 
 - **Facility** — Multi-location ready. Demo seeds one facility ("Caveau Naples"). Lockers have optional `facilityId`.
 - **Member.role** — `'admin' | 'staff' | 'member'`. Demo uses `'member'`. Enables RBAC in Phase 1.
-- **WineValuation** — Price history table. Demo seeds one entry per wine. Enables valuation charts in Phase 2.
+- **WineValuation** — Price history table. Seeds 4-6 entries per wine with sources: manual, liv-ex, wine-searcher, auction. Powers dashboard analytics trend chart.
 - **SensorReading.id** — Uses `autoincrement()` (not UUID) for write performance at scale.
 - **Prisma Decimals** — `purchasePrice`, `currentValue`, and all sensor fields return `Prisma.Decimal` objects, not numbers. Always use `Number()` or `.toNumber()` before arithmetic. Format with `utils.ts` helpers for display. Formatting helpers in `utils.ts` should accept `Prisma.Decimal | number | string` defensively to prevent silent `[object Object]` rendering.
 
@@ -103,6 +108,8 @@ src/
 Live sensor data is generated client-side with `setInterval` (every 5 seconds). See SPEC.md for the full simulation formulas.
 
 Alert thresholds: temp >59°F or <50°F, humidity <55% or >75%, vibration >0.5 mm/s.
+
+Access monitoring (door/badge events) is displayed alongside environmental sensors. Access events are seeded as alerts and simulated client-side in the access log.
 
 Historical data (30 days) is pre-seeded in the database using the same algorithm.
 
@@ -159,4 +166,4 @@ Stop after step 4. The pipeline handles status updates, progress docs, and pushi
 - `BUILD.md` — Feature specs. Each feature's spec is an inline section in BUILD.md (e.g. "### 01 — Project Scaffold").
 - `BUILD_LOG.md` — Build log with pass/fail results per feature. Created by feature 01, updated by pipeline.
 - GitHub issues #1–#14 map to features 01–14. They auto-close on completion via `update-status.sh`.
-- Features 15–17 are **stretch goals** (API routes, dashboard analytics, certificate PDF + public verify), marked with `"stretch": true` in BUILD_STATUS.json. No GitHub issues. The pipeline skips them automatically — build them individually with `./build.sh start <num>` after 01–14 are done. Note: these numbers are independent from the post-demo roadmap numbering in SPEC.md.
+- Features 15–17 are **stretch goals**, marked with `"stretch": true` in BUILD_STATUS.json. No GitHub issues. Features 16 (Dashboard Analytics) and 17 (Certificate PDF + Public Verify) are complete. Feature 15 (API Routes) is still pending. Note: these numbers are independent from the post-demo roadmap numbering in SPEC.md.

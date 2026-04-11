@@ -31,11 +31,11 @@ Reusable stat card showing an icon, large value, label, and optional trend indic
 ---
 
 ### wine-card.tsx
-**Status:** Complete (Feature 06)
+**Status:** Complete (Feature 06, updated for investor demo)
 
-Wine bottle card for grid/list display. Shows wine image (or placeholder), name (serif font), vintage, region badge, current value. Clickable — links to `/wine/[id]`.
+Wine bottle card for grid/list display. Shows wine image (or placeholder), name (serif font), vintage, region badge, drink window badge (Ready to Drink / Aging / Past Peak), current value with appreciation %. Clickable — links to `/wine/[id]`.
 
-**Props:** Wine object from Prisma
+**Props:** Wine object from Prisma (includes drinkWindowStart/drinkWindowEnd)
 
 **Used in:** Collection page (grid mode)
 
@@ -53,17 +53,31 @@ Wine bottle card for grid/list display. Shows wine image (or placeholder), name 
 ---
 
 ### sensor-charts.tsx
-**Status:** Complete (Feature 09)
+**Status:** Complete (Feature 09, updated for investor demo)
 
-All Recharts visualizations in one file:
+All Recharts visualizations and access log in one file:
 - **TemperatureChart** — AreaChart with gold gradient fill, red reference lines at 50°F and 59°F
 - **HumidityChart** — LineChart, blue
-- **VibrationGauge** — Radial or bar gauge with green/yellow/red zones
-- **LightIndicator** — Icon + status text
+- **VibrationGauge** — Bar gauge with green/yellow/red zones
+- **AccessLog** — Recent door/badge access events list
 
 **Props:** Array of sensor readings, dark theme styling
 
 **Used in:** Sentinel page
+
+---
+
+### dashboard-charts.tsx
+**Status:** Complete (Stretch Goal 16)
+
+Analytics charts for the dashboard:
+- **CollectionValueChart** — Area chart showing collection value over time (from WineValuation data)
+- **StorageUtilizationChart** — Donut chart showing occupied vs total locker slots
+- **AlertFrequencyChart** — Bar chart showing alert counts per day (last 30 days)
+
+**Props:** Valuation trend data, slot counts, alert frequency data
+
+**Used in:** Dashboard page
 
 ---
 
@@ -79,9 +93,9 @@ Alert history table with columns: time, type, severity (color-coded badge), mess
 ---
 
 ### certificate-doc.tsx
-**Status:** Complete (Feature 13)
+**Status:** Complete (Feature 13 + Stretch Goal 17)
 
-Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number. Print-optimized.
+Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number, QR code linking to `/verify/[hash]` for public verification. Print-optimized with `@media print` styles.
 
 **Props:** ProvenanceCertificate with wine and locker relations
 

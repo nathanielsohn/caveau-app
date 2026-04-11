@@ -1,7 +1,7 @@
 # Caveau MVP — Build Progress
 
 > Auto-generated from BUILD_STATUS.json. Do not edit manually.
-> Last updated: 2026-04-11T00:16:36Z
+> Last updated: 2026-04-11T01:00:00Z
 
 ## Overview
 
@@ -16,9 +16,9 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 | Completed | 14 |
 | In Progress | 0 |
 | Failed | 0 |
-| Pending | 3 |
+| Pending | 1 |
 
-| Stretch Goals | 0/3 completed |
+| Stretch Goals | 2/3 completed |
 |---------------|-------|
 
 ## Features
@@ -40,20 +40,20 @@ Legend: █ completed ▓ in-progress ▒ failed ░ pending
 | 13 | Provenance Certificate Page | `completed` | — | — | 2026-04-11 | #13 |
 | 14 | Polish & Animations | `completed` | — | — | 2026-04-11 | #14 |
 | 15 | API Routes (stretch) | `pending` | — | — | — | — |
-| 16 | Dashboard Analytics (stretch) | `pending` | — | — | — | — |
-| 17 | Certificate PDF & Public Verification (stretch) | `pending` | — | — | — | — |
+| 16 | Dashboard Analytics (stretch) | `completed` | — | — | 2026-04-11 | — |
+| 17 | Certificate PDF & Public Verification (stretch) | `completed` | — | — | 2026-04-11 | — |
 
 ## Recent Activity
 
+- **17 — Certificate PDF & Public Verification** completed 2026-04-11
+- **16 — Dashboard Analytics** completed 2026-04-11
 - **14 — Polish & Animations** completed 2026-04-11
 - **13 — Provenance Certificate Page** completed 2026-04-11
 - **12 — Wine Detail Page** completed 2026-04-11
-- **11 — Sentinel Page** completed 2026-04-11
-- **10 — Alert List Component** completed 2026-04-11
 
 ## Next Up
 
-**All core features complete! Run ./build.sh start <num> for stretch goals.**
+**All core features + 2/3 stretch goals complete. Only stretch 15 (API Routes) remains.**
 
 ---
 _Run `./build.sh status` for live tracking. Run `./build.sh start` to resume building._

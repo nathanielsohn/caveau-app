@@ -113,22 +113,22 @@ Physical wine storage location. Included to support multi-location expansion pos
 A Caveau member. The `role` field (`admin` | `staff` | `member`) enables RBAC when auth is added. Demo will seed one user ("Alessandro Marchetti", Black tier, role: `member`).
 
 ### Wine
-A bottle in a member's collection. Demo will seed 35 wines across 4 categories: Caveau private label (5), investment-grade (8), mid-range (12), and French classics (10).
+A bottle in a member's collection. Seeds 66 wines across 8 categories: Caveau private label (5), investment-grade (8), mid-range (12), French classics (10), Italian icons (10), Spanish/Portuguese (6), New World gems (10), and Champagne (5).
 
 ### WineValuation
-Price history for a wine. Designed for future Liv-ex/Wine-Searcher API integration. Demo will seed one entry per wine (source: "manual").
+Price history for a wine. Seeds 4-6 entries per wine (329 total) with sources: "manual", "liv-ex", "wine-searcher", "auction" over 12 months. Powers the dashboard analytics collection value trend chart.
 
 ### Locker
-A physical wine locker assigned to a facility and member. Each has 32 slots (4 columns x 8 rows). Demo will seed 2 lockers (#7 Zone A, #12 Zone B).
+A physical wine locker assigned to a facility and member. Each has 32 slots (4 columns x 8 rows). Seeds 4 lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D).
 
 ### LockerSlot
-A position within a locker. The `[lockerId, slotPosition]` unique constraint prevents double-booking. Demo will seed 24 of 64 total slots as occupied.
+A position within a locker. The `[lockerId, slotPosition]` unique constraint prevents double-booking. Seeds 66 of 128 total slots as occupied.
 
 ### SensorReading
-Environmental data from a locker's Sentinel sensor. Uses **autoincrement** IDs (not UUID) for write performance at scale. Demo will seed ~17K rows (30 days at 5-minute intervals for 2 lockers).
+Environmental data from a locker's Sentinel sensor. Uses **autoincrement** IDs (not UUID) for write performance at scale. Seeds ~34K rows (30 days at 5-minute intervals for 4 lockers).
 
 ### Alert
-A threshold breach event. Live alerts from the Sentinel page are in-memory only — they are not written to this table. Demo will seed 8 historical alerts.
+A threshold breach or access event. Types include temperature, humidity, vibration, and access (badge scans). Live alerts from the Sentinel page are in-memory only — they are not written to this table. Seeds 20 historical alerts.
 
 ### ProvenanceCertificate
 A document certifying storage conditions for a wine. Includes aggregated sensor stats (temp mean/min/max, humidity mean) and a SHA-256 data integrity hash of the sensor readings in the monitoring window.

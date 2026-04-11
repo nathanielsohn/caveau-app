@@ -305,25 +305,34 @@
     },
     "16": {
       "title": "Dashboard Analytics",
-      "status": "pending",
+      "status": "completed",
       "stretch": true,
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-04-11T00:55:00Z",
       "failed_at": null,
       "github_issue": null,
-      "files": [],
-      "notes": "Stretch goal — build if demo features finish early"
+      "files": [
+        "src/components/dashboard-charts.tsx",
+        "src/app/page.tsx",
+        "src/app/dashboard-client.tsx"
+      ],
+      "notes": "Collection value trend, storage utilization donut, alert frequency bar chart"
     },
     "17": {
       "title": "Certificate PDF & Public Verification",
-      "status": "pending",
+      "status": "completed",
       "stretch": true,
       "started_at": null,
-      "completed_at": null,
+      "completed_at": "2026-04-11T00:55:00Z",
       "failed_at": null,
       "github_issue": null,
-      "files": [],
-      "notes": "Stretch goal — build if demo features finish early"
+      "files": [
+        "src/components/certificate-doc.tsx",
+        "src/app/verify/[hash]/page.tsx",
+        "src/app/verify/[hash]/loading.tsx",
+        "src/app/verify/layout.tsx"
+      ],
+      "notes": "QR codes on certificates, /verify/[hash] public verification page"
     }
   }
 }
