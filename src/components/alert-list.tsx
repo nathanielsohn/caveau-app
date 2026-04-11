@@ -23,6 +23,7 @@ const typeLabels: Record<string, string> = {
   humidity: "Humidity",
   vibration: "Vibration",
   light: "Light",
+  access: "Access",
 };
 
 export default function AlertList({ alerts }: { alerts: AlertItem[] }) {

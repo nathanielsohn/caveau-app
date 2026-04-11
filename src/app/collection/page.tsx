@@ -64,6 +64,8 @@ export default async function CollectionPage() {
     purchasePrice: toNumber(w.purchasePrice),
     currentValue: toNumber(w.currentValue),
     imageUrl: w.imageUrl,
+    drinkWindowStart: w.drinkWindowStart,
+    drinkWindowEnd: w.drinkWindowEnd,
   }));
 
   // Extract unique regions and varietals for filter dropdowns

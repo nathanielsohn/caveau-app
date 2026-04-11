@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, ShieldCheck } from "lucide-react";
 import LockerGrid, { type SlotData } from "@/components/locker-grid";
 
 interface LockerData {
@@ -94,8 +94,8 @@ export default function LockerSelector({ lockers }: LockerSelectorProps) {
         </div>
       </div>
 
-      {/* Grid legend */}
-      <div className="flex items-center gap-4 mb-4">
+      {/* Insurance + Grid legend */}
+      <div className="flex flex-wrap items-center gap-4 mb-4">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded border-2 border-burgundy bg-[#141416]/80" />
           <span className="text-xs text-muted">Occupied</span>
@@ -103,6 +103,10 @@ export default function LockerSelector({ lockers }: LockerSelectorProps) {
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30" />
           <span className="text-xs text-muted">Empty</span>
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <ShieldCheck size={14} className="text-ok" />
+          <span className="text-xs text-ok font-medium">PURE Insurance Verified</span>
         </div>
       </div>
 

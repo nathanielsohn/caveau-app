@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { Sun, SunDim } from "lucide-react";
+import { DoorOpen } from "lucide-react";
 
 export interface SensorDataPoint {
   timestamp: string; // formatted time label
@@ -223,36 +223,42 @@ export function VibrationGauge({ value }: { value: number }) {
   );
 }
 
-/* ── Light Indicator ───────────────────────────────── */
+/* ── Access Log ────────────────────────────────────── */
 
-export function LightIndicator({ value }: { value: number }) {
-  const isExposed = value > 10;
-  const color = isExposed ? "#FBBF24" : "#34D399";
-  const label = isExposed ? "Light Detected" : "Dark (Optimal)";
-  const IconComponent = isExposed ? Sun : SunDim;
+const accessEvents = [
+  { time: "2h ago", person: "Alessandro Marchetti", type: "Member badge", zone: "Zone A" },
+  { time: "5h ago", person: "Samuel Pratt-Jalloh", type: "Staff badge", zone: "Reserve Room" },
+  { time: "Yesterday", person: "Alessandro Marchetti", type: "Member badge", zone: "Zone C" },
+  { time: "2 days ago", person: "HVAC Technician", type: "Service access", zone: "Mechanical" },
+  { time: "3 days ago", person: "Alessandro Marchetti", type: "Member badge", zone: "Zone A" },
+];
 
+export function AccessLog() {
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-medium text-secondary mb-4">
-        Light Exposure
+        Access Log
       </h3>
-      <div className="flex flex-col items-center gap-3">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${color}15` }}
-        >
-          <IconComponent size={28} style={{ color }} />
-        </div>
-        <p className="text-3xl font-semibold text-primary">
-          {value.toFixed(1)}{" "}
-          <span className="text-sm text-muted font-normal">lux</span>
-        </p>
-        <span
-          className="text-xs font-medium px-2 py-0.5 rounded-full"
-          style={{ color, backgroundColor: `${color}20` }}
-        >
-          {label}
-        </span>
+      <div className="space-y-3">
+        {accessEvents.map((event, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 p-2.5 rounded-xl bg-caveau-graphite/30"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[#60A5FA]/10 flex items-center justify-center flex-shrink-0">
+              <DoorOpen size={14} className="text-[#60A5FA]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-primary truncate">{event.person}</p>
+              <p className="text-[10px] text-muted">
+                {event.type} &middot; {event.zone}
+              </p>
+            </div>
+            <span className="text-[10px] text-muted whitespace-nowrap">
+              {event.time}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

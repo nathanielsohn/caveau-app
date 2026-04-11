@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Printer } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { formatDate, formatTemp, formatHumidity } from "@/lib/utils";
 import type { Decimal } from "@prisma/client/runtime/library";
 
@@ -144,6 +145,22 @@ export default function CertificateDoc({
                 {certificate.dataIntegrityHash}
               </code>
             </div>
+          </div>
+
+          {/* QR Code — links to public verification page */}
+          <div className="flex flex-col items-center mb-10">
+            <div className="bg-white rounded-lg p-2">
+              <QRCodeSVG
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/verify/${certificate.dataIntegrityHash}`}
+                size={80}
+                fgColor="#FFD166"
+                bgColor="transparent"
+                level="M"
+              />
+            </div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted mt-2">
+              Scan to verify
+            </p>
           </div>
 
           {/* Decorative separator */}

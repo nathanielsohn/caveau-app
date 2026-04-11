@@ -13,5 +13,4 @@ logs/
 BUILD_STATUS.json.bak
 *.tmp
 .vercel
-.amplify-hosting
 coverage/

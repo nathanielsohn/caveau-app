@@ -14,7 +14,7 @@
 **Decision:** RDS + Prisma.
 
 **Why:**
-- Keeps everything on AWS (hosting, database, future services) — single cloud, single bill
+- Database stays on AWS alongside future backend services (IoT ingestion, background jobs)
 - RDS free tier is generous (12 months, db.t3.micro, 20GB)
 - Prisma provides type-safe queries and auto-generated TypeScript types from the schema
 - No vendor lock-in — standard Postgres, can migrate anywhere
@@ -133,3 +133,26 @@ light = rare_spike_or_near_zero
 - Type-safe end-to-end (TypeScript function call, not HTTP)
 - Simpler than setting up REST endpoints for internal data access
 - API routes are a stretch goal (Feature 15) for external/mobile consumption
+
+---
+
+## ADR-008: Vercel over AWS Amplify
+
+**Date:** 2026-04-10
+**Status:** Accepted
+
+**Context:** Needed a hosting platform for the Next.js app. Options were AWS Amplify (keeps everything on AWS) or Vercel (the canonical Next.js host).
+
+**Decision:** Vercel.
+
+**Why:**
+- Vercel is built by the Next.js team — zero-config, best-in-class Next.js support
+- Massive community documentation and training data coverage (important for AI-assisted development)
+- AWS Amplify's Next.js SSR support has been a moving target with sparse community content
+- Free tier is generous (100GB bandwidth, serverless functions, edge middleware)
+- Database stays on AWS RDS — Vercel + RDS is a well-documented, common pattern
+
+**Trade-offs:**
+- Hosting and database are on different providers (Vercel + AWS) — not single-cloud
+- Vercel serverless functions use dynamic IPs, complicating RDS security group rules
+- Future backend workloads (IoT ingestion, background jobs) will live on AWS separately

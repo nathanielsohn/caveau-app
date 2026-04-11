@@ -3,6 +3,11 @@
 import Link from "next/link";
 import MetricCard from "@/components/metric-card";
 import {
+  CollectionValueChart,
+  StorageUtilizationChart,
+  AlertFrequencyChart,
+} from "@/components/dashboard-charts";
+import {
   DollarSign,
   Wine,
   Thermometer,
@@ -42,10 +47,22 @@ interface AlertItem {
   lockerNumber: number;
 }
 
+interface ValuationPoint {
+  date: string;
+  value: number;
+}
+
+interface AlertFrequencyPoint {
+  date: string;
+  count: number;
+}
+
 interface DashboardClientProps {
   metrics: MetricsData;
   topWines: TopWine[];
   alerts: AlertItem[];
+  valuationTrend: ValuationPoint[];
+  alertFrequency: AlertFrequencyPoint[];
 }
 
 function severityBadgeClass(severity: string): string {
@@ -65,6 +82,8 @@ export default function DashboardClient({
   metrics,
   topWines,
   alerts,
+  valuationTrend,
+  alertFrequency,
 }: DashboardClientProps) {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -263,6 +282,18 @@ export default function DashboardClient({
           )}
         </div>
       </div>
+
+      {/* Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <CollectionValueChart data={valuationTrend} />
+        </div>
+        <StorageUtilizationChart
+          occupied={metrics.bottleCount}
+          total={metrics.totalSlots}
+        />
+      </div>
+      <AlertFrequencyChart data={alertFrequency} />
     </div>
   );
 }

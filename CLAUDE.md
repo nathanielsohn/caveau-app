@@ -2,9 +2,9 @@
 
 ## What This Is
 
-A luxury wine cellar management web app for an investor demo. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
+A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**This is a demo app, not production.** No real auth, no real APIs, no real IoT devices. All data is seeded or simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling post-demo — see "Post-Demo Roadmap" in SPEC.md.
+**Current state:** All 14 core features are complete. The app is transitioning from demo to production. Auth, real APIs, and IoT device connections are not yet implemented but are on the roadmap (see "Post-Demo Roadmap" in SPEC.md). Data is currently seeded/simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling.
 
 ## Stack
 
@@ -15,11 +15,9 @@ A luxury wine cellar management web app for an investor demo. Demonstrates the f
 - **Lucide React** (icons)
 - **RDS PostgreSQL** (AWS free tier database)
 - **Prisma** (ORM, type-safe queries, migrations)
-- **AWS Amplify** (hosting)
+- **Vercel** (hosting)
 
 ## How to Run
-
-> **Note:** `npm install` and `npm run dev` require feature 01 (Project Scaffold) to be built first, which creates `package.json` and the Next.js project structure.
 
 ```bash
 npm install
@@ -108,15 +106,16 @@ Alert thresholds: temp >59°F or <50°F, humidity <55% or >75%, vibration >0.5 m
 
 Historical data (30 days) is pre-seeded in the database using the same algorithm.
 
-## What NOT to Build
+## Not Yet Implemented (on roadmap)
 
-- No authentication (hardcoded demo user: "Alessandro Marchetti", Black tier)
-- No real API integrations (Liv-ex, Wine-Searcher, etc.)
-- No real IoT device connections
-- No label scanning
-- No payments or membership signup
-- No tests
-- No POS system
+- Authentication (currently hardcoded demo user: "Alessandro Marchetti", Black tier)
+- Real API integrations (Liv-ex, Wine-Searcher, etc.)
+- Real IoT device connections
+- Label scanning
+- Payments or membership signup
+- POS system
+
+See SPEC.md "Post-Demo Roadmap" for the phased plan to add these.
 
 ## Key Principles
 

@@ -14,31 +14,60 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   try {
     // Fetch all data in parallel
-    const [wines, latestReading, recentAlerts, bottlesStored] =
-      await Promise.all([
-        prisma.wine.findMany({
-          orderBy: { currentValue: "desc" },
-          select: {
-            id: true,
-            name: true,
-            vintage: true,
-            region: true,
-            currentValue: true,
-            purchasePrice: true,
-          },
-        }),
-        prisma.sensorReading.findFirst({
-          orderBy: { timestamp: "desc" },
-        }),
-        prisma.alert.findMany({
-          orderBy: { timestamp: "desc" },
-          take: 5,
-          include: { locker: true },
-        }),
-        prisma.lockerSlot.count({
-          where: { wineId: { not: null } },
-        }),
-      ]);
+    const [
+      wines,
+      latestReading,
+      recentAlerts,
+      bottlesStored,
+      totalSlots,
+      valuationRows,
+      alertFrequencyRows,
+    ] = await Promise.all([
+      prisma.wine.findMany({
+        orderBy: { currentValue: "desc" },
+        select: {
+          id: true,
+          name: true,
+          vintage: true,
+          region: true,
+          currentValue: true,
+          purchasePrice: true,
+        },
+      }),
+      prisma.sensorReading.findFirst({
+        orderBy: { timestamp: "desc" },
+      }),
+      prisma.alert.findMany({
+        orderBy: { timestamp: "desc" },
+        take: 5,
+        include: { locker: true },
+      }),
+      prisma.lockerSlot.count({
+        where: { wineId: { not: null } },
+      }),
+      // Total locker slots (not hardcoded)
+      prisma.lockerSlot.count(),
+      // Collection value trend: sum all wine valuation prices grouped by month
+      prisma.$queryRaw<{ month: string; total: number }[]>`
+        SELECT
+          to_char(date, 'YYYY-MM') AS month,
+          SUM(price)::float AS total
+        FROM wine_valuations
+        WHERE date >= NOW() - INTERVAL '12 months'
+        GROUP BY to_char(date, 'YYYY-MM')
+        ORDER BY month ASC
+      `,
+      // Alert frequency: count alerts grouped by day over last 30 days
+      prisma.$queryRaw<{ day: string; count: bigint }[]>`
+        SELECT
+          to_char(timestamp, 'MM/DD') AS day,
+          COUNT(*)::bigint AS count
+        FROM alerts
+        WHERE timestamp >= NOW() - INTERVAL '30 days'
+        GROUP BY to_char(timestamp, 'YYYY-MM-DD'), to_char(timestamp, 'MM/DD')
+        ORDER BY to_char(timestamp, 'YYYY-MM-DD') ASC
+      `,
+    ]);
 
     // Calculate total collection value
     const totalValue = wines.reduce(
@@ -61,7 +90,7 @@ export default async function DashboardPage() {
       totalValue: formatCurrencyCompact(totalValue),
       valueTrend: Math.round(valueTrend * 10) / 10,
       bottleCount: bottlesStored,
-      totalSlots: 32,
+      totalSlots,
       temperature: latestReading
         ? formatTemp(latestReading.temperature)
         : "—",
@@ -97,11 +126,25 @@ export default async function DashboardPage() {
       lockerNumber: a.locker?.lockerNumber ?? 0,
     }));
 
+    // Format valuation trend for charts
+    const valuationTrend = valuationRows.map((row) => ({
+      date: row.month,
+      value: Number(row.total),
+    }));
+
+    // Format alert frequency for charts (bigint -> number)
+    const alertFrequency = alertFrequencyRows.map((row) => ({
+      date: row.day,
+      count: Number(row.count),
+    }));
+
     return (
       <DashboardClient
         metrics={metricsData}
         topWines={topWines}
         alerts={serializedAlerts}
+        valuationTrend={valuationTrend}
+        alertFrequency={alertFrequency}
       />
     );
   } catch (error) {
@@ -118,6 +161,8 @@ export default async function DashboardPage() {
         }}
         topWines={[]}
         alerts={[]}
+        valuationTrend={[]}
+        alertFrequency={[]}
       />
     );
   }

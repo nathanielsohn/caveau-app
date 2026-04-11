@@ -7,7 +7,7 @@ Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder
 **Constraints:**
 - One developer maintaining this long-term
 - Keep it simple — fewer files, colocated code, no premature abstractions
-- Host on AWS (free tier as much as possible)
+- Host on Vercel (free tier), database on AWS RDS (free tier)
 - Tried-and-true tech only — nothing bleeding edge
 
 ---
@@ -23,10 +23,9 @@ Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder
 | Icons | **Lucide React** | Tree-shakeable, clean icon set |
 | Database | **RDS PostgreSQL** (free tier) | AWS-native Postgres. Free tier: 12 months, db.t3.micro, 20GB storage |
 | ORM | **Prisma** | Type-safe queries, auto-generated TypeScript types, migrations, seeding |
-| Hosting | **AWS Amplify** | Git-push deploys like Vercel, but on AWS. Free tier: 1000 build mins, 15GB hosting, 500K requests/month |
-| DNS (later) | **Route 53** | If custom domain needed |
+| Hosting | **Vercel** | The canonical Next.js host — zero-config, git-push deploys. Free tier: 100GB bandwidth, serverless functions, edge middleware |
 
-**Why RDS + Prisma:** Keeps everything on AWS. RDS is managed Postgres — same SQL, no vendor lock-in. Prisma handles migrations, generates TypeScript types from the schema (no manual `types.ts` needed for DB models), and provides a clean query API. Next.js Server Components query the database directly via Prisma — no separate API layer needed.
+**Why RDS + Prisma:** RDS is managed Postgres — same SQL, no vendor lock-in. Prisma handles migrations, generates TypeScript types from the schema (no manual `types.ts` needed for DB models), and provides a clean query API. Next.js Server Components query the database directly via Prisma — no separate API layer needed.
 
 ---
 
@@ -328,10 +327,10 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 2. **Certificate page** — Full-page standalone (no sidebar), print styles
 3. **Animations** — Framer Motion: page fade-in, grid item stagger, card hover scale, number transitions
 4. **Polish** — Loading skeletons, empty states, mobile check at 375px
-5. **AWS Amplify deploy** — Connect GitHub repo, set env vars, deploy
+5. **Vercel deploy** — Connect GitHub repo, set env vars, deploy
 6. **Test** — Full demo flow on phone
 
-**End of session 3:** Deployed at AWS Amplify URL, all screens working, polished on mobile.
+**End of session 3:** Deployed at Vercel URL, all screens working, polished on mobile.
 
 ---
 
@@ -341,7 +340,7 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 2. Engine: PostgreSQL 15, Template: Free tier (db.t3.micro, 20GB gp2)
 3. DB instance identifier: `caveau-db`, master username/password of your choice
 4. Public access: Yes (for demo — restrict for production)
-5. Security group: allow inbound PostgreSQL (port 5432) from your IP. For Amplify access, add Amplify's NAT gateway IP (find in VPC console after first deploy). **Note:** This is a chicken-and-egg problem — you won't know Amplify's NAT IPs until after the first deploy. Initial deploy will fail to connect to RDS; once deployed, find the NAT gateway IPs in the VPC console and add them to the security group, then redeploy. **Avoid `0.0.0.0/0` even for demo** — it exposes the database to the entire internet.
+5. Security group: allow inbound PostgreSQL (port 5432) from your IP. For Vercel access, Vercel serverless functions use dynamic IPs — either use RDS public access with strong credentials, or set up a connection string with SSL. **Avoid `0.0.0.0/0` even for demo** — it exposes the database to the entire internet. For production, use a VPN or AWS PrivateLink.
 6. Create database name: `caveau`
 7. Copy the endpoint → set `DATABASE_URL=postgresql://<user>:<password>@<endpoint>:5432/caveau` in `.env`
 8. Run `npx prisma migrate deploy` to push the schema
@@ -349,39 +348,18 @@ See CLAUDE.md for the canonical `src/` file tree. Key points:
 
 ---
 
-## AWS Amplify Deployment
+## Vercel Deployment
 
 1. Push code to GitHub
-2. Go to AWS Amplify Console → New App → GitHub
-3. Select repo and branch
-4. Amplify auto-detects Next.js — use the default build settings
-5. Add environment variables:
+2. Go to [vercel.com](https://vercel.com) → New Project → Import GitHub repo
+3. Vercel auto-detects Next.js — zero configuration needed
+4. Add environment variables:
    - `DATABASE_URL` (RDS PostgreSQL connection string)
-6. Deploy
+5. Deploy
 
-**If Amplify's auto-detected build settings don't work** (common with Next.js 14 SSR), create an `amplify.yml` in the project root:
-```yaml
-version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci
-    build:
-      commands:
-        - npx prisma generate
-        - npm run build
-  artifacts:
-    baseDirectory: .next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - .next/cache/**/*
-```
+Vercel runs `npx prisma generate` automatically via the `postinstall` script in package.json. No custom build config needed.
 
-Custom domain (optional, later): Add in Amplify Console → Domain Management, or use Route 53.
+Custom domain (optional): Add in Vercel Dashboard → Settings → Domains.
 
 ---
 
@@ -410,7 +388,7 @@ After each session:
 - Data loads from database via Prisma
 - Charts render on Sentinel page
 - Works at 375px mobile width
-- After session 3: AWS Amplify URL works on phone
+- After session 3: Vercel URL works on phone
 
 ---
 
@@ -468,6 +446,6 @@ Turn it into a business.
 | Sensor data | ~17K rows (30 days, 2 lockers) | Millions of rows/year. Partition by month, rollup aggregation, TimescaleDB extension if needed. |
 | Images | No images (placeholder URLs) | S3 + CloudFront. Lambda@Edge for on-the-fly resizing. |
 | Auth | Hardcoded demo user | NextAuth.js with JWT sessions. Row-level security via Prisma middleware or PostgreSQL RLS. |
-| Hosting | AWS Amplify (free tier) | Amplify or ECS Fargate for more control. Auto-scaling. |
+| Hosting | Vercel (free tier) | Vercel Pro for more bandwidth, or self-host on AWS with Docker/ECS for full control. |
 | Monitoring | None | CloudWatch alarms, Sentry for error tracking, Grafana for sensor dashboards (internal). |
 | CI/CD | build.sh pipeline | GitHub Actions: lint, type-check, build, deploy on merge to main. |

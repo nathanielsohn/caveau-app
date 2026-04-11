@@ -1,6 +1,6 @@
 # Data Model
 
-> Last updated: 2026-04-10 18:52 | Feature 01 — Project Scaffold
+> Last updated: 2026-04-11 | All 14 core features complete
 
 ## Entity Relationship Diagram
 
@@ -104,7 +104,7 @@ erDiagram
 
 ## Entity Descriptions
 
-> Seed data quantities below describe the **planned** demo data from Feature 02. Until that feature is built, tables will be empty.
+> Seed data quantities below describe the demo data seeded by Feature 02.
 
 ### Facility
 Physical wine storage location. Included to support multi-location expansion post-demo. Demo will seed one facility ("Caveau Naples").

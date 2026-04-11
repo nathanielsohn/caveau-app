@@ -1,6 +1,6 @@
 # Component Guide
 
-> Last updated: 2026-04-10 18:52 | Feature 01 — Project Scaffold
+> Last updated: 2026-04-11 | All components built
 
 ## Overview
 
@@ -9,7 +9,7 @@ Caveau uses ~8 shared components, each in its own file under `src/components/`. 
 ## Components
 
 ### nav.tsx
-**Status:** Not yet built (Feature 03)
+**Status:** Complete (Feature 03)
 
 The app shell navigation. Two layouts:
 - **Desktop:** Fixed left sidebar — Caveau ◈ logo, 4 nav links (Dashboard, Collection, Locker, Sentinel), member name at bottom
@@ -20,7 +20,7 @@ The app shell navigation. Two layouts:
 ---
 
 ### metric-card.tsx
-**Status:** Not yet built (Feature 04)
+**Status:** Complete (Feature 04)
 
 Reusable stat card showing an icon, large value, label, and optional trend indicator.
 
@@ -31,7 +31,7 @@ Reusable stat card showing an icon, large value, label, and optional trend indic
 ---
 
 ### wine-card.tsx
-**Status:** Not yet built (Feature 06)
+**Status:** Complete (Feature 06)
 
 Wine bottle card for grid/list display. Shows wine image (or placeholder), name (serif font), vintage, region badge, current value. Clickable — links to `/wine/[id]`.
 
@@ -42,7 +42,7 @@ Wine bottle card for grid/list display. Shows wine image (or placeholder), name 
 ---
 
 ### locker-grid.tsx
-**Status:** Not yet built (Feature 08)
+**Status:** Complete (Feature 08)
 
 4×8 CSS grid representing a locker's 32 slots. Empty slots have dashed borders. Occupied slots show wine name and varietal-colored accent. Clicking an occupied slot opens a slide-in detail panel.
 
@@ -53,7 +53,7 @@ Wine bottle card for grid/list display. Shows wine image (or placeholder), name 
 ---
 
 ### sensor-charts.tsx
-**Status:** Not yet built (Feature 09)
+**Status:** Complete (Feature 09)
 
 All Recharts visualizations in one file:
 - **TemperatureChart** — AreaChart with gold gradient fill, red reference lines at 50°F and 59°F
@@ -68,7 +68,7 @@ All Recharts visualizations in one file:
 ---
 
 ### alert-list.tsx
-**Status:** Not yet built (Feature 10)
+**Status:** Complete (Feature 10)
 
 Alert history table with columns: time, type, severity (color-coded badge), message, resolved status.
 
@@ -79,7 +79,7 @@ Alert history table with columns: time, type, severity (color-coded badge), mess
 ---
 
 ### certificate-doc.tsx
-**Status:** Not yet built (Feature 13)
+**Status:** Complete (Feature 13)
 
 Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number. Print-optimized.
 
@@ -90,7 +90,7 @@ Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine
 ---
 
 ### add-wine-form.tsx
-**Status:** Not yet built (Feature 07)
+**Status:** Complete (Feature 07)
 
 Modal form for adding a new wine. Fields: name, vintage, region, varietal, producer, purchase price. Submits via Next.js Server Action.
 

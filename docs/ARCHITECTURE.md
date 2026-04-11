@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-04-10 18:52 | Feature 01 — Project Scaffold
+> Last updated: 2026-04-11 | All 14 core features complete
 
 ## Overview
 
@@ -18,29 +18,27 @@ Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend 
 | Icons | Lucide React | Tree-shakeable icon library |
 | Database | PostgreSQL (AWS RDS) | Relational data store |
 | ORM | Prisma 5 | Schema management, type-safe queries, migrations |
-| Hosting | AWS Amplify | Git-push deploys, CDN, SSL |
+| Hosting | Vercel | Zero-config Next.js deploys, CDN, SSL |
 
 ## Directory Structure
-
-> Files marked with `(planned)` will be created in upcoming features. See [PROGRESS.md](../PROGRESS.md) for current build status.
 
 ```
 caveau-app/
 ├── prisma/                     # Database layer
 │   ├── schema.prisma           # Data models → generates TypeScript types
-│   ├── seed.ts                 # Core seed data (planned — Feature 02)
-│   └── seed-sensors.ts         # Sensor reading history (planned — Feature 02)
+│   ├── seed.ts                 # Core seed data
+│   └── seed-sensors.ts         # Sensor reading history
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── layout.tsx          # Root layout (fonts, dark bg, metadata)
 │   │   ├── globals.css         # Tailwind base + glass-card utilities
-│   │   ├── page.tsx            # Dashboard (planned — Feature 05)
-│   │   ├── collection/page.tsx # Wine inventory (planned — Feature 07)
-│   │   ├── locker/page.tsx     # Locker visualization (planned — Feature 08)
-│   │   ├── sentinel/page.tsx   # IoT monitoring (planned — Feature 11)
-│   │   ├── wine/[id]/page.tsx  # Wine detail (planned — Feature 12)
-│   │   └── certificate/[id]/   # Provenance certificate (planned — Feature 13)
-│   ├── components/             # Shared UI components (planned — Features 03–10)
+│   │   ├── page.tsx            # Dashboard
+│   │   ├── collection/page.tsx # Wine inventory
+│   │   ├── locker/page.tsx     # Locker visualization
+│   │   ├── sentinel/page.tsx   # IoT monitoring
+│   │   ├── wine/[id]/page.tsx  # Wine detail
+│   │   └── certificate/[id]/   # Provenance certificate
+│   ├── components/             # Shared UI components
 │   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile)
 │   │   ├── metric-card.tsx     # Stat card (icon + value + label)
 │   │   ├── wine-card.tsx       # Wine card for grid/list views

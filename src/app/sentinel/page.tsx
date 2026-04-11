@@ -5,7 +5,7 @@ import {
   Thermometer,
   Droplets,
   Waves,
-  Sun,
+  DoorOpen,
   Activity,
   Shield,
 } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   TemperatureChart,
   HumidityChart,
   VibrationGauge,
-  LightIndicator,
+  AccessLog,
 } from "@/components/sensor-charts";
 import type { SensorDataPoint } from "@/components/sensor-charts";
 import AlertList from "@/components/alert-list";
@@ -89,7 +89,7 @@ function dbReadingToDataPoint(
 }
 
 function getConditionStatus(
-  type: "temperature" | "humidity" | "vibration" | "light",
+  type: "temperature" | "humidity" | "vibration" | "access",
   value: number
 ): { label: string; color: string; bgColor: string } {
   const red = { label: "Critical", color: "#F87171", bgColor: "rgba(248, 113, 113, 0.125)" };
@@ -115,10 +115,10 @@ function getConditionStatus(
       return { ...yellow, label: "Elevated" };
     return { ...green };
   }
-  // light
-  if (value > 10)
-    return { ...yellow, label: "Detected" };
-  return { ...green, label: "Dark" };
+  // access — value represents hours since last access
+  if (value < 1)
+    return { label: "Recent", color: "#60A5FA", bgColor: "rgba(96, 165, 250, 0.125)" };
+  return { ...green, label: "Secured" };
 }
 
 /* ── Page Component ────────────────────────────────── */
@@ -248,11 +248,11 @@ export default function SentinelPage() {
       raw: currentReading.vibration,
     },
     {
-      icon: Sun,
-      label: "Light",
-      value: `${currentReading.lightLux.toFixed(1)} lux`,
-      type: "light" as const,
-      raw: currentReading.lightLux,
+      icon: DoorOpen,
+      label: "Access",
+      value: "2h ago",
+      type: "access" as const,
+      raw: 2,
     },
   ];
 
@@ -361,7 +361,7 @@ export default function SentinelPage() {
           <TemperatureChart data={chartData} />
           <HumidityChart data={chartData} />
           <VibrationGauge value={currentReading.vibration} />
-          <LightIndicator value={currentReading.lightLux} />
+          <AccessLog />
         </div>
       )}
 

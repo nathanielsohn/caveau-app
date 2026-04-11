@@ -6,12 +6,12 @@ const prisma = new PrismaClient();
 // ── Wine catalog ──────────────────────────────────────────────────────
 
 const wines = [
-  // Caveau Private Label (5)
-  { name: 'Caveau Reserve Cabernet Sauvignon', vintage: 2019, region: 'Napa Valley', varietal: 'Cabernet Sauvignon', producer: 'Caveau Estates', purchasePrice: 285, currentValue: 340, tastingNotes: 'Dense blackcurrant and cassis with cedar, tobacco, and a hint of dark chocolate. Full-bodied with velvety tannins and a long, persistent finish.', drinkWindowStart: 2024, drinkWindowEnd: 2035 },
-  { name: 'Caveau Estate Pinot Noir', vintage: 2020, region: 'Sonoma Coast', varietal: 'Pinot Noir', producer: 'Caveau Estates', purchasePrice: 195, currentValue: 230, tastingNotes: 'Bright cherry and raspberry with earthy undertones, rose petal, and subtle baking spice. Silky texture with balanced acidity.', drinkWindowStart: 2023, drinkWindowEnd: 2030 },
-  { name: 'Caveau Grand Cru Chardonnay', vintage: 2021, region: 'Sonoma Coast', varietal: 'Chardonnay', producer: 'Caveau Estates', purchasePrice: 165, currentValue: 190, tastingNotes: 'Crisp green apple and citrus with toasted almond, vanilla, and a mineral finish. Elegant and well-structured.', drinkWindowStart: 2023, drinkWindowEnd: 2028 },
-  { name: 'Caveau Vintage Merlot', vintage: 2018, region: 'Napa Valley', varietal: 'Merlot', producer: 'Caveau Estates', purchasePrice: 210, currentValue: 265, tastingNotes: 'Plush plum and black cherry with mocha, graphite, and dried herbs. Round tannins with a supple mid-palate.', drinkWindowStart: 2023, drinkWindowEnd: 2032 },
-  { name: 'Caveau Limited Syrah', vintage: 2020, region: 'Paso Robles', varietal: 'Syrah', producer: 'Caveau Estates', purchasePrice: 175, currentValue: 210, tastingNotes: 'Smoky blackberry and blueberry with cracked pepper, cured meat, and violet. Dense and concentrated with a savory finish.', drinkWindowStart: 2024, drinkWindowEnd: 2034 },
+  // Caveau Private Label (5) — matches pitch deck
+  { name: 'Caveau Russian River Valley Pinot Noir', vintage: 2022, region: 'Russian River Valley', varietal: 'Pinot Noir', producer: 'Caveau Wines', purchasePrice: 75, currentValue: 85, tastingNotes: 'Bright cherry and raspberry with earthy undertones, rose petal, and subtle baking spice. Sourced from Gary Farrell and Moshin Vineyards. Blind-tested against 3 Sticks before release.', drinkWindowStart: 2024, drinkWindowEnd: 2030 },
+  { name: 'Caveau Napa Valley Cabernet Sauvignon', vintage: 2021, region: 'Napa Valley', varietal: 'Cabernet Sauvignon', producer: 'Caveau Wines', purchasePrice: 85, currentValue: 95, tastingNotes: 'Dense blackcurrant and cassis with cedar, tobacco, and a hint of dark chocolate. Rutherford/Oakville AVA fruit, 18+ months in oak. Winemaker collaboration with Mark Schmidt.', drinkWindowStart: 2024, drinkWindowEnd: 2035 },
+  { name: 'Caveau Reserve Cabernet Sauvignon', vintage: 2020, region: 'Napa Valley', varietal: 'Cabernet Sauvignon', producer: 'Caveau Wines', purchasePrice: 110, currentValue: 125, tastingNotes: 'Limited allocation only. Barrel-selected from the finest lots. Extraordinary depth of cassis, graphite, and espresso with velvety tannins and a long, persistent finish.', drinkWindowStart: 2025, drinkWindowEnd: 2038 },
+  { name: 'Caveau Sonoma Coast Chardonnay', vintage: 2022, region: 'Sonoma Coast', varietal: 'Chardonnay', producer: 'Caveau Wines', purchasePrice: 55, currentValue: 60, tastingNotes: 'Crisp green apple and citrus with toasted almond, vanilla, and a mineral finish. Elegant and well-structured. A showcase of Sonoma Coast terroir.', drinkWindowStart: 2024, drinkWindowEnd: 2028 },
+  { name: 'Caveau Paso Robles Syrah', vintage: 2021, region: 'Paso Robles', varietal: 'Syrah', producer: 'Caveau Wines', purchasePrice: 65, currentValue: 72, tastingNotes: 'Smoky blackberry and blueberry with cracked pepper, cured meat, and violet. Dense and concentrated with a savory finish. Only available at Caveau.', drinkWindowStart: 2024, drinkWindowEnd: 2034 },
 
   // Investment Grade (8)
   { name: 'Domaine de la Romanée-Conti Grand Cru', vintage: 2018, region: 'Burgundy', varietal: 'Pinot Noir', producer: 'Domaine de la Romanée-Conti', purchasePrice: 22500, currentValue: 25800, tastingNotes: 'Ethereal rose petal, wild strawberry, and exotic spice. Transcendent complexity with layers of earth, truffle, and silk. Infinite finish.', drinkWindowStart: 2028, drinkWindowEnd: 2060 },
@@ -112,8 +112,12 @@ const alertData = [
   { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 60.1°F (threshold 59°F)', timestamp: daysAgo(6), resolved: true },
   { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
   { type: 'vibration', severity: 'warning', message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
+  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Alessandro Marchetti', timestamp: daysAgo(4), resolved: true },
   { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
+  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Alessandro Marchetti', timestamp: daysAgo(2), resolved: true },
   { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
+  { type: 'access', severity: 'info', message: 'Reserve room entry: staff badge — Samuel Pratt-Jalloh', timestamp: daysAgo(1), resolved: true },
+  { type: 'access', severity: 'warning', message: 'After-hours access: member badge scan — Alessandro Marchetti (11:42 PM)', timestamp: daysAgo(0), resolved: true },
   { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
 ];
 
@@ -283,18 +287,37 @@ async function main() {
   }
   console.log(`  ✓ Provenance certificates: ${certCount}`);
 
-  // 8. Wine valuations — 1 per wine (source "manual", price = currentValue)
+  // 8. Wine valuations — multiple entries per wine over 12 months, varied sources
+  const valuationSources = ['manual', 'liv-ex', 'wine-searcher', 'auction', 'liv-ex', 'manual'];
+  let valCount = 0;
   for (const wine of createdWines) {
-    await prisma.wineValuation.create({
-      data: {
-        wineId: wine.id,
-        source: 'manual',
-        price: wine.currentValue,
-        date: wine.createdAt,
-      },
-    });
+    const basePrice = Number(wine.purchasePrice);
+    const currentPrice = Number(wine.currentValue);
+    const priceGrowth = currentPrice - basePrice;
+    // Generate 4-6 valuation entries over 12 months
+    const numEntries = 4 + Math.floor(Math.random() * 3);
+    for (let j = 0; j < numEntries; j++) {
+      const monthsAgo = Math.round((12 / (numEntries - 1)) * (numEntries - 1 - j));
+      const progress = j / (numEntries - 1); // 0 to 1
+      // Price follows a smooth curve from purchase to current with slight noise
+      const noise = (Math.random() - 0.5) * priceGrowth * 0.05;
+      const price = basePrice + priceGrowth * progress + noise;
+      const date = new Date();
+      date.setMonth(date.getMonth() - monthsAgo);
+      date.setDate(1 + Math.floor(Math.random() * 27));
+
+      await prisma.wineValuation.create({
+        data: {
+          wineId: wine.id,
+          source: valuationSources[j % valuationSources.length],
+          price: Math.round(Math.max(price, basePrice * 0.95) * 100) / 100,
+          date,
+        },
+      });
+      valCount++;
+    }
   }
-  console.log(`  ✓ Wine valuations: ${createdWines.length}`);
+  console.log(`  ✓ Wine valuations: ${valCount} (across ${createdWines.length} wines)`);
 
   console.log('\n✅ Seed complete!');
 }

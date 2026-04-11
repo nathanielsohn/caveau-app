@@ -13,11 +13,9 @@ npx prisma generate
 npm run dev
 ```
 
-> Database setup (migrations + seeding) requires Feature 02. See [Getting Started](./docs/GETTING_STARTED.md) for full instructions.
-
 Open [http://localhost:3000](http://localhost:3000).
 
-## Screens (6 planned)
+## Screens
 
 | Screen | Path | Feature | Description |
 |--------|------|---------|-------------|
@@ -37,7 +35,7 @@ See [PROGRESS.md](./PROGRESS.md) for which features are complete.
 - **Recharts v2** (sensor data visualization)
 - **Framer Motion** (animations)
 - **PostgreSQL** via **Prisma** (AWS RDS)
-- **AWS Amplify** (hosting)
+- **Vercel** (hosting)
 
 ## Documentation
 
@@ -48,7 +46,7 @@ Detailed docs are in the [`docs/`](./docs) folder:
 - [Getting Started](./docs/GETTING_STARTED.md) — setup, scripts, troubleshooting
 - [Design System](./docs/DESIGN_SYSTEM.md) — colors, fonts, components
 - [Component Guide](./docs/COMPONENT_GUIDE.md) — every component and its props
-- [Deployment](./docs/DEPLOYMENT.md) — AWS RDS + Amplify setup
+- [Deployment](./docs/DEPLOYMENT.md) — AWS RDS + Vercel setup
 - [Decisions](./docs/DECISIONS.md) — architecture decision records
 - [API Reference](./docs/API.md) — REST endpoints (stretch goal)
 
