@@ -15,7 +15,7 @@ export interface WineCardData {
 }
 
 export default function WineCard({ wine }: { wine: WineCardData }) {
-  const change = percentChange(wine.purchasePrice, wine.currentValue);
+  const change = percentChange(wine.purchasePrice, wine.currentValue) ?? 0;
 
   return (
     <Link href={`/wine/${wine.id}`} className="block group">
