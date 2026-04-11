@@ -41,7 +41,15 @@ function daysStored(dateStored: string | null): number {
   if (!dateStored) return 0;
   const stored = new Date(dateStored);
   const now = new Date();
-  return Math.floor((now.getTime() - stored.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, Math.floor((now.getTime() - stored.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+/** Convert hex color to rgba for cross-browser alpha support */
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export default function LockerGrid({ slots }: LockerGridProps) {
@@ -69,6 +77,7 @@ export default function LockerGrid({ slots }: LockerGridProps) {
               onClick={() => {
                 if (isOccupied && slot) setSelectedSlot(slot);
               }}
+              aria-label={isOccupied ? `Slot ${position}: ${slot!.wine!.name}` : `Slot ${position}: empty`}
               className={`
                 aspect-square rounded-xl flex flex-col items-center justify-center p-1.5
                 transition-all duration-200 text-center
@@ -80,7 +89,7 @@ export default function LockerGrid({ slots }: LockerGridProps) {
               `}
               style={
                 isOccupied
-                  ? { borderColor: color, boxShadow: `0 0 12px ${color}20` }
+                  ? { borderColor: color, boxShadow: `0 0 12px ${hexToRgba(color!, 0.125)}` }
                   : undefined
               }
               disabled={!isOccupied}

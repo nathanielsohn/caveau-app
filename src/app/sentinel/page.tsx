@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Thermometer,
   Droplets,
@@ -92,29 +92,33 @@ function getConditionStatus(
   type: "temperature" | "humidity" | "vibration" | "light",
   value: number
 ): { label: string; color: string; bgColor: string } {
+  const red = { label: "Critical", color: "#F87171", bgColor: "rgba(248, 113, 113, 0.125)" };
+  const yellow = { label: "Warning", color: "#FBBF24", bgColor: "rgba(251, 191, 36, 0.125)" };
+  const green = { label: "Normal", color: "#34D399", bgColor: "rgba(52, 211, 153, 0.125)" };
+
   if (type === "temperature") {
     if (value > THRESHOLDS.temp.max || value < THRESHOLDS.temp.min)
-      return { label: "Critical", color: "#F87171", bgColor: "#F8717120" };
+      return red;
     if (value > THRESHOLDS.temp.max - 2 || value < THRESHOLDS.temp.min + 2)
-      return { label: "Warning", color: "#FBBF24", bgColor: "#FBBF2420" };
-    return { label: "Normal", color: "#34D399", bgColor: "#34D39920" };
+      return yellow;
+    return green;
   }
   if (type === "humidity") {
     if (value > THRESHOLDS.humidity.max || value < THRESHOLDS.humidity.min)
-      return { label: "Warning", color: "#FBBF24", bgColor: "#FBBF2420" };
-    return { label: "Normal", color: "#34D399", bgColor: "#34D39920" };
+      return { ...yellow };
+    return { ...green };
   }
   if (type === "vibration") {
     if (value > THRESHOLDS.vibration.max)
-      return { label: "High", color: "#F87171", bgColor: "#F8717120" };
+      return { ...red, label: "High" };
     if (value > 0.3)
-      return { label: "Elevated", color: "#FBBF24", bgColor: "#FBBF2420" };
-    return { label: "Normal", color: "#34D399", bgColor: "#34D39920" };
+      return { ...yellow, label: "Elevated" };
+    return { ...green };
   }
   // light
   if (value > 10)
-    return { label: "Detected", color: "#FBBF24", bgColor: "#FBBF2420" };
-  return { label: "Dark", color: "#34D399", bgColor: "#34D39920" };
+    return { ...yellow, label: "Detected" };
+  return { ...green, label: "Dark" };
 }
 
 /* ── Page Component ────────────────────────────────── */
@@ -126,6 +130,7 @@ export default function SentinelPage() {
   const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([]);
   const [dbAlerts, setDbAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Current reading is the latest live reading or a fresh simulated one
@@ -137,6 +142,7 @@ export default function SentinelPage() {
   /* ── Fetch DB data ─────────────────────────────── */
   const loadDbData = useCallback(async (selectedRange: TimeRange) => {
     setLoading(true);
+    setError(null);
     try {
       const [readings, alerts] = await Promise.all([
         fetchSensorReadings(TIME_RANGE_HOURS[selectedRange]),
@@ -151,6 +157,7 @@ export default function SentinelPage() {
       );
     } catch (err) {
       console.error("Failed to fetch sensor data:", err);
+      setError(err instanceof Error ? err.message : "Failed to load sensor data");
     } finally {
       setLoading(false);
     }
@@ -190,7 +197,7 @@ export default function SentinelPage() {
   }, []);
 
   /* ── Build chart data based on selected range ──── */
-  const chartData: SensorDataPoint[] = (() => {
+  const chartData = useMemo<SensorDataPoint[]>(() => {
     if (range === "1H") {
       // Hybrid: DB data + live data
       const dbPoints = dbReadings.map((r) => dbReadingToDataPoint(r, range));
@@ -201,7 +208,7 @@ export default function SentinelPage() {
     }
     // Historical only
     return dbReadings.map((r) => dbReadingToDataPoint(r, range));
-  })();
+  }, [range, dbReadings, liveReadings]);
 
   /* ── Merge alerts: live (NEW) on top, then DB ──── */
   const allAlerts: AlertItem[] = [
@@ -324,8 +331,22 @@ export default function SentinelPage() {
         })}
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="glass-card p-8 mb-6 flex items-center justify-center gap-3 border-danger/30">
+          <Activity className="w-5 h-5 text-danger" />
+          <span className="text-sm text-danger">{error}</span>
+          <button
+            onClick={() => loadDbData(range)}
+            className="text-xs text-gold hover:text-gold-text transition-colors ml-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Loading state */}
-      {loading && range !== "1H" && (
+      {loading && !error && range !== "1H" && (
         <div className="glass-card p-8 mb-6 flex items-center justify-center gap-3">
           <Activity className="w-5 h-5 text-gold animate-spin" />
           <span className="text-sm text-secondary">

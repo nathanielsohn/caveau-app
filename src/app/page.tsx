@@ -94,7 +94,7 @@ export default async function DashboardPage() {
       message: a.message,
       timestamp: a.timestamp.toISOString(),
       resolved: a.resolved,
-      lockerNumber: a.locker.lockerNumber,
+      lockerNumber: a.locker?.lockerNumber ?? 0,
     }));
 
     return (
@@ -104,8 +104,8 @@ export default async function DashboardPage() {
         alerts={serializedAlerts}
       />
     );
-  } catch {
-    // Graceful fallback when DB is unreachable
+  } catch (error) {
+    console.error("Dashboard data fetch failed:", error);
     return (
       <DashboardClient
         metrics={{

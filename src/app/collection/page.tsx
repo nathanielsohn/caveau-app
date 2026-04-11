@@ -9,15 +9,24 @@ export const dynamic = "force-dynamic";
 async function addWine(formData: FormData) {
   "use server";
 
-  const name = formData.get("name") as string;
-  const vintage = parseInt(formData.get("vintage") as string, 10);
-  const region = formData.get("region") as string;
-  const varietal = formData.get("varietal") as string;
-  const producer = formData.get("producer") as string;
-  const purchasePrice = parseFloat(formData.get("purchasePrice") as string);
+  const name = (formData.get("name") as string | null)?.trim();
+  const vintageRaw = formData.get("vintage") as string | null;
+  const region = (formData.get("region") as string | null)?.trim();
+  const varietal = (formData.get("varietal") as string | null)?.trim();
+  const producer = (formData.get("producer") as string | null)?.trim();
+  const priceRaw = formData.get("purchasePrice") as string | null;
 
-  if (!name || !vintage || !region || !varietal || !producer || isNaN(purchasePrice)) {
+  const vintage = vintageRaw ? parseInt(vintageRaw, 10) : NaN;
+  const purchasePrice = priceRaw ? parseFloat(priceRaw) : NaN;
+
+  if (!name || name.length > 500 || !region || !varietal || !producer) {
     throw new Error("All fields are required");
+  }
+  if (isNaN(vintage) || vintage < 1800 || vintage > new Date().getFullYear() + 1) {
+    throw new Error("Invalid vintage year");
+  }
+  if (isNaN(purchasePrice) || purchasePrice < 0 || purchasePrice > 10_000_000) {
+    throw new Error("Invalid purchase price");
   }
 
   // Find the demo member

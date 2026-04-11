@@ -27,6 +27,8 @@ model Member {
   wines     Wine[]
   lockers   Locker[]
 
+  @@index([tier])
+  @@index([role])
   @@map("members")
 }
 
@@ -51,6 +53,8 @@ model Wine {
   valuations       WineValuation[]
 
   @@index([memberId])
+  @@index([region])
+  @@index([varietal])
   @@map("wines")
 }
 

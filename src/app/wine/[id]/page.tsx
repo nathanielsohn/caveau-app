@@ -54,9 +54,9 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
   // Storage info — first assigned slot
   const slot = wine.lockerSlots[0] ?? null;
   const daysStored = slot?.dateStored
-    ? Math.floor(
+    ? Math.max(0, Math.floor(
         (Date.now() - new Date(slot.dateStored).getTime()) / (1000 * 60 * 60 * 24)
-      )
+      ))
     : null;
 
   // First certificate (if any)

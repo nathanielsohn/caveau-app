@@ -28,6 +28,7 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
               src={wine.imageUrl}
               alt={wine.name}
               className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
           ) : (
             <Wine className="w-10 h-10 text-burgundy/60" strokeWidth={1.2} />

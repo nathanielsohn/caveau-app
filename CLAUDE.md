@@ -42,21 +42,39 @@ src/
 ├── app/
 │   ├── layout.tsx              # Root layout (fonts, dark bg, nav shell)
 │   ├── globals.css             # Tailwind + glass-card utilities
-│   ├── page.tsx                # Dashboard
-│   ├── collection/page.tsx     # Wine inventory
-│   ├── locker/page.tsx         # Locker visualization
-│   ├── sentinel/page.tsx       # IoT monitoring
-│   ├── wine/[id]/page.tsx      # Wine detail
-│   └── certificate/[id]/page.tsx  # Provenance certificate
+│   ├── page.tsx                # Dashboard (server — data fetching)
+│   ├── dashboard-client.tsx    # Dashboard (client — metrics, charts, alerts)
+│   ├── error.tsx               # Global error boundary
+│   ├── not-found.tsx           # 404 page
+│   ├── loading.tsx             # Root loading skeleton
+│   ├── collection/
+│   │   ├── page.tsx            # Wine inventory (server)
+│   │   ├── collection-client.tsx # Filtering/sorting/grid (client)
+│   │   └── loading.tsx
+│   ├── locker/
+│   │   ├── page.tsx            # Locker visualization (server)
+│   │   ├── locker-selector.tsx # Locker tab selector (client)
+│   │   └── loading.tsx
+│   ├── sentinel/
+│   │   ├── page.tsx            # IoT monitoring (client — live sim)
+│   │   ├── actions.ts          # Server actions for sensor data
+│   │   └── loading.tsx
+│   ├── wine/[id]/
+│   │   ├── page.tsx            # Wine detail
+│   │   └── loading.tsx
+│   └── certificate/[id]/
+│       ├── page.tsx            # Provenance certificate
+│       └── loading.tsx
 ├── components/
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile)
-│   ├── metric-card.tsx         # Reusable stat card (icon + value + label)
+│   ├── metric-card.tsx         # Animated stat card (icon + value + label)
 │   ├── wine-card.tsx           # Wine card for grid/list views
 │   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel
 │   ├── sensor-charts.tsx       # All Recharts (temp, humidity, vibration, light)
 │   ├── alert-list.tsx          # Alert history table
 │   ├── certificate-doc.tsx     # Full certificate layout
-│   └── add-wine-form.tsx       # Add wine modal/form
+│   ├── add-wine-form.tsx       # Add wine modal/form
+│   └── skeleton.tsx            # Loading skeleton primitives
 └── lib/
     ├── prisma.ts               # Prisma client singleton
     ├── sensors.ts              # Sensor simulation algorithm + thresholds
@@ -102,7 +120,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 ## Key Principles
 
-- **Keep it simple.** ~20 source files total. Colocate related sub-components in the same file.
+- **Keep it simple.** ~32 source files total. Colocate related sub-components in the same file.
 - **No premature abstractions.** If something is used once, inline it.
 - **One developer maintains this.** Optimize for readability, not cleverness.
 - **Tried-and-true tech only.** No experimental libraries or bleeding-edge patterns.
