@@ -48,6 +48,45 @@ const wines = [
   { name: 'Domaine Weinbach Riesling Grand Cru', vintage: 2020, region: 'Alsace', varietal: 'Riesling', producer: 'Domaine Weinbach', purchasePrice: 75, currentValue: 95, tastingNotes: 'Crystalline lime and white flowers with petrol and wet stone minerality. Racy acidity with a bone-dry finish.', drinkWindowStart: 2024, drinkWindowEnd: 2040 },
   { name: 'Château Palmer', vintage: 2017, region: 'Bordeaux', varietal: 'Merlot', producer: 'Château Palmer', purchasePrice: 280, currentValue: 360, tastingNotes: 'Exotic spice, violet, and dark plum with a velvety Margaux texture. Hedonistic richness with underlying structure.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
   { name: 'Château Léoville-Las Cases', vintage: 2016, region: 'Bordeaux', varietal: 'Cabernet Sauvignon', producer: 'Château Léoville-Las Cases', purchasePrice: 200, currentValue: 270, tastingNotes: 'Intense cassis and blackberry with cedar, graphite, and iron. Often called the "Latour of Saint-Julien" for its structure.', drinkWindowStart: 2026, drinkWindowEnd: 2055 },
+
+  // Italian Icons (10)
+  { name: 'Masseto', vintage: 2018, region: 'Tuscany', varietal: 'Merlot', producer: 'Masseto', purchasePrice: 750, currentValue: 920, tastingNotes: 'Dark cherry, blackberry, and Mediterranean herbs with chocolate and sweet tobacco. Opulent and layered with impossibly fine tannins.', drinkWindowStart: 2026, drinkWindowEnd: 2050 },
+  { name: 'Giacomo Conterno Monfortino Barolo', vintage: 2015, region: 'Piedmont', varietal: 'Nebbiolo', producer: 'Giacomo Conterno', purchasePrice: 1100, currentValue: 1450, tastingNotes: 'Tar, roses, dried cherry, and truffle with extraordinary depth. A monument of Barolo with decades of evolution ahead.', drinkWindowStart: 2030, drinkWindowEnd: 2065 },
+  { name: 'Gaja Barbaresco', vintage: 2018, region: 'Piedmont', varietal: 'Nebbiolo', producer: 'Gaja', purchasePrice: 320, currentValue: 410, tastingNotes: 'Wild cherry, rose hip, and white truffle with licorice, tar, and balsamic notes. Powerful yet graceful with firm, refined tannins.', drinkWindowStart: 2026, drinkWindowEnd: 2045 },
+  { name: 'Tignanello', vintage: 2019, region: 'Tuscany', varietal: 'Sangiovese', producer: 'Marchesi Antinori', purchasePrice: 130, currentValue: 165, tastingNotes: 'Bright cherry, plum, and violet with leather, sweet spice, and a touch of vanilla. The original Super Tuscan — elegant and complex.', drinkWindowStart: 2024, drinkWindowEnd: 2038 },
+  { name: 'Ornellaia', vintage: 2018, region: 'Tuscany', varietal: 'Cabernet Sauvignon', producer: 'Tenuta dell\'Ornellaia', purchasePrice: 280, currentValue: 350, tastingNotes: 'Blackcurrant, dark plum, and graphite with Mediterranean herbs, chocolate, and cedar. Structured and polished with a long finish.', drinkWindowStart: 2025, drinkWindowEnd: 2042 },
+  { name: 'Brunello di Montalcino Biondi-Santi Riserva', vintage: 2015, region: 'Tuscany', varietal: 'Sangiovese', producer: 'Biondi-Santi', purchasePrice: 550, currentValue: 720, tastingNotes: 'Dried cherry, leather, and tobacco with iron, dried herbs, and earthy complexity. The benchmark Brunello — austere, timeless, profound.', drinkWindowStart: 2028, drinkWindowEnd: 2055 },
+  { name: 'Vietti Barolo Ravera', vintage: 2017, region: 'Piedmont', varietal: 'Nebbiolo', producer: 'Vietti', purchasePrice: 120, currentValue: 155, tastingNotes: 'Rose petal, ripe cherry, and crushed stone with cinnamon and dried orange peel. Fine-grained tannins with a mineral-driven finish.', drinkWindowStart: 2025, drinkWindowEnd: 2040 },
+  { name: 'Solaia', vintage: 2018, region: 'Tuscany', varietal: 'Cabernet Sauvignon', producer: 'Marchesi Antinori', purchasePrice: 350, currentValue: 430, tastingNotes: 'Intense blackberry, cassis, and dark chocolate with cedar, tobacco, and espresso. Powerful and concentrated with a velvety texture.', drinkWindowStart: 2026, drinkWindowEnd: 2045 },
+  { name: 'Barolo Cannubi Marchesi di Barolo', vintage: 2016, region: 'Piedmont', varietal: 'Nebbiolo', producer: 'Marchesi di Barolo', purchasePrice: 80, currentValue: 105, tastingNotes: 'Classic tar and roses with cherry, dried herbs, and a touch of menthol. Medium-bodied with firm tannins and bright acidity.', drinkWindowStart: 2024, drinkWindowEnd: 2036 },
+  { name: 'Amarone della Valpolicella Bertani', vintage: 2012, region: 'Veneto', varietal: 'Corvina', producer: 'Bertani', purchasePrice: 140, currentValue: 195, tastingNotes: 'Dried fig, raisin, and dark chocolate with balsamic, coffee, and sweet spice. Rich and velvety with remarkable freshness for the style.', drinkWindowStart: 2023, drinkWindowEnd: 2040 },
+
+  // Spanish & Portuguese (6)
+  { name: 'Vega Sicilia Único', vintage: 2012, region: 'Ribera del Duero', varietal: 'Tempranillo', producer: 'Vega Sicilia', purchasePrice: 480, currentValue: 620, tastingNotes: 'Dark fruit, leather, and balsamic with cedar, tobacco, and earthy complexity. Spain\'s greatest wine — dense yet ethereal.', drinkWindowStart: 2025, drinkWindowEnd: 2055 },
+  { name: 'Pingus', vintage: 2018, region: 'Ribera del Duero', varietal: 'Tempranillo', producer: 'Dominio de Pingus', purchasePrice: 850, currentValue: 1050, tastingNotes: 'Concentrated black fruit, graphite, and wild herbs with extraordinary mineral depth. Cult status for a reason — pure intensity.', drinkWindowStart: 2026, drinkWindowEnd: 2050 },
+  { name: 'La Rioja Alta Gran Reserva 904', vintage: 2015, region: 'Rioja', varietal: 'Tempranillo', producer: 'La Rioja Alta', purchasePrice: 55, currentValue: 72, tastingNotes: 'Mature cherry, leather, and dried herbs with vanilla, coconut, and sweet tobacco from American oak. Traditional Rioja at its finest.', drinkWindowStart: 2023, drinkWindowEnd: 2035 },
+  { name: 'Álvaro Palacios L\'Ermita', vintage: 2019, region: 'Priorat', varietal: 'Garnacha', producer: 'Álvaro Palacios', purchasePrice: 650, currentValue: 780, tastingNotes: 'Ethereal red fruit, garrigue, and crushed slate with exotic spice and floral lift. Transcendent Garnacha from ancient terraces.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
+  { name: 'Barca Velha', vintage: 2011, region: 'Douro Valley', varietal: 'Touriga Nacional', producer: 'Casa Ferreirinha', purchasePrice: 380, currentValue: 500, tastingNotes: 'Dark plum, violet, and graphite with balsamic, dark chocolate, and wild herbs. Portugal\'s most prestigious red — only made in exceptional years.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
+  { name: 'Clos Mogador', vintage: 2019, region: 'Priorat', varietal: 'Garnacha', producer: 'Clos Mogador', purchasePrice: 95, currentValue: 120, tastingNotes: 'Wild strawberry, kirsch, and garrigue with mineral depth and smoky complexity. A Priorat pioneer — old-vine concentration with Mediterranean soul.', drinkWindowStart: 2024, drinkWindowEnd: 2038 },
+
+  // New World Gems (10)
+  { name: 'Catena Zapata Malbec Argentino', vintage: 2019, region: 'Mendoza', varietal: 'Malbec', producer: 'Catena Zapata', purchasePrice: 180, currentValue: 220, tastingNotes: 'Intense violet, blackberry, and plum with dark chocolate, espresso, and crushed stone. High-altitude power with remarkable freshness.', drinkWindowStart: 2024, drinkWindowEnd: 2038 },
+  { name: 'Almaviva', vintage: 2019, region: 'Maipo Valley', varietal: 'Cabernet Sauvignon', producer: 'Viña Almaviva', purchasePrice: 110, currentValue: 140, tastingNotes: 'Cassis, dark cherry, and graphite with tobacco, eucalyptus, and spice. Chile\'s first growth — Bordeaux precision with Andean intensity.', drinkWindowStart: 2024, drinkWindowEnd: 2038 },
+  { name: 'Cloudy Bay Te Wahi Pinot Noir', vintage: 2019, region: 'Central Otago', varietal: 'Pinot Noir', producer: 'Cloudy Bay', purchasePrice: 65, currentValue: 78, tastingNotes: 'Dark cherry, wild thyme, and earthy notes with silky tannins and bright acidity. New Zealand elegance with Central Otago depth.', drinkWindowStart: 2023, drinkWindowEnd: 2030 },
+  { name: 'Torbreck RunRig', vintage: 2018, region: 'Barossa Valley', varietal: 'Shiraz', producer: 'Torbreck Vintners', purchasePrice: 180, currentValue: 230, tastingNotes: 'Blackberry, dark chocolate, and smoked meat with pepper, licorice, and sweet oak. Barossa power with old-vine complexity.', drinkWindowStart: 2025, drinkWindowEnd: 2042 },
+  { name: 'Harlan Estate', vintage: 2017, region: 'Napa Valley', varietal: 'Cabernet Sauvignon', producer: 'Harlan Estate', purchasePrice: 1200, currentValue: 1500, tastingNotes: 'Crème de cassis, graphite, and incense with espresso, dark chocolate, and crushed violets. Napa cult perfection — seamless and profound.', drinkWindowStart: 2027, drinkWindowEnd: 2055 },
+  { name: 'Sine Qua Non Eleven Confessions Syrah', vintage: 2018, region: 'Santa Barbara', varietal: 'Syrah', producer: 'Sine Qua Non', purchasePrice: 450, currentValue: 580, tastingNotes: 'Blueberry, bacon fat, and crushed lavender with graphite, espresso, and smoked earth. One-of-a-kind bottlings that defy convention.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
+  { name: 'Henschke Hill of Grace', vintage: 2017, region: 'Eden Valley', varietal: 'Shiraz', producer: 'Henschke', purchasePrice: 650, currentValue: 820, tastingNotes: 'Dark plum, blackberry, and star anise with charcoal, iron, and wild sage. Single-vineyard planted in 1860 — Australia\'s grand cru.', drinkWindowStart: 2027, drinkWindowEnd: 2055 },
+  { name: 'Felton Road Block 5 Pinot Noir', vintage: 2020, region: 'Central Otago', varietal: 'Pinot Noir', producer: 'Felton Road', purchasePrice: 75, currentValue: 92, tastingNotes: 'Dark cherry, plum, and earthy complexity with subtle oak and fine tannins. Biodynamic farming shines through in the purity.', drinkWindowStart: 2024, drinkWindowEnd: 2032 },
+  { name: 'Kanonkop Paul Sauer', vintage: 2018, region: 'Stellenbosch', varietal: 'Cabernet Sauvignon', producer: 'Kanonkop', purchasePrice: 55, currentValue: 70, tastingNotes: 'Ripe cassis, mulberry, and cedar with fynbos, dark chocolate, and tobacco. South Africa\'s flagship Bordeaux blend — age-worthy and distinctive.', drinkWindowStart: 2024, drinkWindowEnd: 2036 },
+  { name: 'Dominus Estate', vintage: 2018, region: 'Napa Valley', varietal: 'Cabernet Sauvignon', producer: 'Dominus Estate', purchasePrice: 280, currentValue: 350, tastingNotes: 'Dark fruit, iron, and dried herbs with graphite, espresso, and a Bordeaux-like restraint rare in Napa. Christian Moueix\'s California masterwork.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
+
+  // Champagne & Sparkling (5)
+  { name: 'Dom Pérignon', vintage: 2013, region: 'Champagne', varietal: 'Chardonnay', producer: 'Moët & Chandon', purchasePrice: 250, currentValue: 310, tastingNotes: 'Toasted brioche, white flowers, and citrus with chalky minerality and a persistent mousse. The benchmark prestige cuvée.', drinkWindowStart: 2023, drinkWindowEnd: 2035 },
+  { name: 'Krug Grande Cuvée', vintage: 2015, region: 'Champagne', varietal: 'Chardonnay', producer: 'Krug', purchasePrice: 280, currentValue: 340, tastingNotes: 'Roasted hazelnut, dried fruit, and brioche with marzipan, honey, and a long toasty finish. Multi-vintage mastery at its peak.', drinkWindowStart: 2023, drinkWindowEnd: 2032 },
+  { name: 'Louis Roederer Cristal', vintage: 2014, region: 'Champagne', varietal: 'Chardonnay', producer: 'Louis Roederer', purchasePrice: 320, currentValue: 395, tastingNotes: 'White peach, chalk, and lemon curd with a laser-focused mineral backbone. Biodynamic since 2021 — the future of grand Champagne.', drinkWindowStart: 2024, drinkWindowEnd: 2036 },
+  { name: 'Salon Le Mesnil Blanc de Blancs', vintage: 2012, region: 'Champagne', varietal: 'Chardonnay', producer: 'Salon', purchasePrice: 650, currentValue: 850, tastingNotes: 'Intense chalk, green apple, and sea spray with extraordinary tension and length. Only made in exceptional years — pure Le Mesnil terroir.', drinkWindowStart: 2025, drinkWindowEnd: 2045 },
+  { name: 'Bollinger La Grande Année', vintage: 2014, region: 'Champagne', varietal: 'Pinot Noir', producer: 'Bollinger', purchasePrice: 140, currentValue: 175, tastingNotes: 'Ripe apple, walnut, and toasted bread with spice and a powerful, vinous structure. Bollinger\'s signature richness and depth.', drinkWindowStart: 2023, drinkWindowEnd: 2032 },
 ];
 
 // ── Alerts ─────────────────────────────────────────────────────────────
@@ -61,21 +100,33 @@ function daysAgo(days: number): Date {
 
 const alertData = [
   { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.8°F (threshold 59°F)', timestamp: daysAgo(28), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity low: 53.2% (threshold 55%)', timestamp: daysAgo(23), resolved: true },
-  { type: 'vibration', severity: 'warning', message: 'Vibration spike detected: 0.62 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(18), resolved: true },
-  { type: 'temperature', severity: 'critical', message: 'Temperature critical: 62.4°F (threshold 59°F)', timestamp: daysAgo(14), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity elevated: 76.1% (threshold 75%)', timestamp: daysAgo(10), resolved: true },
-  { type: 'vibration', severity: 'critical', message: 'Vibration critical: 1.12 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(7), resolved: true },
+  { type: 'humidity', severity: 'warning', message: 'Humidity low: 53.2% (threshold 55%)', timestamp: daysAgo(27), resolved: true },
+  { type: 'vibration', severity: 'warning', message: 'Vibration spike detected: 0.62 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(23), resolved: true },
+  { type: 'temperature', severity: 'critical', message: 'Temperature critical: 62.4°F (threshold 59°F)', timestamp: daysAgo(20), resolved: true },
+  { type: 'humidity', severity: 'warning', message: 'Humidity elevated: 76.1% (threshold 75%)', timestamp: daysAgo(18), resolved: true },
+  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.4°F (threshold 59°F)', timestamp: daysAgo(16), resolved: true },
+  { type: 'vibration', severity: 'critical', message: 'Vibration critical: 1.12 mm/s — construction activity nearby', timestamp: daysAgo(14), resolved: true },
+  { type: 'humidity', severity: 'critical', message: 'Humidity critical: 78.4% (threshold 75%)', timestamp: daysAgo(12), resolved: true },
+  { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.8°F (threshold 50°F)', timestamp: daysAgo(10), resolved: true },
+  { type: 'vibration', severity: 'warning', message: 'Vibration detected: 0.58 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(8), resolved: true },
+  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 60.1°F (threshold 59°F)', timestamp: daysAgo(6), resolved: true },
+  { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
+  { type: 'vibration', severity: 'warning', message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
   { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
   { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
+  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
 ];
 
 // ── Slot layout ────────────────────────────────────────────────────────
 
-// Locker #7: 16 occupied positions (out of 32)
-const locker7OccupiedPositions = [1, 2, 3, 5, 6, 8, 9, 10, 13, 14, 17, 18, 21, 22, 25, 26];
-// Locker #12: 8 occupied positions (out of 32)
-const locker12OccupiedPositions = [1, 3, 5, 7, 9, 11, 13, 15];
+// Locker #7: 20 occupied positions (out of 32) — primary locker, investment grade
+const locker7OccupiedPositions = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 13, 14, 15, 17, 18, 21, 22, 25, 26, 29];
+// Locker #12: 16 occupied positions (out of 32) — Italian & French wines
+const locker12OccupiedPositions = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 17, 18, 21, 22, 25];
+// Locker #19: 18 occupied positions (out of 32) — Spanish, New World, overflow
+const locker19OccupiedPositions = [1, 2, 3, 4, 5, 7, 8, 9, 10, 13, 14, 15, 17, 18, 21, 22, 25, 26];
+// Locker #24: 12 occupied positions (out of 32) — Champagne vault, newest
+const locker24OccupiedPositions = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
 
 // ── Main seed ──────────────────────────────────────────────────────────
 
@@ -136,63 +187,53 @@ async function main() {
 
   // 4. Lockers
   const locker7 = await prisma.locker.create({
-    data: {
-      lockerNumber: 7,
-      zone: 'A',
-      facilityId: facility.id,
-      memberId: member.id,
-    },
+    data: { lockerNumber: 7, zone: 'A', facilityId: facility.id, memberId: member.id },
   });
   const locker12 = await prisma.locker.create({
-    data: {
-      lockerNumber: 12,
-      zone: 'B',
-      facilityId: facility.id,
-      memberId: member.id,
-    },
+    data: { lockerNumber: 12, zone: 'B', facilityId: facility.id, memberId: member.id },
   });
-  console.log('  ✓ Lockers: #7 (Zone A), #12 (Zone B)');
+  const locker19 = await prisma.locker.create({
+    data: { lockerNumber: 19, zone: 'C', facilityId: facility.id, memberId: member.id },
+  });
+  const locker24 = await prisma.locker.create({
+    data: { lockerNumber: 24, zone: 'D', facilityId: facility.id, memberId: member.id },
+  });
+  console.log('  ✓ Lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D)');
 
   // 5. Locker slots — all 32 per locker, some occupied
   let wineIndex = 0;
+  const allLockerConfigs: { locker: typeof locker7; positions: number[] }[] = [
+    { locker: locker7, positions: locker7OccupiedPositions },
+    { locker: locker12, positions: locker12OccupiedPositions },
+    { locker: locker19, positions: locker19OccupiedPositions },
+    { locker: locker24, positions: locker24OccupiedPositions },
+  ];
 
-  for (let pos = 1; pos <= 32; pos++) {
-    const occupied = locker7OccupiedPositions.includes(pos);
-    await prisma.lockerSlot.create({
-      data: {
-        lockerId: locker7.id,
-        slotPosition: pos,
-        wineId: occupied ? createdWines[wineIndex]?.id : null,
-        dateStored: occupied
-          ? new Date(Date.now() - Math.floor(Math.random() * 90 + 10) * 86400000)
-          : null,
-      },
-    });
-    if (occupied) wineIndex++;
+  for (const { locker, positions } of allLockerConfigs) {
+    for (let pos = 1; pos <= 32; pos++) {
+      const occupied = positions.includes(pos) && wineIndex < createdWines.length;
+      await prisma.lockerSlot.create({
+        data: {
+          lockerId: locker.id,
+          slotPosition: pos,
+          wineId: occupied ? createdWines[wineIndex]?.id : null,
+          dateStored: occupied
+            ? new Date(Date.now() - Math.floor(Math.random() * 180 + 10) * 86400000)
+            : null,
+        },
+      });
+      if (occupied) wineIndex++;
+    }
   }
+  console.log(`  ✓ Locker slots: 128 total, ${wineIndex} occupied`);
 
-  for (let pos = 1; pos <= 32; pos++) {
-    const occupied = locker12OccupiedPositions.includes(pos);
-    await prisma.lockerSlot.create({
-      data: {
-        lockerId: locker12.id,
-        slotPosition: pos,
-        wineId: occupied ? createdWines[wineIndex]?.id : null,
-        dateStored: occupied
-          ? new Date(Date.now() - Math.floor(Math.random() * 90 + 10) * 86400000)
-          : null,
-      },
-    });
-    if (occupied) wineIndex++;
-  }
-  console.log(`  ✓ Locker slots: 64 total, ${wineIndex} occupied`);
-
-  // 6. Alerts — split between both lockers
+  // 6. Alerts — spread across all 4 lockers
+  const lockerIds = [locker7.id, locker12.id, locker19.id, locker24.id];
   for (let i = 0; i < alertData.length; i++) {
     const a = alertData[i];
     await prisma.alert.create({
       data: {
-        lockerId: i < 4 ? locker7.id : locker12.id,
+        lockerId: lockerIds[i % lockerIds.length],
         type: a.type,
         severity: a.severity,
         message: a.message,
@@ -203,32 +244,44 @@ async function main() {
   }
   console.log(`  ✓ Alerts: ${alertData.length}`);
 
-  // 7. Provenance certificates — top 5 investment-grade wines (indices 5–9)
-  const certWines = createdWines.slice(5, 10); // DRC, Screaming Eagle, Petrus, Lafite, Opus One
-  for (let i = 0; i < certWines.length; i++) {
-    const wine = certWines[i];
-    const monitoringStart = new Date(Date.now() - 180 * 86400000); // ~6 months ago
+  // 7. Provenance certificates — investment-grade wines across lockers
+  const certConfigs = [
+    // DRC, Screaming Eagle, Petrus, Lafite, Opus One (locker 7)
+    ...createdWines.slice(5, 10).map((w) => ({ wine: w, lockerId: locker7.id })),
+    // Masseto, Conterno Barolo, Gaja (locker 12)
+    ...createdWines.slice(35, 38).map((w) => ({ wine: w, lockerId: locker12.id })),
+    // Vega Sicilia, Pingus (locker 19)
+    ...createdWines.slice(45, 47).map((w) => ({ wine: w, lockerId: locker19.id })),
+    // Salon Champagne (locker 24)
+    ...createdWines.slice(64, 65).map((w) => ({ wine: w, lockerId: locker24.id })),
+  ];
+  let certCount = 0;
+  for (let i = 0; i < certConfigs.length; i++) {
+    const { wine, lockerId } = certConfigs[i];
+    if (!wine) continue;
+    const monitoringStart = new Date(Date.now() - (180 + i * 15) * 86400000);
     const monitoringEnd = new Date();
     const hash = createHash('sha256')
-      .update(`${wine.id}|${locker7.id}|${monitoringStart.toISOString()}|${monitoringEnd.toISOString()}`)
+      .update(`${wine.id}|${lockerId}|${monitoringStart.toISOString()}|${monitoringEnd.toISOString()}`)
       .digest('hex');
 
     await prisma.provenanceCertificate.create({
       data: {
         wineId: wine.id,
-        lockerId: locker7.id,
+        lockerId,
         monitoringStart,
         monitoringEnd,
-        tempMean: 55.0 + i * 0.1,
-        tempMin: 50.5 + i * 0.2,
-        tempMax: 58.2 + i * 0.15,
-        humidityMean: 64.5 + i * 0.3,
+        tempMean: 55.0 + i * 0.08,
+        tempMin: 50.5 + i * 0.15,
+        tempMax: 58.2 + i * 0.1,
+        humidityMean: 64.5 + i * 0.2,
         dataIntegrityHash: hash,
         certificateNumber: `CAV-2026-${String(i + 1).padStart(4, '0')}`,
       },
     });
+    certCount++;
   }
-  console.log(`  ✓ Provenance certificates: ${certWines.length}`);
+  console.log(`  ✓ Provenance certificates: ${certCount}`);
 
   // 8. Wine valuations — 1 per wine (source "manual", price = currentValue)
   for (const wine of createdWines) {
