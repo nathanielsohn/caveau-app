@@ -398,6 +398,38 @@ Features 01–14 deliver a demo. The phases below are what turns it into a produ
 
 > **Note:** The feature numbers below (15–33) are a conceptual roadmap and are independent from the build pipeline's stretch goal numbers (15–17 in BUILD.md/BUILD_STATUS.json).
 
+```mermaid
+gantt
+    title Post-Demo Roadmap
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+
+    section Phase 1 — Foundation
+    Auth + Roles              :done, p1a, 2026-04-14, 7d
+    Multi-facility support    :p1b, after p1a, 5d
+    API routes                :p1c, after p1a, 5d
+    Wine image upload         :p1d, after p1c, 4d
+    Alert notifications       :p1e, after p1d, 4d
+    Member onboarding flow    :p1f, after p1e, 3d
+
+    section Phase 2 — IoT & Data
+    IoT ingestion endpoint    :p2a, 2026-05-05, 5d
+    Sensor data pipeline      :p2b, after p2a, 5d
+    Wine valuation engine     :p2c, after p2a, 7d
+    Label scanning            :p2d, after p2c, 5d
+    Locker check-in/out       :p2e, after p2b, 4d
+    Dashboard analytics       :p2f, after p2e, 4d
+
+    section Phase 3 — Monetization & Scale
+    Membership + payments     :p3a, 2026-05-26, 7d
+    Admin panel               :p3b, after p3a, 7d
+    Mobile app                :p3c, after p3a, 14d
+    Certificate PDF + verify  :p3d, after p3b, 5d
+    Insurance integration     :p3e, after p3d, 5d
+    Multi-location mgmt       :p3f, after p3e, 5d
+    Wine marketplace          :p3g, after p3f, 7d
+```
+
 ### Phase 1 — Foundation (weeks 1–3 post-demo)
 
 Make it real enough for a pilot with actual members.
@@ -437,6 +469,8 @@ Turn it into a business.
 | 31 | Insurance integration | Export standardized condition reports (PDF) for wine insurance carriers. Continuous monitoring proof for premium reduction claims. |
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
 | 33 | Wine marketplace | Member-to-member trading within the platform. Listing, offers, provenance transfer on sale. Commission model. |
+| 34 | Wine disposition tracking | Record when a bottle leaves the collection: sold, transferred, consumed, gifted, or removed. New `status` field on Wine (`in_cellar` default, plus disposition states) and a `WineDisposition` table (event type, date, sale price, recipient, notes). Collection page filters to active wines by default with a "History" toggle to browse past bottles. Dashboard metrics scoped to active wines. Full provenance, valuation history, and storage records preserved. Prerequisite for marketplace (#33) and insurance (#31). |
+| 35 | Locker self-service (member) | Members can assign wines to empty locker slots from the locker page. Tap an empty slot → modal shows unassigned wines in the member's collection → select one → slot is filled. Also allows removing a wine from a slot (returns it to unassigned). Distinct from staff check-in (#25) which uses barcode scanning and audit trails. |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 

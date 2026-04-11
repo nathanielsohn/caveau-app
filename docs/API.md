@@ -24,9 +24,38 @@ API routes are implemented. All endpoints require authentication via NextAuth JW
 
 ## Data Access
 
-Data flows through multiple channels:
-- **API routes** — REST endpoints wrapping Prisma queries with auth guards
-- **Server Components** — call Prisma directly (Dashboard, Collection, Locker, Wine Detail, Certificate)
-- **Server Actions** — called from Client Components (Sentinel page fetches historical data, Collection page adds wines)
+Data reaches the database through three channels depending on the rendering strategy:
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for data flow diagrams.
+```mermaid
+flowchart TD
+    subgraph Pages
+        D[Dashboard]
+        C[Collection]
+        L[Locker]
+        W[Wine Detail]
+        Cert[Certificate]
+        Sen[Sentinel]
+        Mob[Mobile / External]
+    end
+
+    subgraph Channels
+        SC[Server Components\ndirect Prisma calls]
+        SA[Server Actions\n'use server' functions]
+        API[API Routes\nREST /api/*]
+    end
+
+    P[Prisma ORM] --> DB[(PostgreSQL)]
+
+    D & C & L & W & Cert --> SC
+    Sen --> SA
+    C -->|addWine| SA
+    Mob --> API
+
+    SC & SA & API --> P
+```
+
+- **Server Components** — call Prisma directly (Dashboard, Collection, Locker, Wine Detail, Certificate)
+- **Server Actions** — called from Client Components (Sentinel fetches historical data, Collection adds wines)
+- **API Routes** — REST endpoints with auth guards, primarily for mobile/external consumers
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed data flow diagrams.

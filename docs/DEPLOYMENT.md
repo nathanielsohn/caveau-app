@@ -4,6 +4,32 @@
 
 ## Infrastructure
 
+```mermaid
+flowchart LR
+    subgraph Local
+        Dev[Developer Machine\nnpm run dev]
+    end
+
+    subgraph GitHub
+        Repo[caveau-app repo\nmain branch]
+    end
+
+    subgraph Vercel
+        CDN[CDN / Edge Network]
+        SF[Serverless Functions\nNext.js API + SSR]
+    end
+
+    subgraph AWS
+        RDS[(RDS PostgreSQL 15\ndb.t3.micro — free tier)]
+    end
+
+    Dev -->|git push| Repo
+    Repo -->|auto-deploy on push| CDN
+    CDN --> SF
+    SF -->|Prisma| RDS
+    Dev -->|Prisma direct\nlocal dev| RDS
+```
+
 | Service | Purpose | Tier |
 |---------|---------|------|
 | AWS RDS (PostgreSQL 15) | Database | Free tier: db.t3.micro, 20GB |
