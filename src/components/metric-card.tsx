@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -11,6 +12,8 @@ interface MetricCardProps {
     value: number; // percent change, e.g. 5.2 or -3.1
     label?: string; // e.g. "vs last month"
   };
+  /** Index for stagger animation (pass from parent grid) */
+  index?: number;
 }
 
 /** Animate a number from 0 to target over ~600ms */
@@ -74,13 +77,23 @@ function replaceNumber(
   return template.replace(match[0], formatted);
 }
 
-export default function MetricCard({ icon: Icon, value, label, trend }: MetricCardProps) {
+export default function MetricCard({ icon: Icon, value, label, trend, index = 0 }: MetricCardProps) {
   const targetNum = extractNumber(value);
   const animatedNum = useAnimatedNumber(targetNum);
   const displayValue = replaceNumber(value, animatedNum);
 
   return (
-    <div className="glass-card p-5 flex flex-col gap-3">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.35,
+        delay: index * 0.08,
+        ease: [0.25, 0.1, 0.25, 1],
+      }}
+      whileHover={{ scale: 1.02 }}
+      className="glass-card p-5 flex flex-col gap-3 cursor-default"
+    >
       <div className="flex items-center justify-between">
         <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
           <Icon className="w-5 h-5 text-gold" />
@@ -105,6 +118,6 @@ export default function MetricCard({ icon: Icon, value, label, trend }: MetricCa
       {trend?.label && (
         <p className="text-xs text-muted">{trend.label}</p>
       )}
-    </div>
+    </motion.div>
   );
 }
