@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import {
   AreaChart,
   Area,
@@ -225,15 +226,20 @@ export function VibrationGauge({ value }: { value: number }) {
 
 /* ── Access Log ────────────────────────────────────── */
 
-const accessEvents = [
-  { time: "2h ago", person: "Robert Saenz", type: "Member badge", zone: "Zone A" },
-  { time: "5h ago", person: "Samuel Jalloh", type: "Staff badge", zone: "Reserve Room" },
-  { time: "Yesterday", person: "Robert Saenz", type: "Member badge", zone: "Zone C" },
-  { time: "2 days ago", person: "HVAC Technician", type: "Service access", zone: "Mechanical" },
-  { time: "3 days ago", person: "Robert Saenz", type: "Member badge", zone: "Zone A" },
-];
+function getAccessEvents(memberName: string) {
+  return [
+    { time: "2h ago", person: memberName, type: "Member badge", zone: "Zone A" },
+    { time: "5h ago", person: "Samuel Jalloh", type: "Staff badge", zone: "Reserve Room" },
+    { time: "Yesterday", person: memberName, type: "Member badge", zone: "Zone C" },
+    { time: "2 days ago", person: "HVAC Technician", type: "Service access", zone: "Mechanical" },
+    { time: "3 days ago", person: memberName, type: "Member badge", zone: "Zone A" },
+  ];
+}
 
 export function AccessLog() {
+  const { data: session } = useSession();
+  const memberName = session?.user?.name ?? "Member";
+  const accessEvents = getAccessEvents(memberName);
   return (
     <div className="glass-card p-5">
       <h3 className="text-sm font-medium text-secondary mb-4">

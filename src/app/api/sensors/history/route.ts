@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 
 const RANGE_HOURS: Record<string, number> = {
   "1h": 1,
@@ -10,6 +11,11 @@ const RANGE_HOURS: Record<string, number> = {
 };
 
 export async function GET(request: NextRequest) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = request.nextUrl;
   const lockerId = searchParams.get("lockerId");
   const range = searchParams.get("range") ?? "24h";
@@ -19,6 +25,16 @@ export async function GET(request: NextRequest) {
       { error: "lockerId query parameter is required" },
       { status: 400 }
     );
+  }
+
+  // Verify the locker belongs to this member
+  const locker = await prisma.locker.findUnique({
+    where: { id: lockerId, memberId: session.user.id },
+    select: { id: true },
+  });
+
+  if (!locker) {
+    return NextResponse.json({ error: "Locker not found" }, { status: 404 });
   }
 
   const hours = RANGE_HOURS[range];

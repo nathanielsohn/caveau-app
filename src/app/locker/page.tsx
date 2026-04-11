@@ -1,23 +1,15 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 import { Lock } from "lucide-react";
 import { type SlotData } from "@/components/locker-grid";
 import LockerSelector from "./locker-selector";
 
 export const dynamic = "force-dynamic";
 
-/** The hardcoded demo member email */
-const DEMO_MEMBER_EMAIL = "robert@caveau.com";
-
-async function getLockers() {
-  const member = await prisma.member.findUnique({
-    where: { email: DEMO_MEMBER_EMAIL },
-    select: { id: true },
-  });
-
-  if (!member) return [];
-
+async function getLockers(memberId: string) {
   const lockers = await prisma.locker.findMany({
-    where: { memberId: member.id },
+    where: { memberId },
     orderBy: { lockerNumber: "asc" },
     include: {
       slots: {
@@ -42,7 +34,10 @@ async function getLockers() {
 }
 
 export default async function LockerPage() {
-  const lockers = await getLockers();
+  const session = await getServerAuth();
+  if (!session?.user?.id) redirect("/auth/login");
+
+  const lockers = await getLockers(session.user.id);
 
   if (lockers.length === 0) {
     return (

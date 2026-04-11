@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import Nav from "@/components/nav";
+import Providers from "@/components/providers";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -31,11 +32,13 @@ export default function RootLayout({
       <body
         className={`${playfair.variable} ${inter.variable} font-sans bg-caveau-black text-primary min-h-screen`}
       >
-        <Nav />
-        {/* md:ml-56 offsets for the desktop sidebar; pb-20 gives space for mobile bottom tabs */}
-        <main className="md:ml-56 pb-20 md:pb-0 min-h-screen">
-          {children}
-        </main>
+        <Providers>
+          <Nav />
+          {/* md:ml-56 offsets for the desktop sidebar; pb-20 gives space for mobile bottom tabs */}
+          <main className="md:ml-56 pb-20 md:pb-0 min-h-screen">
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );

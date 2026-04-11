@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core features + stretch goals 16 (Dashboard Analytics) and 17 (Certificate PDF + Public Verify) are complete. Only stretch 15 (API Routes) remains pending. Auth, real APIs, and IoT device connections are not yet implemented but are on the roadmap (see "Post-Demo Roadmap" in SPEC.md). Data is currently seeded/simulated. Schema is forward-looking (includes Facility, WineValuation, Member.role) to minimize migrations when scaling.
+**Current state:** All 14 core features + stretch goals 15–17 are complete. Post-demo roadmap is in progress. Auth + Roles (roadmap feature 15) is implemented via NextAuth.js v4 with Credentials provider and JWT sessions. All routes are protected by middleware; data queries are scoped to the authenticated member. Real APIs, IoT device connections, and other roadmap features are in progress (see "Post-Demo Roadmap" in SPEC.md).
 
 ## Stack
 
@@ -15,6 +15,8 @@ A luxury wine cellar management web app. Demonstrates the full Caveau value chai
 - **Lucide React** (icons)
 - **RDS PostgreSQL** (AWS free tier database)
 - **Prisma** (ORM, type-safe queries, migrations)
+- **NextAuth.js v4** (auth, JWT sessions, Credentials provider)
+- **bcryptjs** (password hashing)
 - **Vercel** (hosting)
 
 ## How to Run
@@ -27,6 +29,8 @@ npm run dev
 Requires `.env` with:
 ```
 DATABASE_URL=postgresql://<user>:<password>@<rds-host>:5432/caveau
+NEXTAUTH_SECRET=<random-base64-string>
+NEXTAUTH_URL=http://localhost:3000
 ```
 
 ## Project Structure
@@ -45,6 +49,12 @@ src/
 │   ├── error.tsx               # Global error boundary
 │   ├── not-found.tsx           # 404 page
 │   ├── loading.tsx             # Root loading skeleton
+│   ├── api/auth/
+│   │   ├── [...nextauth]/route.ts  # NextAuth API handler
+│   │   └── signup/route.ts         # Signup API (creates member)
+│   ├── auth/
+│   │   ├── login/page.tsx      # Login page
+│   │   └── signup/page.tsx     # Signup page
 │   ├── collection/
 │   │   ├── page.tsx            # Wine inventory (server)
 │   │   ├── collection-client.tsx # Filtering/sorting/grid (client)
@@ -67,8 +77,12 @@ src/
 │       ├── page.tsx            # Public certificate verification
 │       ├── layout.tsx          # Minimal layout (no sidebar nav)
 │       └── loading.tsx
+├── middleware.ts                # Route protection (redirects unauthenticated to /auth/login)
+├── types/
+│   └── next-auth.d.ts          # NextAuth type augmentation (role, tier on session)
 ├── components/
-│   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile)
+│   ├── providers.tsx           # SessionProvider wrapper
+│   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile) — shows session user
 │   ├── metric-card.tsx         # Animated stat card (icon + value + label)
 │   ├── wine-card.tsx           # Wine card with drink window badges
 │   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel
@@ -79,6 +93,7 @@ src/
 │   ├── add-wine-form.tsx       # Add wine modal/form
 │   └── skeleton.tsx            # Loading skeleton primitives
 └── lib/
+    ├── auth.ts                 # NextAuth config + getServerAuth() helper
     ├── prisma.ts               # Prisma client singleton
     ├── sensors.ts              # Sensor simulation algorithm + thresholds
     └── utils.ts                # Currency, date, number formatters
@@ -113,14 +128,26 @@ Access monitoring (door/badge events) is displayed alongside environmental senso
 
 Historical data (30 days) is pre-seeded in the database using the same algorithm.
 
+## Auth System
+
+- **NextAuth.js v4** with Credentials provider (email/password), JWT session strategy
+- **Middleware** (`src/middleware.ts`) protects all routes except `/auth/*`, `/verify/*`, `/certificate/*`, `/api/auth/*`
+- **Session data** includes `id`, `name`, `email`, `role`, `tier` (see `src/types/next-auth.d.ts`)
+- **Server-side auth**: use `getServerAuth()` from `src/lib/auth.ts` in server components/actions
+- **Client-side auth**: use `useSession()` from `next-auth/react` (app is wrapped in `SessionProvider`)
+- **All data queries are scoped to the authenticated member** — wines, lockers, alerts, sensor readings
+- **Demo credentials**: `robert@caveau.com` / `demo1234`
+- **Signup** creates a new member with role `"member"` and tier `"gold"`
+- **Role values**: `admin`, `staff`, `member` — RBAC guards are ready but admin panel (roadmap #28) is not yet built
+
 ## Not Yet Implemented (on roadmap)
 
-- Authentication (currently hardcoded demo user: "Robert Saenz", Black tier)
 - Real API integrations (Liv-ex, Wine-Searcher, etc.)
 - Real IoT device connections
 - Label scanning
 - Payments or membership signup
 - POS system
+- Admin panel (staff-facing dashboard)
 
 See SPEC.md "Post-Demo Roadmap" for the phased plan to add these.
 

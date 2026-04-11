@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -12,18 +14,21 @@ import DashboardClient from "./dashboard-client";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const session = await getServerAuth();
+  if (!session?.user?.id) redirect("/auth/login");
+
+  const memberId = session.user.id;
+
   try {
-    // Fetch all data in parallel
+    // Fetch all data in parallel, scoped to this member
     const [
       wines,
-      latestReading,
-      recentAlerts,
+      memberLockerIds,
       bottlesStored,
       totalSlots,
-      valuationRows,
-      alertFrequencyRows,
     ] = await Promise.all([
       prisma.wine.findMany({
+        where: { memberId },
         orderBy: { currentValue: "desc" },
         select: {
           id: true,
@@ -34,40 +39,62 @@ export default async function DashboardPage() {
           purchasePrice: true,
         },
       }),
-      prisma.sensorReading.findFirst({
-        orderBy: { timestamp: "desc" },
-      }),
-      prisma.alert.findMany({
-        orderBy: { timestamp: "desc" },
-        take: 5,
-        include: { locker: true },
+      prisma.locker.findMany({
+        where: { memberId },
+        select: { id: true },
       }),
       prisma.lockerSlot.count({
-        where: { wineId: { not: null } },
+        where: {
+          wineId: { not: null },
+          locker: { memberId },
+        },
       }),
-      // Total locker slots (not hardcoded)
-      prisma.lockerSlot.count(),
-      // Collection value trend: sum all wine valuation prices grouped by month
-      prisma.$queryRaw<{ month: string; total: number }[]>`
-        SELECT
-          to_char(date, 'YYYY-MM') AS month,
-          SUM(price)::float AS total
-        FROM wine_valuations
-        WHERE date >= NOW() - INTERVAL '12 months'
-        GROUP BY to_char(date, 'YYYY-MM')
-        ORDER BY month ASC
-      `,
-      // Alert frequency: count alerts grouped by day over last 30 days
-      prisma.$queryRaw<{ day: string; count: bigint }[]>`
-        SELECT
-          to_char(timestamp, 'MM/DD') AS day,
-          COUNT(*)::bigint AS count
-        FROM alerts
-        WHERE timestamp >= NOW() - INTERVAL '30 days'
-        GROUP BY to_char(timestamp, 'YYYY-MM-DD'), to_char(timestamp, 'MM/DD')
-        ORDER BY to_char(timestamp, 'YYYY-MM-DD') ASC
-      `,
+      prisma.lockerSlot.count({
+        where: { locker: { memberId } },
+      }),
     ]);
+
+    const lockerIds = memberLockerIds.map((l) => l.id);
+
+    // Fetch data that depends on lockerIds
+    const [latestReading, recentAlerts, valuationRows, alertFrequencyRows] =
+      await Promise.all([
+        lockerIds.length > 0
+          ? prisma.sensorReading.findFirst({
+              where: { lockerId: { in: lockerIds } },
+              orderBy: { timestamp: "desc" },
+            })
+          : null,
+        prisma.alert.findMany({
+          where: { lockerId: { in: lockerIds } },
+          orderBy: { timestamp: "desc" },
+          take: 5,
+          include: { locker: true },
+        }),
+        prisma.$queryRaw<{ month: string; total: number }[]>`
+          SELECT
+            to_char(wv.date, 'YYYY-MM') AS month,
+            SUM(wv.price)::float AS total
+          FROM wine_valuations wv
+          JOIN wines w ON w.id = wv.wine_id
+          WHERE w.member_id = ${memberId}
+            AND wv.date >= NOW() - INTERVAL '12 months'
+          GROUP BY to_char(wv.date, 'YYYY-MM')
+          ORDER BY month ASC
+        `,
+        lockerIds.length > 0
+          ? prisma.$queryRaw<{ day: string; count: bigint }[]>`
+              SELECT
+                to_char(timestamp, 'MM/DD') AS day,
+                COUNT(*)::bigint AS count
+              FROM alerts
+              WHERE locker_id = ANY(${lockerIds})
+                AND timestamp >= NOW() - INTERVAL '30 days'
+              GROUP BY to_char(timestamp, 'YYYY-MM-DD'), to_char(timestamp, 'MM/DD')
+              ORDER BY to_char(timestamp, 'YYYY-MM-DD') ASC
+            `
+          : [],
+      ]);
 
     // Calculate total collection value
     const totalValue = wines.reduce(

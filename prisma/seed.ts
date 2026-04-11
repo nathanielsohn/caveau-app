@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { createHash } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -156,13 +157,15 @@ async function main() {
   });
   console.log(`  ✓ Facility: ${facility.name}`);
 
-  // 2. Member
+  // 2. Member (password: demo1234)
+  const passwordHash = await bcrypt.hash('demo1234', 10);
   const member = await prisma.member.create({
     data: {
       name: 'Robert Saenz',
       email: 'robert@caveau.com',
       tier: 'black',
       role: 'member',
+      passwordHash,
     },
   });
   console.log(`  ✓ Member: ${member.name}`);

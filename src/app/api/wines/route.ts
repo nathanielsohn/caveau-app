@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = request.nextUrl;
   const search = searchParams.get("search")?.trim();
   const region = searchParams.get("region")?.trim();
   const varietal = searchParams.get("varietal")?.trim();
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { memberId: session.user.id };
 
   if (search) {
     where.name = { contains: search, mode: "insensitive" };
@@ -48,6 +54,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json();
   const { name, vintage, region, varietal, producer, purchasePrice } = body;
 
@@ -74,8 +85,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const member = await prisma.member.findFirst();
-
   const wine = await prisma.wine.create({
     data: {
       name: String(name).slice(0, 500),
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
       producer: String(producer),
       purchasePrice: priceNum,
       currentValue: priceNum,
-      memberId: member?.id ?? null,
+      memberId: session.user.id,
     },
   });
 

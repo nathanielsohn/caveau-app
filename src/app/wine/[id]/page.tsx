@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 import {
   formatCurrency,
   formatDate,
@@ -25,10 +26,13 @@ interface WineDetailPageProps {
 }
 
 export default async function WineDetailPage({ params }: WineDetailPageProps) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) redirect("/auth/login");
+
   const { id } = await params;
 
   const wine = await prisma.wine.findUnique({
-    where: { id },
+    where: { id, memberId: session.user.id },
     include: {
       lockerSlots: {
         include: {

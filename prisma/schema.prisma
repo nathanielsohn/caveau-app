@@ -18,14 +18,15 @@ model Facility {
 }
 
 model Member {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  tier      String
-  role      String   @default("member")
-  createdAt DateTime @default(now()) @map("created_at")
-  wines     Wine[]
-  lockers   Locker[]
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  tier         String
+  role         String   @default("member")
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  wines        Wine[]
+  lockers      Locker[]
 
   @@index([tier])
   @@index([role])

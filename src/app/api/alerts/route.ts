@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = request.nextUrl;
   const resolvedParam = searchParams.get("resolved");
 
-  const where: Record<string, unknown> = {};
+  const lockerIds = await prisma.locker.findMany({
+    where: { memberId: session.user.id },
+    select: { id: true },
+  });
+
+  const where: Record<string, unknown> = {
+    lockerId: { in: lockerIds.map((l) => l.id) },
+  };
+
   if (resolvedParam === "true") {
     where.resolved = true;
   } else if (resolvedParam === "false") {

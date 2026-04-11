@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Wine,
   Lock,
   Activity,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -18,9 +20,19 @@ const navItems = [
 
 export default function Nav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
-  // Hide nav on certificate pages (standalone printable layout)
-  if (pathname.startsWith("/certificate")) return null;
+  // Hide nav on certificate, verify, and auth pages
+  if (
+    pathname.startsWith("/certificate") ||
+    pathname.startsWith("/verify") ||
+    pathname.startsWith("/auth")
+  )
+    return null;
+
+  const tierLabel = session?.user?.tier
+    ? session.user.tier.charAt(0).toUpperCase() + session.user.tier.slice(1) + " Tier"
+    : "";
 
   return (
     <>
@@ -66,9 +78,16 @@ export default function Nav() {
             Member
           </p>
           <p className="text-sm text-primary font-medium truncate">
-            Robert Saenz
+            {session?.user?.name || "—"}
           </p>
-          <p className="text-xs text-gold-text">Black Tier</p>
+          <p className="text-xs text-gold-text">{tierLabel}</p>
+          <button
+            onClick={() => signOut({ callbackUrl: "/auth/login" })}
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-primary mt-3 transition-colors"
+          >
+            <LogOut size={12} />
+            Sign out
+          </button>
         </div>
       </aside>
 

@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 import { toNumber } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import CollectionClient from "./collection-client";
@@ -8,6 +10,9 @@ export const dynamic = "force-dynamic";
 
 async function addWine(formData: FormData) {
   "use server";
+
+  const session = await getServerAuth();
+  if (!session?.user?.id) throw new Error("Not authenticated");
 
   const name = (formData.get("name") as string | null)?.trim();
   const vintageRaw = formData.get("vintage") as string | null;
@@ -29,9 +34,6 @@ async function addWine(formData: FormData) {
     throw new Error("Invalid purchase price");
   }
 
-  // Find the demo member
-  const member = await prisma.member.findFirst();
-
   await prisma.wine.create({
     data: {
       name,
@@ -40,8 +42,8 @@ async function addWine(formData: FormData) {
       varietal,
       producer,
       purchasePrice,
-      currentValue: purchasePrice, // new wine starts at purchase price
-      memberId: member?.id ?? null,
+      currentValue: purchasePrice,
+      memberId: session.user.id,
     },
   });
 
@@ -49,7 +51,11 @@ async function addWine(formData: FormData) {
 }
 
 export default async function CollectionPage() {
+  const session = await getServerAuth();
+  if (!session?.user?.id) redirect("/auth/login");
+
   const wines = await prisma.wine.findMany({
+    where: { memberId: session.user.id },
     orderBy: { createdAt: "desc" },
   });
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 
 export interface DbSensorReading {
   temperature: number;
@@ -20,24 +21,36 @@ export interface DbAlert {
 }
 
 /**
- * Fetch sensor readings for the demo locker within a time range.
+ * Get the current member's first locker ID for sensor queries.
+ */
+async function getMemberLockerId(): Promise<string | null> {
+  const session = await getServerAuth();
+  if (!session?.user?.id) return null;
+
+  const locker = await prisma.locker.findFirst({
+    where: { memberId: session.user.id },
+    orderBy: { lockerNumber: "asc" },
+    select: { id: true },
+  });
+
+  return locker?.id ?? null;
+}
+
+/**
+ * Fetch sensor readings for the member's locker within a time range.
  * Returns data with Prisma Decimals converted to plain numbers.
  */
 export async function fetchSensorReadings(
   hoursBack: number
 ): Promise<DbSensorReading[]> {
+  const lockerId = await getMemberLockerId();
+  if (!lockerId) return [];
+
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
-
-  // Get the first locker (demo uses locker #7)
-  const locker = await prisma.locker.findFirst({
-    orderBy: { lockerNumber: "asc" },
-  });
-
-  if (!locker) return [];
 
   const readings = await prisma.sensorReading.findMany({
     where: {
-      lockerId: locker.id,
+      lockerId,
       timestamp: { gte: since },
     },
     orderBy: { timestamp: "asc" },
@@ -55,17 +68,14 @@ export async function fetchSensorReadings(
 }
 
 /**
- * Fetch historical alerts for the demo locker.
+ * Fetch historical alerts for the member's locker.
  */
 export async function fetchAlerts(): Promise<DbAlert[]> {
-  const locker = await prisma.locker.findFirst({
-    orderBy: { lockerNumber: "asc" },
-  });
-
-  if (!locker) return [];
+  const lockerId = await getMemberLockerId();
+  if (!lockerId) return [];
 
   const alerts = await prisma.alert.findMany({
-    where: { lockerId: locker.id },
+    where: { lockerId },
     orderBy: { timestamp: "desc" },
     take: 50,
   });
