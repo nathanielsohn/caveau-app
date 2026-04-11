@@ -68,7 +68,7 @@ function WinePlaceholder({ wine }: { wine: WineCardData }) {
           style={{ backgroundColor: accent, opacity: 0.5 }}
         />
         <p className="text-[9px] tracking-[0.2em] uppercase text-[#706F73]">
-          {wine.region === "Champagne" ? "Champagne" : wine.varietal}
+          {wine.varietal}
         </p>
       </div>
     </div>
