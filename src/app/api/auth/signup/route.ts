@@ -1,11 +1,28 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, csrfToken } = await req.json();
+
+    // Verify CSRF double-submit cookie
+    const cookieStore = cookies();
+    const csrfCookie =
+      cookieStore.get("next-auth.csrf-token")?.value ||
+      cookieStore.get("__Host-next-auth.csrf-token")?.value;
+
+    if (!csrfToken || !csrfCookie) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+    }
+
+    // NextAuth cookie format: token|hash — extract the token portion
+    const [cookieToken] = csrfCookie.split("|");
+    if (csrfToken !== cookieToken) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+    }
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });

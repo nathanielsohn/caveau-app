@@ -19,10 +19,14 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      // Fetch CSRF token (double-submit cookie pattern, same as login)
+      const csrfRes = await fetch("/api/auth/csrf");
+      const { csrfToken } = await csrfRes.json();
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, csrfToken }),
       });
 
       const data = await res.json();
