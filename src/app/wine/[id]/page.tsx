@@ -48,7 +48,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
 
   const purchasePrice = toNumber(wine.purchasePrice);
   const currentValue = toNumber(wine.currentValue);
-  const appreciation = percentChange(wine.purchasePrice, wine.currentValue);
+  const appreciation = percentChange(wine.purchasePrice, wine.currentValue) ?? 0;
   const isPositive = appreciation >= 0;
 
   // Storage info — first assigned slot
