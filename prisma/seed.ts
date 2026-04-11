@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role, Tier, AlertType, Severity } from '@prisma/client';
 import { createHash } from 'crypto';
 import bcrypt from 'bcryptjs';
 
@@ -99,27 +99,27 @@ function daysAgo(days: number): Date {
   return d;
 }
 
-const alertData = [
-  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.8°F (threshold 59°F)', timestamp: daysAgo(28), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity low: 53.2% (threshold 55%)', timestamp: daysAgo(27), resolved: true },
-  { type: 'vibration', severity: 'warning', message: 'Vibration spike detected: 0.62 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(23), resolved: true },
-  { type: 'temperature', severity: 'critical', message: 'Temperature critical: 62.4°F (threshold 59°F)', timestamp: daysAgo(20), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity elevated: 76.1% (threshold 75%)', timestamp: daysAgo(18), resolved: true },
-  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.4°F (threshold 59°F)', timestamp: daysAgo(16), resolved: true },
-  { type: 'vibration', severity: 'critical', message: 'Vibration critical: 1.12 mm/s — construction activity nearby', timestamp: daysAgo(14), resolved: true },
-  { type: 'humidity', severity: 'critical', message: 'Humidity critical: 78.4% (threshold 75%)', timestamp: daysAgo(12), resolved: true },
-  { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.8°F (threshold 50°F)', timestamp: daysAgo(10), resolved: true },
-  { type: 'vibration', severity: 'warning', message: 'Vibration detected: 0.58 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(8), resolved: true },
-  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 60.1°F (threshold 59°F)', timestamp: daysAgo(6), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
-  { type: 'vibration', severity: 'warning', message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
-  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(4), resolved: true },
-  { type: 'temperature', severity: 'warning', message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
-  { type: 'access', severity: 'info', message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(2), resolved: true },
-  { type: 'humidity', severity: 'warning', message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
-  { type: 'access', severity: 'info', message: 'Reserve room entry: staff badge — Samuel Jalloh', timestamp: daysAgo(1), resolved: true },
-  { type: 'access', severity: 'warning', message: 'After-hours access: member badge scan — Robert Saenz (11:42 PM)', timestamp: daysAgo(0), resolved: true },
-  { type: 'temperature', severity: 'warning', message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
+const alertData: { type: AlertType; severity: Severity; message: string; timestamp: Date; resolved: boolean }[] = [
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 59.8°F (threshold 59°F)', timestamp: daysAgo(28), resolved: true },
+  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 53.2% (threshold 55%)', timestamp: daysAgo(27), resolved: true },
+  { type: AlertType.vibration, severity: Severity.warning, message: 'Vibration spike detected: 0.62 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(23), resolved: true },
+  { type: AlertType.temperature, severity: Severity.critical, message: 'Temperature critical: 62.4°F (threshold 59°F)', timestamp: daysAgo(20), resolved: true },
+  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity elevated: 76.1% (threshold 75%)', timestamp: daysAgo(18), resolved: true },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 59.4°F (threshold 59°F)', timestamp: daysAgo(16), resolved: true },
+  { type: AlertType.vibration, severity: Severity.critical, message: 'Vibration critical: 1.12 mm/s — construction activity nearby', timestamp: daysAgo(14), resolved: true },
+  { type: AlertType.humidity, severity: Severity.critical, message: 'Humidity critical: 78.4% (threshold 75%)', timestamp: daysAgo(12), resolved: true },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature low: 49.8°F (threshold 50°F)', timestamp: daysAgo(10), resolved: true },
+  { type: AlertType.vibration, severity: Severity.warning, message: 'Vibration detected: 0.58 mm/s (threshold 0.5 mm/s)', timestamp: daysAgo(8), resolved: true },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 60.1°F (threshold 59°F)', timestamp: daysAgo(6), resolved: true },
+  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
+  { type: AlertType.vibration, severity: Severity.warning, message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
+  { type: AlertType.access, severity: Severity.info, message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(4), resolved: true },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
+  { type: AlertType.access, severity: Severity.info, message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(2), resolved: true },
+  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
+  { type: AlertType.access, severity: Severity.info, message: 'Reserve room entry: staff badge — Samuel Jalloh', timestamp: daysAgo(1), resolved: true },
+  { type: AlertType.access, severity: Severity.warning, message: 'After-hours access: member badge scan — Robert Saenz (11:42 PM)', timestamp: daysAgo(0), resolved: true },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
 ];
 
 // ── Slot layout ────────────────────────────────────────────────────────
@@ -163,8 +163,8 @@ async function main() {
     data: {
       name: 'Robert Saenz',
       email: 'robert@caveau.com',
-      tier: 'black',
-      role: 'member',
+      tier: Tier.black,
+      role: Role.member,
       passwordHash,
     },
   });
