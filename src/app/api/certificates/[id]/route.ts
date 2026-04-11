@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   const certificate = await prisma.provenanceCertificate.findUnique({
@@ -18,6 +24,7 @@ export async function GET(
           region: true,
           producer: true,
           varietal: true,
+          memberId: true,
         },
       },
       locker: {
@@ -35,6 +42,10 @@ export async function GET(
       { error: "Certificate not found" },
       { status: 404 }
     );
+  }
+
+  if (certificate.wine.memberId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const serialized = {

@@ -438,6 +438,75 @@ Turn it into a business.
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
 | 33 | Wine marketplace | Member-to-member trading within the platform. Listing, offers, provenance transfer on sale. Commission model. |
 
+### Code Audit — Technical Debt Backlog (April 2026)
+
+Full codebase audit identified the items below. Security hotfixes (certificate IDOR, email normalization, signup hardening, demo credential gating) were fixed immediately. Remaining items are slotted into the phase where they become load-bearing.
+
+#### Phase 1 — Foundation (address alongside features 15–20)
+
+**Security hardening:**
+- Rate limiting on `/api/auth/signup` and login (Upstash or middleware-based)
+- Tighten CSP: remove `unsafe-eval`, replace `unsafe-inline` with nonces
+- Add explicit `maxAge` to JWT session config (e.g., 24h)
+- Add CSRF token to signup form (currently only login fetches it)
+
+**Schema integrity:**
+- Define Prisma enums for `Member.role`, `Member.tier`, `Alert.type`, `Alert.severity` (currently bare strings — typos silently accepted)
+- Add `@@unique([wineId, date, source])` on `WineValuation` to prevent duplicate valuations skewing dashboard charts
+- Make `Wine.memberId` and `Locker.memberId` non-nullable (currently `SetNull` on delete creates orphaned records)
+- Initialize Prisma migrations (`prisma migrate dev --name init`) to enable rollback and schema history
+- Add missing composite indexes: `(Alert.lockerId, resolved, timestamp)`, `(ProvenanceCertificate.wineId, lockerId)`
+- Remove low-cardinality indexes on `Member.tier` and `Member.role` (PostgreSQL ignores them anyway)
+
+**Testing:**
+- Add test framework (Vitest or Jest)
+- Unit tests for `lib/sensors.ts` (simulation logic), `lib/utils.ts` (formatters)
+- Integration tests for API routes (auth, wines, sensors, certificates)
+- E2E tests for critical flows (login, add wine, view locker)
+
+**Accessibility (WCAG AA):**
+- Add `aria-label` to all icon-only buttons (grid/list toggle, close, sign out)
+- Fix color contrast: `#6B6B76` muted text on `#0A0A0B` fails 4.5:1 ratio — lighten to ~`#8B8B96`
+- Add visible `:focus-visible` ring on all interactive elements (wine cards, locker slots, links)
+- Increase touch targets to minimum 44x44px (close buttons, time range buttons, view toggles, mobile nav icons)
+- Add `prefers-reduced-motion` media queries around all animations (Framer Motion, CSS shimmer, ping indicator, slide-in panel)
+- Add `role="tablist"` / `role="tab"` to locker selector and sentinel time range buttons
+- Add `aria-live="polite"` region for live sensor updates
+
+#### Phase 2 — IoT & Data (address alongside features 21–26)
+
+**Query performance:**
+- Fix N+1 in `/api/sensors/latest/route.ts`: replace per-locker loop with single `findMany` using `distinct: ['lockerId']`
+- Combine two-step locker ID + alert fetch in `/api/alerts/route.ts` into single nested Prisma query
+- Add `select` clauses to over-fetching queries (wine detail includes full locker/certificate objects but only uses 2-3 fields)
+- Replace `<img>` with `next/image` in `wine-card.tsx` + configure `images.remotePatterns` in `next.config.mjs`
+
+**Caching:**
+- Replace blanket `force-dynamic` with ISR (`revalidate: 60`) on collection, dashboard, locker pages
+- Add `revalidatePath()` calls on mutations (already done for `/collection`, extend to others)
+- Consider connection pooling for serverless (Prisma Accelerate or PgBouncer) as sensor data grows
+
+**Code quality:**
+- Extract magic numbers to `lib/constants.ts` (locker slot count `32`, readings per hour `720`, time range defaults)
+- Move inline `addWine` server action from `collection/page.tsx` to `collection/actions.ts` (match sentinel pattern)
+- Create consistent Decimal serializer utility — currently uses `Number()`, `.toString()`, `.toNumber()` inconsistently across routes
+- Import sensor simulation from `lib/sensors.ts` in `seed-sensors.ts` instead of duplicating it
+- Use `createMany()` in seed scripts instead of individual creates (~500 queries → ~5)
+
+**UX:**
+- Add error UI on dashboard data fetch failure (currently renders `$0` silently)
+- Add toast/notification on successful wine add (modal closes with no feedback)
+- Add `aria-live` region announcing live sensor data updates for screen readers
+
+#### Phase 3 — Monetization & Scale (address alongside features 27–33)
+
+**Infrastructure:**
+- Add error tracking (Sentry) — `console.error()` in server components doesn't surface in production
+- Add Prisma connection pooling config for serverless (`directUrl` for migrations, pooled `url` for runtime)
+- Replace Framer Motion with CSS transitions in `metric-card.tsx` (saves ~40KB for a single hover animation)
+- Add `output: "standalone"` to `next.config.mjs` if moving to Docker/ECS
+- Replace `dangerouslySetInnerHTML` for print CSS with plain `<style>` JSX in certificate pages
+
 ### Infrastructure Scaling Notes
 
 | Concern | Demo State | Production Path |

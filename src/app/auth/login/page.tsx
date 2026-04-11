@@ -122,10 +122,12 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Demo hint */}
-        <p className="text-center text-xs text-muted mt-6">
-          Demo: robert@caveau.com / demo1234
-        </p>
+        {/* Demo hint — only shown in development */}
+        {process.env.NODE_ENV === "development" && (
+          <p className="text-center text-xs text-muted mt-6">
+            Demo: robert@caveau.com / demo1234
+          </p>
+        )}
       </div>
     </div>
   );

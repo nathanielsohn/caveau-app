@@ -24,9 +24,11 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your database connection string:
+Edit `.env` with your database connection and auth secrets:
 ```
 DATABASE_URL=postgresql://username:password@host:5432/caveau
+NEXTAUTH_SECRET=your-secret-here   # openssl rand -base64 32
+NEXTAUTH_URL=http://localhost:3000
 ```
 
 ### 3. Set up database
@@ -73,6 +75,8 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full directory tree and data fl
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Yes | JWT signing secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Yes | App base URL (`http://localhost:3000` for dev) |
 
 ## Common Issues
 

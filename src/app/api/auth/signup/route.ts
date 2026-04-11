@@ -10,21 +10,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    const emailNormalized = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailNormalized)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    const existing = await prisma.member.findUnique({ where: { email } });
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+
+    const existing = await prisma.member.findUnique({ where: { email: emailNormalized } });
     if (existing) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+      return NextResponse.json({ error: "Unable to create account" }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     await prisma.member.create({
       data: {
-        name,
-        email,
+        name: name.trim(),
+        email: emailNormalized,
         passwordHash,
         tier: "gold",
         role: "member",

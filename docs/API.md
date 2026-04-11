@@ -4,28 +4,29 @@
 
 ## Status
 
-API routes are a **stretch goal** (Feature 15). They will be built after all 14 core features are complete.
+API routes are implemented. All endpoints require authentication via NextAuth JWT session (except `/api/auth/*`). Data is scoped to the authenticated member.
 
-This document will be auto-populated when the API routes are implemented.
+## Endpoints
 
-## Planned Endpoints
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/wines` | Yes | List wines (supports `?search=`, `?region=`, `?varietal=`) |
+| GET | `/api/wines/[id]` | Yes | Single wine with locker slot and valuations |
+| POST | `/api/wines` | Yes | Create a wine (via server action) |
+| GET | `/api/lockers` | Yes | List lockers with occupancy counts |
+| GET | `/api/lockers/[id]/slots` | Yes | Slots for a locker with wine info |
+| GET | `/api/sensors/latest` | Yes | Latest sensor reading per locker |
+| GET | `/api/sensors/history` | Yes | Historical readings (`?lockerId=`, `?range=`) |
+| GET | `/api/alerts` | Yes | Recent alerts (`?resolved=true/false`) |
+| GET | `/api/certificates/[id]` | Yes | Certificate with wine and locker data (ownership verified) |
+| POST | `/api/auth/signup` | No | Create account (email format validated, 8-char min password) |
+| `*` | `/api/auth/[...nextauth]` | No | NextAuth handlers (login, CSRF, session) |
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/wines` | List wines (supports `?search=`, `?region=`, `?varietal=`) |
-| GET | `/api/wines/[id]` | Single wine with locker slot and valuations |
-| POST | `/api/wines` | Create a wine |
-| GET | `/api/lockers` | List lockers with occupancy counts |
-| GET | `/api/lockers/[id]/slots` | Slots for a locker with wine info |
-| GET | `/api/sensors/latest` | Latest sensor reading per locker |
-| GET | `/api/sensors/history` | Historical readings (`?lockerId=`, `?range=`) |
-| GET | `/api/alerts` | Recent alerts (`?resolved=true/false`) |
-| GET | `/api/certificates/[id]` | Certificate with wine and locker data |
+## Data Access
 
-## Data Access (Current)
-
-Until API routes are built, data flows through:
+Data flows through multiple channels:
+- **API routes** — REST endpoints wrapping Prisma queries with auth guards
 - **Server Components** — call Prisma directly (Dashboard, Collection, Locker, Wine Detail, Certificate)
-- **Server Actions** — called from Client Components (Sentinel page fetches historical data)
+- **Server Actions** — called from Client Components (Sentinel page fetches historical data, Collection page adds wines)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for data flow diagrams.

@@ -131,13 +131,14 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Auth System
 
 - **NextAuth.js v4** with Credentials provider (email/password), JWT session strategy
-- **Middleware** (`src/middleware.ts`) protects all routes except `/auth/*`, `/verify/*`, `/certificate/*`, `/api/auth/*`
+- **Middleware** (`src/middleware.ts`) protects all routes except `/auth/*`, `/verify/*`, `/api/auth/*`. Note: `/certificate/*` pages are public (middleware allows them) but the `/api/certificates/[id]` API route has its own auth guard + ownership check
 - **Session data** includes `id`, `name`, `email`, `role`, `tier` (see `src/types/next-auth.d.ts`)
 - **Server-side auth**: use `getServerAuth()` from `src/lib/auth.ts` in server components/actions
 - **Client-side auth**: use `useSession()` from `next-auth/react` (app is wrapped in `SessionProvider`)
 - **All data queries are scoped to the authenticated member** — wines, lockers, alerts, sensor readings
-- **Demo credentials**: `robert@caveau.com` / `demo1234`
-- **Signup** creates a new member with role `"member"` and tier `"gold"`
+- **Demo credentials**: `robert@caveau.com` / `demo1234` (only shown on login page in development)
+- **Email normalization**: emails are lowercased and trimmed on both login and signup
+- **Signup** creates a new member with role `"member"` and tier `"gold"`, minimum 8-char password, email format validated, generic error on duplicate (no user enumeration)
 - **Role values**: `admin`, `staff`, `member` — RBAC guards are ready but admin panel (roadmap #28) is not yet built
 
 ## Not Yet Implemented (on roadmap)
