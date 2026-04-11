@@ -7,6 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Enums ───────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  staff
+  member
+}
+
+enum Tier {
+  gold
+  platinum
+  black
+}
+
+enum AlertType {
+  temperature
+  humidity
+  vibration
+  light
+  door
+  access
+}
+
+enum Severity {
+  info
+  warning
+  critical
+}
+
 model Facility {
   id        String   @id @default(uuid())
   name      String
@@ -21,8 +50,8 @@ model Member {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  tier         String
-  role         String   @default("member")
+  tier         Tier
+  role         Role     @default(member)
   passwordHash String?  @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
   wines        Wine[]
@@ -67,6 +96,7 @@ model WineValuation {
   date   DateTime
   wine   Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
 
+  @@unique([wineId, date, source])
   @@index([wineId, date(sort: Desc)])
   @@map("wine_valuations")
 }
@@ -119,16 +149,15 @@ model SensorReading {
 
 model Alert {
   id        String   @id @default(uuid())
-  lockerId  String   @map("locker_id")
-  type      String
-  severity  String
+  lockerId  String    @map("locker_id")
+  type      AlertType
+  severity  Severity
   message   String
   timestamp DateTime @default(now())
   resolved  Boolean  @default(false)
   locker    Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
-  @@index([lockerId, timestamp(sort: Desc)])
-  @@index([resolved, lockerId])
+  @@index([resolved, lockerId, timestamp(sort: Desc)])
   @@map("alerts")
 }
 
@@ -148,5 +177,6 @@ model ProvenanceCertificate {
   wine              Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
   locker            Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
+  @@index([wineId, lockerId])
   @@map("provenance_certificates")
 }

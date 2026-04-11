@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
         name: name.trim(),
         email: emailNormalized,
         passwordHash,
-        tier: "gold",
-        role: "member",
+        tier: Tier.gold,
+        role: Role.member,
       },
     });
 
