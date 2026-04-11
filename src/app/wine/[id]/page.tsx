@@ -22,6 +22,8 @@ import {
   Building2,
 } from "lucide-react";
 import ValuationChart from "@/components/valuation-chart";
+import DispositionButton from "./disposition-button";
+import { recordDisposition } from "./actions";
 
 interface WineDetailPageProps {
   params: Promise<{ id: string }>;
@@ -187,6 +189,16 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                 </span>
               </p>
             )}
+
+            {/* Disposition button / status badge */}
+            <div className="pt-2">
+              <DispositionButton
+                wineId={wine.id}
+                wineName={wine.name}
+                status={wine.status}
+                recordDispositionAction={recordDisposition}
+              />
+            </div>
           </div>
         </div>
       </div>

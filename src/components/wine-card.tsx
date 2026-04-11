@@ -14,6 +14,7 @@ export interface WineCardData {
   imageUrl?: string | null;
   drinkWindowStart?: number | null;
   drinkWindowEnd?: number | null;
+  status?: string;
 }
 
 function getDrinkStatus(start?: number | null, end?: number | null): { label: string; className: string } | null {
@@ -76,13 +77,23 @@ function WinePlaceholder({ wine }: { wine: WineCardData }) {
   );
 }
 
+const DISPOSITION_BADGE: Record<string, { label: string; className: string }> = {
+  sold: { label: "Sold", className: "bg-gold/10 text-gold border-gold/20" },
+  transferred: { label: "Transferred", className: "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20" },
+  consumed: { label: "Consumed", className: "bg-burgundy/10 text-burgundy border-burgundy/20" },
+  gifted: { label: "Gifted", className: "bg-ok/10 text-ok border-ok/20" },
+  removed: { label: "Removed", className: "bg-danger/10 text-danger border-danger/20" },
+};
+
 export default function WineCard({ wine }: { wine: WineCardData }) {
   const change = percentChange(wine.purchasePrice, wine.currentValue) ?? 0;
   const drinkStatus = getDrinkStatus(wine.drinkWindowStart, wine.drinkWindowEnd);
+  const isDisposed = wine.status && wine.status !== "in_cellar";
+  const dispositionBadge = isDisposed ? DISPOSITION_BADGE[wine.status!] : null;
 
   return (
     <Link href={`/wine/${wine.id}`} className="block group">
-      <div className="glass-card p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5">
+      <div className={`glass-card p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5 ${isDisposed ? "opacity-70" : ""}`}>
         {/* Wine label */}
         <WinePlaceholder wine={wine} />
 
@@ -96,11 +107,15 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
               <MapPin size={8} />
               {wine.region}
             </span>
-            {drinkStatus && (
+            {dispositionBadge ? (
+              <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${dispositionBadge.className}`}>
+                {dispositionBadge.label}
+              </span>
+            ) : drinkStatus ? (
               <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${drinkStatus.className}`}>
                 {drinkStatus.label}
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 

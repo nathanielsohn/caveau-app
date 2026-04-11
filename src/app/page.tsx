@@ -28,7 +28,7 @@ export default async function DashboardPage() {
       totalSlots,
     ] = await Promise.all([
       prisma.wine.findMany({
-        where: { memberId },
+        where: { memberId, status: "in_cellar" },
         orderBy: { currentValue: "desc" },
         select: {
           id: true,

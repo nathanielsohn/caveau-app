@@ -36,6 +36,23 @@ enum Severity {
   critical
 }
 
+enum WineStatus {
+  in_cellar
+  sold
+  transferred
+  consumed
+  gifted
+  removed
+}
+
+enum DispositionType {
+  sold
+  transferred
+  consumed
+  gifted
+  removed
+}
+
 model Facility {
   id        String   @id @default(uuid())
   name      String
@@ -56,6 +73,7 @@ model Member {
   createdAt    DateTime @default(now()) @map("created_at")
   wines        Wine[]
   lockers      Locker[]
+  dispositions WineDisposition[]
 
   @@index([tier])
   @@index([role])
@@ -75,15 +93,18 @@ model Wine {
   tastingNotes     String?               @map("tasting_notes")
   drinkWindowStart Int?                  @map("drink_window_start")
   drinkWindowEnd   Int?                  @map("drink_window_end")
+  status           WineStatus            @default(in_cellar)
   memberId         String?               @map("member_id")
   createdAt        DateTime              @default(now()) @map("created_at")
   member           Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
   lockerSlots      LockerSlot[]
   certificates     ProvenanceCertificate[]
   valuations       WineValuation[]
+  dispositions     WineDisposition[]
 
   @@index([memberId])
   @@index([memberId, region, varietal])
+  @@index([memberId, status])
   @@map("wines")
 }
 
@@ -178,4 +199,22 @@ model ProvenanceCertificate {
 
   @@index([wineId, lockerId])
   @@map("provenance_certificates")
+}
+
+model WineDisposition {
+  id        String          @id @default(uuid())
+  wineId    String          @map("wine_id")
+  memberId  String          @map("member_id")
+  type      DispositionType
+  date      DateTime
+  salePrice Decimal?        @map("sale_price") @db.Decimal(10, 2)
+  recipient String?
+  notes     String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  wine      Wine            @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  member    Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([wineId])
+  @@index([memberId])
+  @@map("wine_dispositions")
 }
