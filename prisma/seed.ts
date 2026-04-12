@@ -283,7 +283,7 @@ async function main() {
         tempMax: 58.2 + i * 0.1,
         humidityMean: 64.5 + i * 0.2,
         dataIntegrityHash: hash,
-        certificateNumber: `CAV-2026-${String(i + 1).padStart(4, '0')}`,
+        certificateNumber: `CAV-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
       },
     });
     certCount++;
