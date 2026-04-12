@@ -407,7 +407,7 @@ gantt
     section Phase 1 — Foundation
     Auth + Roles              :done, p1a, 2026-04-14, 7d
     Multi-facility support    :p1b, after p1a, 5d
-    API routes                :p1c, after p1a, 5d
+    API routes                :done, p1c, after p1a, 5d
     Wine image upload         :p1d, after p1c, 4d
     Alert notifications       :p1e, after p1d, 4d
     Member onboarding flow    :p1f, after p1e, 3d
@@ -415,20 +415,22 @@ gantt
     section Phase 2 — IoT & Data
     IoT ingestion endpoint    :p2a, 2026-05-05, 5d
     Sensor data pipeline      :p2b, after p2a, 5d
-    Wine valuation engine     :p2c, after p2a, 7d
+    Wine valuation engine     :done, p2c, after p2a, 7d
     Label scanning            :p2d, after p2c, 5d
     Locker check-in/out       :p2e, after p2b, 4d
-    Add wine from locker slot :p2g, after p2e, 3d
-    Dashboard analytics       :p2f, after p2g, 4d
+    Add wine from locker slot :done, p2g, after p2e, 3d
+    Dashboard analytics       :done, p2f, after p2g, 4d
 
     section Phase 3 — Monetization & Scale
     Membership + payments     :p3a, 2026-05-26, 7d
     Admin panel               :p3b, after p3a, 7d
     Mobile app                :p3c, after p3a, 14d
-    Certificate PDF + verify  :p3d, after p3b, 5d
+    Certificate PDF + verify  :done, p3d, after p3b, 5d
     Insurance integration     :p3e, after p3d, 5d
     Multi-location mgmt       :p3f, after p3e, 5d
     Wine marketplace          :p3g, after p3f, 7d
+    Wine disposition          :done, p3h, after p3g, 3d
+    Locker self-service       :done, p3i, after p3h, 3d
 ```
 
 ### Phase 1 — Foundation (weeks 1–3 post-demo)
@@ -437,9 +439,9 @@ Make it real enough for a pilot with actual members.
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 15 | Auth + Roles | NextAuth.js or Clerk. Login/signup. Role-based access: admin, staff, member. Replace hardcoded demo user. |
+| 15 | ~~Auth + Roles~~ | ~~NextAuth.js v4 with Credentials provider, JWT sessions, role-based access, member-scoped data. Done.~~ |
 | 16 | Multi-facility support | Facility switcher in nav. Lockers scoped to facility. Members can belong to multiple facilities. |
-| 17 | API routes | `/api/wines`, `/api/sensors`, `/api/alerts`, `/api/lockers`. REST endpoints wrapping Prisma queries. Needed for mobile app, POS, and IoT device integration. |
+| 17 | ~~API routes~~ | ~~`/api/wines`, `/api/sensors`, `/api/alerts`, `/api/lockers`, `/api/certificates`. REST endpoints wrapping Prisma queries. Done.~~ |
 | 18 | Wine image upload | S3 bucket + CloudFront CDN. Presigned upload URLs from API route. Resize/optimize on upload via Sharp or Lambda. |
 | 19 | Alert notifications | Real-time email alerts via AWS SES when sensor thresholds are breached. Configurable per-member notification preferences. |
 | 20 | Member onboarding flow | Sign up → select tier → assign locker → first bottle check-in. Guided walkthrough for new members. |
@@ -452,10 +454,10 @@ Connect to real hardware. Make the data real.
 |---|---------|-------------|
 | 21 | IoT ingestion endpoint | HTTP webhook or MQTT bridge for real Sentinel sensor devices. Validates payload, writes to SensorReading, triggers alert evaluation. |
 | 22 | Sensor data pipeline | Partition `sensor_readings` by month. Background job aggregates raw readings into hourly/daily rollup tables. Retention policy: raw data 90 days, rollups indefinitely. |
-| 23 | Wine valuation engine | Populate WineValuation table from Liv-ex API (or manual bulk CSV import). Show price history chart on wine detail. Appreciation tracking on dashboard. |
+| 23 | ~~Wine valuation engine~~ | ~~WineValuation model, price history chart on wine detail, appreciation metrics on dashboard. Done.~~ |
 | 24 | Label scanning | Phone camera → OCR via Google Cloud Vision or wine-specific API (Vivino, Wine-Searcher). Auto-fill wine form fields from label photo. |
 | 25 | Locker check-in / check-out | Staff workflow: scan bottle barcode → assign to slot or remove from slot. Full audit trail in a new `LockerActivity` model. |
-| 26 | Dashboard analytics | Collection performance over time (line chart), storage utilization trends, alert frequency heatmap, top appreciating bottles. Real KPIs, not just current snapshots. |
+| 26 | ~~Dashboard analytics~~ | ~~Collection value trend, storage utilization donut, alert frequency bar chart. Done.~~ |
 
 ### Phase 3 — Monetization & Scale (weeks 7–12)
 
@@ -466,13 +468,13 @@ Turn it into a business.
 | 27 | Membership + payments | Stripe integration. Tier-based monthly subscriptions. Storage fees per locker slot. Billing portal. |
 | 28 | Admin panel | Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. |
 | 29 | Mobile app | React Native (Expo). Push notifications for alerts. Collection browsing, locker check-in via camera, certificate sharing. |
-| 30 | Certificate PDF export + public verification | Generate print-ready PDF certificates. Public `/verify/[hash]` URL for third-party verification. QR code on physical bottle tags links to verification page. |
+| 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
 | 31 | Insurance integration | Export standardized condition reports (PDF) for wine insurance carriers. Continuous monitoring proof for premium reduction claims. |
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
 | 33 | Wine marketplace | Member-to-member trading within the platform. Listing, offers, provenance transfer on sale. Commission model. |
-| 34 | Wine disposition tracking | Record when a bottle leaves the collection: sold, transferred, consumed, gifted, or removed. New `status` field on Wine (`in_cellar` default, plus disposition states) and a `WineDisposition` table (event type, date, sale price, recipient, notes). Collection page filters to active wines by default with a "History" toggle to browse past bottles. Dashboard metrics scoped to active wines. Full provenance, valuation history, and storage records preserved. Prerequisite for marketplace (#33) and insurance (#31). |
-| 35 | Locker self-service (member) | Members can assign wines to empty locker slots from the locker page. Tap an empty slot → modal shows unassigned wines in the member's collection → select one → slot is filled. Also allows removing a wine from a slot (returns it to unassigned). Distinct from staff check-in (#25) which uses barcode scanning and audit trails. |
-| 36 | Add wine from locker slot | Extend the empty-slot picker modal (#35) with an "Add New Wine" option. Opens the add-wine form inline (reuses `add-wine-form` component). On submit, creates the wine in the member's collection AND auto-assigns it to the selected slot in one action. Eliminates the round-trip of going to Collection → add wine → back to Locker → assign. Server action creates the wine + updates the slot in a single transaction. |
+| 34 | ~~Wine disposition tracking~~ | ~~WineStatus enum, WineDisposition model, history toggle on collection page, dashboard metrics scoped to active wines. Done.~~ |
+| 35 | ~~Locker self-service (member)~~ | ~~Assign/remove wines from locker slots via modal picker. Done.~~ |
+| 36 | ~~Add wine from locker slot~~ | ~~Inline add-wine form in slot picker modal, single-transaction create + assign. Done.~~ |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 

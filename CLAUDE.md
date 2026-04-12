@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core features + stretch goals 15–17 are complete. Post-demo roadmap is in progress. Auth + Roles (roadmap feature 15) is implemented via NextAuth.js v4 with Credentials provider and JWT sessions. All routes are protected by middleware; data queries are scoped to the authenticated member. Real APIs, IoT device connections, and other roadmap features are in progress (see "Post-Demo Roadmap" in SPEC.md).
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 8 of 22 roadmap features are done (15, 17, 23, 26, 30, 34, 35, 36). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, and locker self-service are all live. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -38,6 +38,7 @@ NEXTAUTH_URL=http://localhost:3000
 ```
 prisma/
 ├── schema.prisma               # Data models (generates TypeScript types)
+├── migrations/                 # SQL migration baseline
 ├── seed.ts                     # Seed data script
 └── seed-sensors.ts             # Sensor reading seed script
 src/
@@ -62,6 +63,7 @@ src/
 │   ├── locker/
 │   │   ├── page.tsx            # Locker visualization (server)
 │   │   ├── locker-selector.tsx # Locker tab selector (client)
+│   │   ├── actions.ts          # Server actions (assign/remove wine from slot)
 │   │   └── loading.tsx
 │   ├── sentinel/
 │   │   ├── page.tsx            # IoT monitoring (client — live sim)
@@ -69,6 +71,7 @@ src/
 │   │   └── loading.tsx
 │   ├── wine/[id]/
 │   │   ├── page.tsx            # Wine detail
+│   │   ├── actions.ts          # Server actions (disposition, valuation)
 │   │   └── loading.tsx
 │   ├── certificate/[id]/
 │   │   ├── page.tsx            # Provenance certificate (with QR code)
@@ -77,7 +80,7 @@ src/
 │       ├── page.tsx            # Public certificate verification
 │       ├── layout.tsx          # Minimal layout (no sidebar nav)
 │       └── loading.tsx
-├── middleware.ts                # Route protection (redirects unauthenticated to /auth/login)
+├── middleware.ts                # Route protection, rate limiting, CSP headers
 ├── types/
 │   └── next-auth.d.ts          # NextAuth type augmentation (role, tier on session)
 ├── components/
@@ -91,6 +94,8 @@ src/
 │   ├── alert-list.tsx          # Alert history table
 │   ├── certificate-doc.tsx     # Certificate layout + QR code
 │   ├── add-wine-form.tsx       # Add wine modal/form
+│   ├── disposition-form.tsx    # Wine disposition modal (<dialog>)
+│   ├── valuation-chart.tsx     # Wine valuation price history chart
 │   └── skeleton.tsx            # Loading skeleton primitives
 └── lib/
     ├── auth.ts                 # NextAuth config + getServerAuth() helper
@@ -104,6 +109,7 @@ src/
 - **Facility** — Multi-location ready. Demo seeds one facility ("Caveau Naples"). Lockers have optional `facilityId`.
 - **Member.role** — `'admin' | 'staff' | 'member'`. Demo uses `'member'`. Enables RBAC in Phase 1.
 - **WineValuation** — Price history table. Seeds 4-6 entries per wine with sources: manual, liv-ex, wine-searcher, auction. Powers dashboard analytics trend chart.
+- **WineDisposition** — Audit trail for wines leaving the collection (sold, transferred, consumed, gifted, removed). Uses `onDelete: Restrict` on the wine FK to prevent accidental deletion of wines with disposition history. Unique constraint on `(wineId, type, date)` prevents duplicate entries.
 - **SensorReading.id** — Uses `autoincrement()` (not UUID) for write performance at scale.
 - **Prisma Decimals** — `purchasePrice`, `currentValue`, and all sensor fields return `Prisma.Decimal` objects, not numbers. Always use `Number()` or `.toNumber()` before arithmetic. Format with `utils.ts` helpers for display. Formatting helpers in `utils.ts` should accept `Prisma.Decimal | number | string` defensively to prevent silent `[object Object]` rendering.
 
@@ -138,60 +144,59 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - **All data queries are scoped to the authenticated member** — wines, lockers, alerts, sensor readings
 - **Demo credentials**: `robert@caveau.com` / `demo1234` (only shown on login page in development)
 - **Email normalization**: emails are lowercased and trimmed on both login and signup
-- **Signup** creates a new member with role `"member"` and tier `"gold"`, minimum 8-char password, email format validated, generic error on duplicate (no user enumeration)
+- **Signup** creates a new member with role `"member"` and tier `"gold"`, minimum 10-char password with uppercase + lowercase + digit required, email format validated. Returns 201 for both new and existing accounts to prevent user enumeration. CSRF double-submit cookie validated via SHA-256 hash.
+- **Password hashing**: bcrypt with 12 rounds
+- **Session timeout**: 4 hours (14400 seconds), JWT strategy, no refresh token
+- **Rate limiting**: in-memory per-IP limiter on auth endpoints (5 requests / 60s window). Note: resets on deploy, does not persist across serverless instances.
 - **Role values**: `admin`, `staff`, `member` — RBAC guards are ready but admin panel (roadmap #28) is not yet built
 
 ## Not Yet Implemented (on roadmap)
 
-- Real API integrations (Liv-ex, Wine-Searcher, etc.)
-- Real IoT device connections
-- Label scanning
-- Payments or membership signup
-- POS system
-- Admin panel (staff-facing dashboard)
+- Multi-facility support (#16)
+- Wine image upload (#18)
+- Alert notifications via email (#19)
+- Member onboarding flow (#20)
+- Real IoT device connections (#21, #22)
+- Label scanning (#24)
+- Locker check-in/out staff workflow (#25)
+- Payments / membership (#27)
+- Admin panel (#28)
+- Mobile app (#29)
+- Insurance integration (#31)
+- Multi-location management (#32)
+- Wine marketplace (#33)
 
-See SPEC.md "Post-Demo Roadmap" for the phased plan to add these.
+See SPEC.md "Post-Demo Roadmap" for full details. Done features are marked ~~strikethrough~~ in the tables.
 
 ## Key Principles
 
-- **Keep it simple.** ~32 source files total. Colocate related sub-components in the same file.
+- **Keep it simple.** ~60 source files total. Colocate related sub-components in the same file.
 - **No premature abstractions.** If something is used once, inline it.
 - **One developer maintains this.** Optimize for readability, not cleverness.
 - **Tried-and-true tech only.** No experimental libraries or bleeding-edge patterns.
 
 ## Development Workflow
 
-The user will open Claude Code and ask things like "what's next", "where are we", or "let's keep going". Here's how to handle that:
+The user will open Claude Code and ask "what's next", "where are we", or "let's keep going". Here's how to handle that:
 
 ### 1. Check Status
 
-Read `BUILD_STATUS.json` to find the current state. Report which features are done, which is next, and overall progress (e.g. "5/14 done, next up is feature 06 — Wine Card Component").
+Check SPEC.md "Post-Demo Roadmap" tables to see which features are done (marked ~~strikethrough~~) and which are next. Use phase order as the default priority, but the user may jump around.
 
 ### 2. Build a Feature
 
-When the user says to go, follow this process for the next pending feature:
+When the user says to go, follow this process:
 
-1. **Read context** — Read `BUILD.md` for the feature spec (find the section matching the feature number in BUILD.md — specs are inline, not in separate files)
-2. **Build** — Create/edit all files specified. Follow design conventions above exactly.
+1. **Read context** — Read the feature's description in SPEC.md. Check related code to understand what already exists.
+2. **Build** — Create/edit files. Follow design conventions above exactly.
 3. **Verify** — Run `npm run build`. Must exit 0. Fix any errors.
-4. **Commit** — `git add` the feature files, commit as `feat(<number>): <title>`
+4. **Commit** — `git add` the feature files, commit as `feat(<number>): <short description>`
+5. **Mark done** — Update the feature's row in SPEC.md to strikethrough (~~Feature Name~~)
+6. **Push** — `git push origin main`
 
-**If running interactively** (user is talking to you directly):
+### 3. Tracking
 
-5. **Update tracking** — Run `./scripts/update-status.sh <number> completed` (or `failed` if it broke)
-6. **Update docs** — Run `./scripts/update-progress.sh`
-7. **Commit tracking** — `git add BUILD_STATUS.json PROGRESS.md BUILD_LOG.md`, commit as `docs: update build progress`
-8. **Push** — `git push origin main`
-
-**If running inside the build pipeline** (`build.sh`):
-
-Stop after step 4. The pipeline handles status updates, progress docs, and pushing automatically. Do NOT run `update-status.sh`, `update-progress.sh`, or `git push`.
-
-### 3. Tracking Files
-
-- `BUILD_STATUS.json` — Source of truth. Read this to know what's done/pending/failed.
-- `PROGRESS.md` — Human-readable dashboard, auto-generated. Never edit manually.
-- `BUILD.md` — Feature specs. Each feature's spec is an inline section in BUILD.md (e.g. "### 01 — Project Scaffold").
-- `BUILD_LOG.md` — Build log with pass/fail results per feature. Created by feature 01, updated by pipeline.
-- GitHub issues #1–#14 map to features 01–14. They auto-close on completion via `update-status.sh`.
-- Features 15–17 are **stretch goals**, marked with `"stretch": true` in BUILD_STATUS.json. No GitHub issues. Features 16 (Dashboard Analytics) and 17 (Certificate PDF + Public Verify) are complete. Feature 15 (API Routes) is still pending. Note: these numbers are independent from the post-demo roadmap numbering in SPEC.md.
+- **SPEC.md** is the source of truth for what's done and what's next (Post-Demo Roadmap section)
+- Done features are marked ~~strikethrough~~ in the roadmap tables
+- `BUILD_STATUS.json`, `PROGRESS.md`, `BUILD_LOG.md` are legacy files from the initial 01–17 build pipeline — no longer updated
+- `scripts/update-status.sh` and `scripts/update-progress.sh` are retired
