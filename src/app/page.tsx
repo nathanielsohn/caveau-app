@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -212,7 +213,10 @@ export default async function DashboardPage() {
       />
     );
   } catch (error) {
-    console.error("Dashboard data fetch failed:", error);
+    logger.error("Dashboard data fetch failed", error, {
+      route: "/",
+      userId: memberId,
+    });
     return (
       <div className="p-6 md:p-10">
         <div className="glass-card p-10 text-center">

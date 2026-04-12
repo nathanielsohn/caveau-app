@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "./prisma";
+import { env } from "./env";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -57,7 +58,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  // Sourced from `env`, which throws at module load if the secret is missing.
+  // Never read process.env.NEXTAUTH_SECRET directly.
+  secret: env.NEXTAUTH_SECRET,
 };
 
 export function getServerAuth() {

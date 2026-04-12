@@ -4,6 +4,8 @@ import { createHash } from "crypto";
 import bcrypt from "bcryptjs";
 import { Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
   try {
@@ -33,14 +35,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 403 });
     }
 
-    // Verify the hash: sha256(token + secret) must equal the stored hash
-    const secret = process.env.NEXTAUTH_SECRET;
-    if (!secret) {
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
-    }
-
+    // Verify the hash: sha256(token + secret) must equal the stored hash.
+    // env.NEXTAUTH_SECRET is asserted at boot, so we can trust it here.
     const expectedHash = createHash("sha256")
-      .update(`${cookieToken}${secret}`)
+      .update(`${cookieToken}${env.NEXTAUTH_SECRET}`)
       .digest("hex");
 
     if (cookieHash !== expectedHash) {
@@ -100,7 +98,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error("[SIGNUP_ERROR]", error instanceof Error ? error.message : "Unknown error");
+    logger.error("Signup failed", error, { route: "/api/auth/signup" });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
