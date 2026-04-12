@@ -407,7 +407,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                     </div>
                   </div>
 
-                  <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-4">
+                  <div className="overflow-y-auto flex-1 min-h-0 p-5 flex flex-col gap-4">
                     {actionError && (
                       <div className="p-3 rounded-xl bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] text-sm">
                         {actionError}
