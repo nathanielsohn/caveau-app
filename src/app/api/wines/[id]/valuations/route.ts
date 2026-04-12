@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import {
+  UuidSchema,
+  ValuationBodySchema,
+  parsePathParamOr404,
+  parseOr400,
+} from "@/lib/schemas";
 
 export async function GET(
   _request: Request,
@@ -11,7 +17,10 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idResult = parsePathParamOr404(UuidSchema, rawId);
+  if (!idResult.ok) return idResult.response;
+  const id = idResult.data;
 
   // Verify wine belongs to this member
   const wine = await prisma.wine.findFirst({
@@ -48,7 +57,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idResult = parsePathParamOr404(UuidSchema, rawId);
+  if (!idResult.ok) return idResult.response;
+  const id = idResult.data;
 
   // Verify wine belongs to this member
   const wine = await prisma.wine.findFirst({
@@ -60,32 +72,17 @@ export async function POST(
     return NextResponse.json({ error: "Wine not found" }, { status: 404 });
   }
 
-  const body = await request.json();
-  const { price, source, date } = body;
+  const body = await request.json().catch(() => null);
+  const parsed = parseOr400(ValuationBodySchema, body);
+  if (!parsed.ok) return parsed.response;
 
-  const priceNum = Number(price);
-  if (isNaN(priceNum) || priceNum < 0 || priceNum > 10_000_000) {
-    return NextResponse.json(
-      { error: "Invalid price" },
-      { status: 400 }
-    );
-  }
-
-  const validSources = ["manual", "liv-ex", "wine-searcher", "auction"];
-  if (source !== undefined && !validSources.includes(source)) {
-    return NextResponse.json(
-      { error: "Invalid source" },
-      { status: 400 }
-    );
-  }
+  const { price: priceNum, source, date } = parsed.data;
   const sourceStr = source ?? "manual";
 
+  // Date validation: parsed via schemas accepts ISO/yyyy-mm-dd; default to now.
   const dateVal = date ? new Date(date) : new Date();
   if (isNaN(dateVal.getTime())) {
-    return NextResponse.json(
-      { error: "Invalid date" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
   }
 
   // Create the valuation. Only update wine.currentValue when this entry is

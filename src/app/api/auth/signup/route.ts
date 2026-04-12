@@ -1,86 +1,77 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import { Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { SignupBodySchema, parseOr400 } from "@/lib/schemas";
+
+// Single generic 4xx body for any pre-validation failure (CSRF, malformed
+// JSON, missing cookies). We deliberately do NOT distinguish CSRF failure from
+// validation failure to clients — both leak information about which step the
+// attacker tripped.
+const INVALID_REQUEST = NextResponse.json(
+  { error: "Invalid request" },
+  { status: 400 },
+);
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, csrfToken } = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") return INVALID_REQUEST;
 
-    // Verify CSRF double-submit cookie
+    // CSRF double-submit cookie verification — must run before schema parsing
+    // so that an unauthenticated probe can't even get past the gate.
     const cookieStore = cookies();
     const csrfCookie =
       cookieStore.get("next-auth.csrf-token")?.value ||
       cookieStore.get("__Host-next-auth.csrf-token")?.value;
 
-    if (!csrfToken || !csrfCookie) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
-    }
+    const submittedCsrf =
+      typeof (body as { csrfToken?: unknown }).csrfToken === "string"
+        ? ((body as { csrfToken: string }).csrfToken)
+        : null;
 
-    // NextAuth cookie format: token|hash — verify both token match and hash integrity
+    if (!submittedCsrf || !csrfCookie) return INVALID_REQUEST;
+
     const separatorIndex = csrfCookie.indexOf("|");
-    if (separatorIndex === -1) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
-    }
+    if (separatorIndex === -1) return INVALID_REQUEST;
 
     const cookieToken = csrfCookie.slice(0, separatorIndex);
     const cookieHash = csrfCookie.slice(separatorIndex + 1);
 
-    // Verify the submitted token matches the cookie token
-    if (csrfToken !== cookieToken) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
-    }
+    if (!safeEqual(submittedCsrf, cookieToken)) return INVALID_REQUEST;
 
-    // Verify the hash: sha256(token + secret) must equal the stored hash.
-    // env.NEXTAUTH_SECRET is asserted at boot, so we can trust it here.
+    // env.NEXTAUTH_SECRET is asserted at boot.
     const expectedHash = createHash("sha256")
       .update(`${cookieToken}${env.NEXTAUTH_SECRET}`)
       .digest("hex");
 
-    if (cookieHash !== expectedHash) {
-      return NextResponse.json({ error: "Invalid request" }, { status: 403 });
-    }
+    if (!safeEqual(cookieHash, expectedHash)) return INVALID_REQUEST;
 
-    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
-    }
+    // Schema-validated body. Email regex, length caps, and password policy
+    // all live in src/lib/schemas.ts.
+    const parsed = parseOr400(SignupBodySchema, body);
+    if (!parsed.ok) return parsed.response;
 
-    const nameTrimmed = name.trim();
-    if (!nameTrimmed || nameTrimmed.length > 200) {
-      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
-    }
+    const { name, email, password } = parsed.data;
 
-    const emailNormalized = email.toLowerCase().trim();
-    // RFC 5321 caps the full address at 254 chars. Practical regex covers
-    // local@domain.tld with no whitespace; we don't aim for full RFC 5322.
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (emailNormalized.length > 254 || !emailRegex.test(emailNormalized)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
-    }
-
-    if (password.length > 200) {
-      return NextResponse.json({ error: "Password too long" }, { status: 400 });
-    }
-
-    if (password.length < 10) {
-      return NextResponse.json({ error: "Password must be at least 10 characters" }, { status: 400 });
-    }
-
-    // Require at least one uppercase, one lowercase, and one digit
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-      return NextResponse.json(
-        { error: "Password must include uppercase, lowercase, and a number" },
-        { status: 400 },
-      );
-    }
-
-    const existing = await prisma.member.findUnique({ where: { email: emailNormalized } });
+    const existing = await prisma.member.findUnique({ where: { email } });
     if (existing) {
-      // Return 201 to prevent user enumeration — don't reveal whether account exists
+      // Return 201 to prevent user enumeration. Note: a sophisticated attacker
+      // could still side-channel via timing because we skip the bcrypt.hash
+      // call below; for that we'd need to bcrypt.hash anyway and discard. The
+      // bcrypt cost is significant (~250ms) so we accept the small leak for
+      // now and revisit when this becomes a real attack vector.
       return NextResponse.json({ success: true }, { status: 201 });
     }
 
@@ -88,8 +79,8 @@ export async function POST(req: Request) {
 
     await prisma.member.create({
       data: {
-        name: nameTrimmed,
-        email: emailNormalized,
+        name,
+        email,
         passwordHash,
         tier: Tier.gold,
         role: Role.member,

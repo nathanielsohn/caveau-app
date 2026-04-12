@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { UuidSchema, parsePathParamOr404 } from "@/lib/schemas";
 
 export async function GET(
   _request: Request,
@@ -11,7 +12,10 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idResult = parsePathParamOr404(UuidSchema, rawId);
+  if (!idResult.ok) return idResult.response;
+  const id = idResult.data;
 
   const locker = await prisma.locker.findFirst({
     where: { id, memberId: session.user.id },

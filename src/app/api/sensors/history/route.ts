@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { SensorHistoryQuerySchema, parseOr400 } from "@/lib/schemas";
 
-const RANGE_HOURS: Record<string, number> = {
+const RANGE_HOURS = {
   "1h": 1,
   "6h": 6,
   "24h": 24,
   "7d": 168,
   "30d": 720,
-};
+} as const satisfies Record<string, number>;
 
 export async function GET(request: NextRequest) {
   const session = await getServerAuth();
@@ -17,15 +18,13 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = request.nextUrl;
-  const lockerId = searchParams.get("lockerId");
-  const range = searchParams.get("range") ?? "24h";
+  const parsed = parseOr400(SensorHistoryQuerySchema, {
+    lockerId: searchParams.get("lockerId"),
+    range: searchParams.get("range") ?? undefined,
+  });
+  if (!parsed.ok) return parsed.response;
 
-  if (!lockerId) {
-    return NextResponse.json(
-      { error: "lockerId query parameter is required" },
-      { status: 400 }
-    );
-  }
+  const { lockerId, range } = parsed.data;
 
   // Verify the locker belongs to this member
   const locker = await prisma.locker.findFirst({
@@ -37,14 +36,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Locker not found" }, { status: 404 });
   }
 
-  const hours = RANGE_HOURS[range];
-  if (!hours) {
-    return NextResponse.json(
-      { error: `Invalid range. Use: ${Object.keys(RANGE_HOURS).join(", ")}` },
-      { status: 400 }
-    );
-  }
-
+  const hours = RANGE_HOURS[range as keyof typeof RANGE_HOURS];
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const readings = await prisma.sensorReading.findMany({

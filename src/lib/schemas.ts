@@ -1,0 +1,147 @@
+/**
+ * Shared Zod schemas for API route input validation.
+ *
+ * Every external input — path params, query strings, JSON bodies, FormData —
+ * goes through one of these. Centralizing them keeps validation consistent
+ * across routes and gives us one place to tighten when we discover edge cases.
+ *
+ * Two helper functions wrap the parse step so callers can return a typed 400
+ * response on failure without writing the same try/catch everywhere.
+ */
+
+import { NextResponse } from "next/server";
+import { z, ZodError, type ZodSchema } from "zod";
+
+// ── Primitives ────────────────────────────────────────────────────────────
+
+export const UuidSchema = z.string().uuid("Invalid id");
+
+export const PriceSchema = z
+  .number()
+  .finite()
+  .nonnegative()
+  .max(100_000_000, "Price exceeds maximum");
+
+export const VintageSchema = z
+  .number()
+  .int()
+  .min(1800)
+  .max(new Date().getFullYear() + 1);
+
+// Tighter than the previous "anything with an @ and a dot" — caps local part
+// at 64 chars and total at 254 per RFC 5321, requires a TLD with at least
+// two characters, rejects whitespace.
+export const EmailSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(254)
+  .regex(/^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/, "Invalid email format")
+  .transform((s) => s.toLowerCase());
+
+export const PasswordSchema = z
+  .string()
+  .min(10, "Password must be at least 10 characters")
+  .max(200, "Password too long")
+  .refine((p) => /[a-z]/.test(p), "Password must include a lowercase letter")
+  .refine((p) => /[A-Z]/.test(p), "Password must include an uppercase letter")
+  .refine((p) => /\d/.test(p), "Password must include a number");
+
+// Sensible upper bound for date inputs — anything beyond +1 year from now is
+// almost certainly a typo or an attack.
+export const DateSchema = z
+  .string()
+  .datetime({ offset: true })
+  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+  .pipe(z.coerce.date())
+  .refine((d) => {
+    const max = new Date();
+    max.setFullYear(max.getFullYear() + 1);
+    return d.getTime() <= max.getTime() && d.getFullYear() >= 1900;
+  }, "Date out of range");
+
+// ── Domain schemas ────────────────────────────────────────────────────────
+
+export const SignupBodySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: EmailSchema,
+  password: PasswordSchema,
+  csrfToken: z.string().min(1),
+});
+
+export const CreateWineBodySchema = z.object({
+  name: z.string().trim().min(1).max(500),
+  vintage: z.coerce.number().pipe(VintageSchema),
+  region: z.string().trim().min(1).max(200),
+  varietal: z.string().trim().min(1).max(200),
+  producer: z.string().trim().min(1).max(200),
+  purchasePrice: z.coerce.number().pipe(PriceSchema),
+});
+
+export const ValuationBodySchema = z.object({
+  price: z.coerce.number().pipe(PriceSchema),
+  source: z
+    .enum(["manual", "liv-ex", "wine-searcher", "auction"])
+    .optional(),
+  date: z.string().optional(),
+});
+
+export const SensorHistoryQuerySchema = z.object({
+  lockerId: UuidSchema,
+  range: z.enum(["1h", "6h", "24h", "7d", "30d"]).default("24h"),
+});
+
+export const AlertsQuerySchema = z.object({
+  resolved: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Parse and return a typed result. On failure, returns a NextResponse with a
+ * 400 status and a single generic error string. We deliberately do NOT echo
+ * Zod's per-field issues to clients — they would help debug a real client but
+ * also help an attacker map the validation graph. Server logs still see the
+ * full error via the logger.
+ */
+export function parseOr400<T>(
+  schema: ZodSchema<T>,
+  data: unknown,
+):
+  | { ok: true; data: T }
+  | { ok: false; response: NextResponse } {
+  try {
+    const parsed = schema.parse(data);
+    return { ok: true, data: parsed };
+  } catch (err) {
+    const message =
+      err instanceof ZodError
+        ? err.issues[0]?.message ?? "Invalid input"
+        : "Invalid input";
+    return {
+      ok: false,
+      response: NextResponse.json({ error: message }, { status: 400 }),
+    };
+  }
+}
+
+/** Parse a path param. Same shape, returns 404 instead of 400 for bad UUIDs
+ *  to avoid leaking that the route exists. */
+export function parsePathParamOr404<T>(
+  schema: ZodSchema<T>,
+  data: unknown,
+):
+  | { ok: true; data: T }
+  | { ok: false; response: NextResponse } {
+  try {
+    return { ok: true, data: schema.parse(data) };
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Not found" }, { status: 404 }),
+    };
+  }
+}
