@@ -1,4 +1,6 @@
 -- Audit fixes migration
+BEGIN;
+
 -- 1. Bump price decimal precision: Decimal(10,2) → Decimal(12,2)
 --    Headroom for wines that auction beyond $100M.
 ALTER TABLE "wines" ALTER COLUMN "purchase_price" TYPE DECIMAL(12, 2);
@@ -23,3 +25,5 @@ DROP INDEX IF EXISTS "sensor_readings_timestamp_idx";
 --    Serializable transaction in src/app/locker/actions.ts).
 CREATE UNIQUE INDEX IF NOT EXISTS "locker_slots_wine_id_unique"
   ON "locker_slots"("wine_id") WHERE "wine_id" IS NOT NULL;
+
+COMMIT;
