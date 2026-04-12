@@ -1,8 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+
+function actionError(e: unknown, fallback: string): { error: string } {
+  if (
+    e instanceof Prisma.PrismaClientKnownRequestError &&
+    e.code === "P2002"
+  ) {
+    return { error: "Wine is already assigned to a slot" };
+  }
+  return { error: e instanceof Error ? e.message : fallback };
+}
 
 /**
  * Assign a wine to an empty locker slot.
@@ -39,12 +50,10 @@ export async function assignWineToSlot(
         if (!wine) throw new Error("Wine not found");
         if (wine.memberId !== memberId) throw new Error("Not your wine");
 
-        const existingSlot = await tx.lockerSlot.findFirst({
-          where: { wineId },
-        });
-        if (existingSlot) throw new Error("Wine is already assigned to a slot");
-
-        // Assign the wine to the slot
+        // The partial unique index on locker_slots.wine_id (migration 0002)
+        // makes "wine already assigned to a slot" a hard DB constraint, so
+        // we don't need an application-layer pre-check. The unique violation
+        // bubbles up as a Prisma error and gets caught below.
         await tx.lockerSlot.update({
           where: { id: slotId },
           data: { wineId, dateStored: new Date() },
@@ -56,7 +65,7 @@ export async function assignWineToSlot(
     revalidatePath("/locker");
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to assign wine" };
+    return actionError(e, "Failed to assign wine");
   }
 }
 
@@ -130,7 +139,7 @@ export async function addWineAndAssignToSlot(
     revalidatePath("/collection");
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to add wine" };
+    return actionError(e, "Failed to add wine");
   }
 }
 

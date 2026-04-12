@@ -137,8 +137,10 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Demo hint — only shown in development */}
-        {process.env.NODE_ENV === "development" && (
+        {/* Demo hint — only shown when explicitly opted in via env flag.
+            NEXT_PUBLIC_SHOW_DEMO_CREDS is bundled at build time, so it can
+            never accidentally ship to a production deploy that doesn't set it. */}
+        {process.env.NEXT_PUBLIC_SHOW_DEMO_CREDS === "true" && (
           <p className="text-center text-xs text-muted mt-6">
             Demo: robert@caveau.com / demo1234
           </p>
