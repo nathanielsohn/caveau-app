@@ -4,7 +4,7 @@
 
 ## Overview
 
-Caveau uses ~8 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses ~12 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
 
 ## Components
 
@@ -106,11 +106,33 @@ Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine
 ### add-wine-form.tsx
 **Status:** Complete (Feature 07)
 
-Modal form for adding a new wine. Fields: name, vintage, region, varietal, producer, purchase price. Submits via Next.js Server Action.
+Modal form for adding a new wine. Fields: name, vintage, region, varietal, producer, purchase price. All inputs have `aria-required="true"`. Submits via Next.js Server Action.
 
-**Props:** `isOpen`, `onClose` callbacks
+**Props:** `open`, `onClose`, `addWineAction`
 
 **Used in:** Collection page
+
+---
+
+### disposition-form.tsx
+**Status:** Complete (Feature 34)
+
+Native `<dialog>` modal for recording wine disposition (sold, transferred, consumed, gifted, removed). Conditional fields: sale price (for "sold"), recipient (for "transferred"/"gifted"). Uses `useEffect` to manage dialog open/close state. All icons have `aria-hidden="true"`, select has `aria-required` and `aria-label`.
+
+**Props:** `open`, `onClose`, `wineId`, `wineName`, `recordDispositionAction`
+
+**Used in:** Wine detail page
+
+---
+
+### valuation-chart.tsx
+**Status:** Complete (Feature 34)
+
+Price history chart for a single wine. Shows valuation entries over time with an inline form to add new valuations.
+
+**Props:** `wineId`, `valuations` (array of `{date, price, source}`)
+
+**Used in:** Wine detail page
 
 ---
 

@@ -198,5 +198,3 @@ When the user says to go, follow this process:
 
 - **SPEC.md** is the source of truth for what's done and what's next (Post-Demo Roadmap section)
 - Done features are marked ~~strikethrough~~ in the roadmap tables
-- `BUILD_STATUS.json`, `PROGRESS.md`, `BUILD_LOG.md` are legacy files from the initial 01–17 build pipeline — no longer updated
-- `scripts/update-status.sh` and `scripts/update-progress.sh` are retired

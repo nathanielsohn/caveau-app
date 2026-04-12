@@ -17,16 +17,17 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Screens
 
-| Screen | Path | Feature | Description |
-|--------|------|---------|-------------|
-| Dashboard | `/` | 05 | Collection value, conditions, recent alerts |
-| Collection | `/collection` | 07 | Wine inventory with search + filters |
-| Locker | `/locker` | 08 | Visual 4×8 slot grid with bottle details |
-| Sentinel | `/sentinel` | 11 | Live IoT monitoring: temp, humidity, vibration, light |
-| Wine Detail | `/wine/:id` | 12 | Full bottle profile with valuation |
-| Certificate | `/certificate/:id` | 13 | Provenance certificate with data integrity proof |
+| Screen | Path | Description |
+|--------|------|-------------|
+| Dashboard | `/` | Collection value, conditions, recent alerts |
+| Collection | `/collection` | Wine inventory with search + filters |
+| Locker | `/locker` | Visual 4×8 slot grid with bottle details |
+| Sentinel | `/sentinel` | Live IoT monitoring: temp, humidity, vibration, light |
+| Wine Detail | `/wine/:id` | Full bottle profile with valuation |
+| Certificate | `/certificate/:id` | Provenance certificate with data integrity proof |
+| Verify | `/verify/:hash` | Public certificate verification (no auth) |
 
-See [PROGRESS.md](./PROGRESS.md) for which features are complete.
+See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature status.
 
 ## Stack
 
@@ -49,10 +50,6 @@ Detailed docs are in the [`docs/`](./docs) folder:
 - [Deployment](./docs/DEPLOYMENT.md) — AWS RDS + Vercel setup
 - [Decisions](./docs/DECISIONS.md) — architecture decision records
 - [API Reference](./docs/API.md) — REST endpoints (stretch goal)
-
-## Build Progress
-
-See [PROGRESS.md](./PROGRESS.md) for the current build status dashboard.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Deployment
 
-> Last updated: 2026-04-10
+> Last updated: 2026-04-11
 
 ## Infrastructure
 
@@ -100,6 +100,15 @@ Push to `main` → Vercel auto-deploys. Preview deployments are created for ever
 ### 4. Custom domain (optional)
 
 Add via Vercel Dashboard → Settings → Domains.
+
+## Security Middleware
+
+The app's `src/middleware.ts` applies security controls to every request:
+
+- **Auth protection**: all routes except `/auth/*`, `/verify/*`, `/certificate/*`, `/api/auth/*` require a valid JWT token
+- **Rate limiting**: auth endpoints (`/api/auth/signup`, `/api/auth/callback/*`) are rate-limited to 5 POST requests per 60-second window per IP. This is in-memory only — it resets on deploy and doesn't persist across serverless instances. For production hardening, migrate to Upstash Redis or Vercel KV.
+- **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support).
+- **Static security headers** (in `next.config.mjs`): HSTS (2 years + preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo), X-Permitted-Cross-Domain-Policies none.
 
 ## Troubleshooting
 

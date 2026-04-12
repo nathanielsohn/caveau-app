@@ -60,6 +60,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run build` | Production build (type-checks + compiles) |
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run tests in watch mode (Vitest) |
+| `npm run test:run` | Run tests once (CI mode) |
 | `npx prisma generate` | Regenerate Prisma client after schema changes |
 | `npx prisma migrate dev --name <name>` | Create a new migration |
 | `npx prisma migrate deploy` | Apply pending migrations |

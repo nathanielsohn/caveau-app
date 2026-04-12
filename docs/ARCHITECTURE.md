@@ -38,16 +38,21 @@ caveau-app/
 │   │   ├── sentinel/page.tsx   # IoT monitoring
 │   │   ├── wine/[id]/page.tsx  # Wine detail
 │   │   └── certificate/[id]/   # Provenance certificate
+│   ├── middleware.ts            # Auth, rate limiting, CSP headers
 │   ├── components/             # Shared UI components
 │   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile)
 │   │   ├── metric-card.tsx     # Stat card (icon + value + label)
 │   │   ├── wine-card.tsx       # Wine card for grid/list views
 │   │   ├── locker-grid.tsx     # 4×8 slot grid + detail panel
 │   │   ├── sensor-charts.tsx   # Recharts: temp, humidity, vibration, light
+│   │   ├── dashboard-charts.tsx # Analytics charts (value trend, utilization)
 │   │   ├── alert-list.tsx      # Alert history table
 │   │   ├── certificate-doc.tsx # Certificate layout
-│   │   └── add-wine-form.tsx   # Add wine modal
+│   │   ├── add-wine-form.tsx   # Add wine modal
+│   │   ├── disposition-form.tsx # Wine disposition dialog
+│   │   └── valuation-chart.tsx # Wine price history chart
 │   └── lib/                    # Shared utilities
+│       ├── auth.ts             # NextAuth config + getServerAuth() helper
 │       ├── prisma.ts           # Prisma client singleton
 │       ├── utils.ts            # Formatters (currency, date, sensors)
 │       └── sensors.ts          # Sensor simulation + threshold checks
@@ -139,6 +144,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     B->>MW: Request /collection
+    MW->>MW: Rate limit check (auth endpoints only)
     MW->>MW: Check JWT token in cookie
     alt No token
         MW-->>B: Redirect → /auth/login

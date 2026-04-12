@@ -12,14 +12,15 @@ API routes are implemented. All endpoints require authentication via NextAuth JW
 |--------|------|------|-------------|
 | GET | `/api/wines` | Yes | List wines (supports `?search=`, `?region=`, `?varietal=`) |
 | GET | `/api/wines/[id]` | Yes | Single wine with locker slot and valuations |
-| POST | `/api/wines` | Yes | Create a wine (via server action) |
+| POST | `/api/wines` | Yes | Create a wine |
+| POST | `/api/wines/[id]/valuations` | Yes | Add a valuation entry for a wine |
 | GET | `/api/lockers` | Yes | List lockers with occupancy counts |
 | GET | `/api/lockers/[id]/slots` | Yes | Slots for a locker with wine info |
 | GET | `/api/sensors/latest` | Yes | Latest sensor reading per locker |
 | GET | `/api/sensors/history` | Yes | Historical readings (`?lockerId=`, `?range=`) |
 | GET | `/api/alerts` | Yes | Recent alerts (`?resolved=true/false`) |
 | GET | `/api/certificates/[id]` | Yes | Certificate with wine and locker data (ownership verified) |
-| POST | `/api/auth/signup` | No | Create account (email format validated, 8-char min password) |
+| POST | `/api/auth/signup` | No | Create account (email validated, 10-char min password with upper+lower+digit, CSRF verified) |
 | `*` | `/api/auth/[...nextauth]` | No | NextAuth handlers (login, CSRF, session) |
 
 ## Data Access

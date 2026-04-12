@@ -16,6 +16,8 @@ erDiagram
     Locker ||--o{ SensorReading : "monitored by"
     Locker ||--o{ Alert : "triggers"
     Locker ||--o{ ProvenanceCertificate : "covers"
+    Wine ||--o{ WineDisposition : "disposed via"
+    Member ||--o{ WineDisposition : "records"
 
     Facility {
         uuid id PK
@@ -44,6 +46,7 @@ erDiagram
         string tasting_notes
         int drink_window_start
         int drink_window_end
+        string status
         uuid member_id FK
         datetime created_at
     }
@@ -100,6 +103,17 @@ erDiagram
         string certificate_number UK
         datetime created_at
     }
+    WineDisposition {
+        uuid id PK
+        uuid wine_id FK
+        uuid member_id FK
+        string type
+        datetime date
+        decimal sale_price
+        string recipient
+        string notes
+        datetime created_at
+    }
 ```
 
 ## Entity Descriptions
@@ -130,6 +144,9 @@ Environmental data from a locker's Sentinel sensor. Uses **autoincrement** IDs (
 ### Alert
 A threshold breach or access event. Types include temperature, humidity, vibration, and access (badge scans). Live alerts from the Sentinel page are in-memory only — they are not written to this table. Seeds 20 historical alerts.
 
+### WineDisposition
+Audit trail for wines leaving the collection. Type is one of: `sold`, `transferred`, `consumed`, `gifted`, `removed`. The wine FK uses `onDelete: Restrict` — a wine cannot be deleted while it has disposition records, preserving the audit trail. Unique constraint on `(wineId, type, date)` prevents duplicate entries. Optional `salePrice` (for sold), `recipient` (for transferred/gifted), and `notes` fields.
+
 ### ProvenanceCertificate
 A document certifying storage conditions for a wine. Includes aggregated sensor stats (temp mean/min/max, humidity mean) and a SHA-256 data integrity hash of the sensor readings in the monitoring window.
 
@@ -149,11 +166,18 @@ Prisma returns `Decimal` columns as `Prisma.Decimal` objects (string-backed), **
 | Table | Index | Purpose |
 |-------|-------|---------|
 | wines | member_id | Filter wines by member |
+| wines | member_id, region, varietal | Compound filter for collection |
+| wines | member_id, status | Filter active vs disposed wines |
 | wine_valuations | wine_id, date DESC | Latest valuation per wine |
 | lockers | facility_id | Lockers by facility |
 | lockers | member_id | Lockers by member |
 | locker_slots | locker_id + slot_position (unique) | Prevent double-booking |
+| locker_slots | wine_id | Wine-to-slot lookup |
 | sensor_readings | locker_id, timestamp DESC | Recent readings per locker |
 | sensor_readings | timestamp DESC | Global recent readings |
 | alerts | locker_id, timestamp DESC | Recent alerts per locker |
-| alerts | resolved, locker_id | Unresolved alert queries |
+| alerts | resolved, locker_id, timestamp DESC | Unresolved alert queries |
+| wine_dispositions | wine_id + type + date (unique) | Prevent duplicate dispositions |
+| wine_dispositions | wine_id | Disposition history lookup |
+| wine_dispositions | member_id | Member disposition history |
+| provenance_certificates | wine_id, locker_id | Certificate lookup |
