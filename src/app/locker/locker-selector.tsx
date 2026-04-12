@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, Plus, ShieldCheck } from "lucide-react";
 import LockerGrid, { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 
 interface LockerData {
@@ -20,7 +20,9 @@ interface LockerSelectorProps {
 
 export default function LockerSelector({ lockers, unassignedWines }: LockerSelectorProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [addTrigger, setAddTrigger] = useState(0);
   const locker = lockers[activeIndex];
+  const hasEmptySlot = locker.slots.some((s) => !s.wine);
 
   return (
     <>
@@ -35,26 +37,40 @@ export default function LockerSelector({ lockers, unassignedWines }: LockerSelec
           </p>
         </div>
 
-        {/* Locker tabs — only show if multiple lockers */}
-        {lockers.length > 1 && (
-          <div className="flex gap-2" role="tablist" aria-label="Locker selector">
-            {lockers.map((l, i) => (
-              <button
-                key={l.id}
-                role="tab"
-                aria-selected={i === activeIndex}
-                onClick={() => setActiveIndex(i)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
-                  i === activeIndex
-                    ? "bg-gold/10 text-gold border border-gold/30"
-                    : "bg-[#1C1C20]/60 text-secondary border border-[#2A2A30]/50 hover:text-primary hover:border-gold/20"
-                }`}
-              >
-                Locker #{l.lockerNumber}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Locker tabs — only show if multiple lockers */}
+          {lockers.length > 1 && (
+            <div className="flex gap-2" role="tablist" aria-label="Locker selector">
+              {lockers.map((l, i) => (
+                <button
+                  key={l.id}
+                  role="tab"
+                  aria-selected={i === activeIndex}
+                  onClick={() => setActiveIndex(i)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
+                    i === activeIndex
+                      ? "bg-gold/10 text-gold border border-gold/30"
+                      : "bg-[#1C1C20]/60 text-secondary border border-[#2A2A30]/50 hover:text-primary hover:border-gold/20"
+                  }`}
+                >
+                  Locker #{l.lockerNumber}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Add Wine button */}
+          <button
+            onClick={() => setAddTrigger((n) => n + 1)}
+            disabled={!hasEmptySlot}
+            title={hasEmptySlot ? "Add a new wine to this locker" : "Locker is full — remove a wine first"}
+            aria-label="Add wine to this locker"
+            className="btn-gold flex items-center gap-2 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus size={16} />
+            Add Wine
+          </button>
+        </div>
       </div>
 
       {/* Locker info header */}
@@ -114,7 +130,7 @@ export default function LockerSelector({ lockers, unassignedWines }: LockerSelec
       </div>
 
       {/* Locker grid */}
-      <LockerGrid slots={locker.slots} unassignedWines={unassignedWines} />
+      <LockerGrid slots={locker.slots} unassignedWines={unassignedWines} addTrigger={addTrigger} />
     </>
   );
 }

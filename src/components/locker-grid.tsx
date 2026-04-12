@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -46,6 +46,8 @@ export interface UnassignedWine {
 interface LockerGridProps {
   slots: SlotData[];
   unassignedWines: UnassignedWine[];
+  /** Incremented by parent to request opening the add-wine form on the first empty slot */
+  addTrigger?: number;
 }
 
 function daysStored(dateStored: string | null): number {
@@ -63,7 +65,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) {
+export default function LockerGrid({ slots, unassignedWines, addTrigger }: LockerGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
   const [pickerSlot, setPickerSlot] = useState<SlotData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,6 +73,7 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
   const addFormRef = useRef<HTMLFormElement>(null);
+  const lastHandledTrigger = useRef(0);
 
   // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
@@ -80,6 +83,18 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
     }
     return map;
   }, [slots]);
+
+  // Guard against re-firing when slots change (e.g., after assigning a wine) while addTrigger is still the same.
+  useEffect(() => {
+    if (!addTrigger || addTrigger === lastHandledTrigger.current) return;
+    lastHandledTrigger.current = addTrigger;
+    const firstEmpty = slots.find((s) => !s.wine);
+    if (!firstEmpty) return;
+    setPickerSlot(firstEmpty);
+    setShowAddForm(true);
+    setSearchQuery("");
+    setActionError(null);
+  }, [addTrigger, slots]);
 
   // Filter unassigned wines by search query
   const filteredWines = useMemo(() => {
@@ -171,13 +186,13 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
                   : `Slot ${position}: empty`
               }
               className={`
-                aspect-square rounded-xl flex flex-col items-center justify-center p-1.5
+                group aspect-square rounded-xl flex flex-col items-center justify-center p-1.5
                 transition-all duration-200 text-center
                 ${
                   isOccupied
                     ? "bg-[#141416]/80 backdrop-blur-xl border-2 cursor-pointer hover:scale-105 hover:shadow-lg"
                     : isEmpty
-                    ? "border-2 border-dashed border-gold/30 bg-[#141416]/30 cursor-pointer hover:border-gold/60 hover:bg-gold/5 transition-colors"
+                    ? "border-2 border-dashed border-gold/40 bg-[#141416]/30 cursor-pointer hover:border-gold hover:bg-gold/10 hover:scale-105 hover:shadow-[0_0_16px_rgba(255,209,102,0.25)]"
                     : "border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30 cursor-default"
                 }
               `}
@@ -204,8 +219,17 @@ export default function LockerGrid({ slots, unassignedWines }: LockerGridProps) 
                 </>
               ) : isEmpty ? (
                 <>
-                  <Plus size={14} className="text-gold/50 mb-0.5" />
-                  <span className="text-[10px] text-gold/50">{position}</span>
+                  <Plus
+                    size={18}
+                    strokeWidth={2}
+                    className="text-gold/70 mb-0.5 transition-transform duration-200 group-hover:scale-125 group-hover:text-gold"
+                  />
+                  <span className="text-[10px] text-gold/60 group-hover:text-gold transition-colors">
+                    {position}
+                  </span>
+                  <span className="text-[8px] text-gold font-medium mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline">
+                    Add wine
+                  </span>
                 </>
               ) : (
                 <span className="text-[10px] text-muted">{position}</span>
