@@ -1,6 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, clientIp, type RateLimitPolicy } from "@/lib/rate-limit";
+import { safeCallback } from "@/lib/safe-callback";
 
 /* ------------------------------------------------------------------ */
 /*  Per-route rate-limit policies                                      */
@@ -72,27 +73,6 @@ function buildCsp(): string {
     `base-uri 'self'`,
     `upgrade-insecure-requests`,
   ].join("; ");
-}
-
-/* ------------------------------------------------------------------ */
-/*  callbackUrl sanitizer                                             */
-/* ------------------------------------------------------------------ */
-//
-// Reject anything that isn't a same-origin path. Both `//evil.com` and
-// `https://evil.com` are absolute and would otherwise propagate through
-// /auth/login as an open redirect.
-function safeCallback(raw: string | null): string | null {
-  if (!raw) return null;
-  try {
-    if (raw.startsWith("//")) return null;
-    if (!raw.startsWith("/")) return null;
-    // Reject paths that decode into something that escapes the origin.
-    const decoded = decodeURIComponent(raw);
-    if (decoded.startsWith("//") || decoded.includes("://")) return null;
-    return raw;
-  } catch {
-    return null;
-  }
 }
 
 function tooManyRequestsResponse(resetAt: number): NextResponse {

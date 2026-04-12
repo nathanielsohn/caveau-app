@@ -4,24 +4,11 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-// Reject anything that isn't a same-origin path. Same logic as
-// src/middleware.ts safeCallback — duplicated to keep client and server
-// independently safe.
-function safeCallback(raw: string | null): string {
-  if (!raw) return "/";
-  if (raw.startsWith("//") || !raw.startsWith("/")) return "/";
-  try {
-    const decoded = decodeURIComponent(raw);
-    if (decoded.startsWith("//") || decoded.includes("://")) return "/";
-  } catch {
-    return "/";
-  }
-  return raw;
-}
+import { safeCallback } from "@/lib/safe-callback";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = safeCallback(searchParams.get("callbackUrl"));
+  const callbackUrl = safeCallback(searchParams.get("callbackUrl")) ?? "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

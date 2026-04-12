@@ -89,16 +89,27 @@ async function forwardToSentry(
   error: unknown,
   context: LogContext,
 ): Promise<void> {
-  // Lazy import keeps Sentry out of the bundle when DSN isn't set. The SDK is
-  // optional — if it's not installed, this just no-ops.
+  // Sentry is an optional peer dep. We hide the import from webpack's static
+  // analyzer using a runtime-evaluated specifier so that builds succeed
+  // whether or not @sentry/nextjs is installed. Set SENTRY_DSN and
+  // `npm install @sentry/nextjs` to opt in.
   try {
-    // @ts-expect-error - optional peer dep
-    const Sentry = await import("@sentry/nextjs").catch(() => null);
-    if (!Sentry) return;
+    const moduleName = "@sentry/nextjs";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-new-func
+    const dynamicImport = new Function("m", "return import(m)") as (
+      m: string,
+    ) => Promise<unknown>;
+    const mod = (await dynamicImport(moduleName).catch(() => null)) as
+      | {
+          captureException: (e: unknown, opts: { extra: LogContext }) => void;
+          captureMessage: (m: string, opts: { extra: LogContext }) => void;
+        }
+      | null;
+    if (!mod) return;
     if (error instanceof Error) {
-      Sentry.captureException(error, { extra: context });
+      mod.captureException(error, { extra: context });
     } else {
-      Sentry.captureMessage(message, { extra: context });
+      mod.captureMessage(message, { extra: context });
     }
   } catch {
     // Swallow — logging the logger's failure would loop.
