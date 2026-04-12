@@ -374,15 +374,15 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed inset-x-4 top-[10%] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md z-50 bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col"
+              className="fixed inset-x-4 top-4 bottom-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:max-h-[85vh] z-50 bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             >
               {showAddForm ? (
-                <>
-                  {/* Add wine form header */}
+                <form ref={addFormRef} action={handleAddWineToSlot} className="flex flex-col flex-1 min-h-0">
                   <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <button
+                          type="button"
                           onClick={() => { setShowAddForm(false); setActionError(null); }}
                           aria-label="Back to wine list"
                           className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
@@ -397,6 +397,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                         </div>
                       </div>
                       <button
+                        type="button"
                         onClick={() => { setPickerSlot(null); setShowAddForm(false); setActionError(null); }}
                         aria-label="Close"
                         className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
@@ -406,52 +407,52 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                     </div>
                   </div>
 
-                  {/* Inline add-wine form */}
-                  <div className="overflow-y-auto flex-1 p-5">
+                  <div className="overflow-y-auto flex-1 p-5 flex flex-col gap-4">
                     {actionError && (
-                      <div className="mb-4 p-3 rounded-xl bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] text-sm">
+                      <div className="p-3 rounded-xl bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] text-sm">
                         {actionError}
                       </div>
                     )}
-                    <form ref={addFormRef} action={handleAddWineToSlot} className="flex flex-col gap-4">
+                    <div>
+                      <label htmlFor="locker-wine-name" className="block text-sm text-secondary mb-1.5">Wine Name</label>
+                      <input id="locker-wine-name" name="name" type="text" required placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="locker-wine-name" className="block text-sm text-secondary mb-1.5">Wine Name</label>
-                        <input id="locker-wine-name" name="name" type="text" required placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label htmlFor="locker-wine-vintage" className="block text-sm text-secondary mb-1.5">Vintage</label>
-                          <input id="locker-wine-vintage" name="vintage" type="number" required min={1900} max={2030} placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
-                        </div>
-                        <div>
-                          <label htmlFor="locker-wine-region" className="block text-sm text-secondary mb-1.5">Region</label>
-                          <input id="locker-wine-region" name="region" type="text" required placeholder="Bordeaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label htmlFor="locker-wine-varietal" className="block text-sm text-secondary mb-1.5">Varietal</label>
-                          <input id="locker-wine-varietal" name="varietal" type="text" required placeholder="Cabernet Sauvignon" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
-                        </div>
-                        <div>
-                          <label htmlFor="locker-wine-producer" className="block text-sm text-secondary mb-1.5">Producer</label>
-                          <input id="locker-wine-producer" name="producer" type="text" required placeholder="Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
-                        </div>
+                        <label htmlFor="locker-wine-vintage" className="block text-sm text-secondary mb-1.5">Vintage</label>
+                        <input id="locker-wine-vintage" name="vintage" type="number" required min={1900} max={2030} placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                       <div>
-                        <label htmlFor="locker-wine-price" className="block text-sm text-secondary mb-1.5">Purchase Price (USD)</label>
-                        <input id="locker-wine-price" name="purchasePrice" type="number" required min={0} step={0.01} placeholder="250.00" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <label htmlFor="locker-wine-region" className="block text-sm text-secondary mb-1.5">Region</label>
+                        <input id="locker-wine-region" name="region" type="text" required placeholder="Bordeaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
-                      <button type="submit" disabled={isPending} className="btn-gold mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                        {isPending ? (
-                          <><Loader2 size={16} className="animate-spin" /> Adding...</>
-                        ) : (
-                          <><Plus size={16} /> Add &amp; Assign to Slot</>
-                        )}
-                      </button>
-                    </form>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="locker-wine-varietal" className="block text-sm text-secondary mb-1.5">Varietal</label>
+                        <input id="locker-wine-varietal" name="varietal" type="text" required placeholder="Cabernet Sauvignon" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      </div>
+                      <div>
+                        <label htmlFor="locker-wine-producer" className="block text-sm text-secondary mb-1.5">Producer</label>
+                        <input id="locker-wine-producer" name="producer" type="text" required placeholder="Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="locker-wine-price" className="block text-sm text-secondary mb-1.5">Purchase Price (USD)</label>
+                      <input id="locker-wine-price" name="purchasePrice" type="number" required min={0} step={0.01} placeholder="250.00" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                    </div>
                   </div>
-                </>
+
+                  <div className="p-5 border-t border-[#2A2A30]/50 shrink-0">
+                    <button type="submit" disabled={isPending} className="btn-gold w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      {isPending ? (
+                        <><Loader2 size={16} className="animate-spin" /> Adding...</>
+                      ) : (
+                        <><Plus size={16} /> Add &amp; Assign to Slot</>
+                      )}
+                    </button>
+                  </div>
+                </form>
               ) : (
                 <>
                   {/* Header */}
