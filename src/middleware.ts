@@ -1,37 +1,50 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, clientIp, type RateLimitPolicy } from "@/lib/rate-limit";
 
 /* ------------------------------------------------------------------ */
-/*  In-memory rate limiter (per-IP, 5 requests / 60s window)          */
+/*  Per-route rate-limit policies                                      */
 /* ------------------------------------------------------------------ */
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 5;
-const RATE_WINDOW_MS = 60_000;
+//
+// Tighter limits on auth and verification endpoints, looser limits on
+// expensive read endpoints. Anything not matched here is unlimited at the
+// middleware layer (the API route itself can still apply its own check).
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-
-  // Opportunistic sweep of expired entries to bound memory growth.
-  // Runs ~1% of calls; cheap and avoids needing a separate timer.
-  if (Math.random() < 0.01) {
-    rateLimitMap.forEach((value, key) => {
-      if (now > value.resetTime) rateLimitMap.delete(key);
-    });
-  }
-
-  const entry = rateLimitMap.get(ip);
-
-  // Expired or first request — start a new window
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  if (entry.count >= RATE_LIMIT) return true;
-
-  entry.count++;
-  return false;
-}
+const POLICIES: Array<{
+  match: (req: NextRequest) => boolean;
+  bucket: string;
+  policy: RateLimitPolicy;
+}> = [
+  {
+    bucket: "auth-signup",
+    match: (req) =>
+      req.method === "POST" && req.nextUrl.pathname === "/api/auth/signup",
+    policy: { limit: 5, windowMs: 60_000 },
+  },
+  {
+    bucket: "auth-login",
+    match: (req) =>
+      req.method === "POST" &&
+      req.nextUrl.pathname.startsWith("/api/auth/callback"),
+    policy: { limit: 10, windowMs: 60_000 },
+  },
+  {
+    bucket: "verify",
+    // Public certificate verification — primary attack surface for hash
+    // enumeration. Tight per-IP cap; legitimate scans never come close.
+    match: (req) => req.nextUrl.pathname.startsWith("/verify/"),
+    policy: { limit: 20, windowMs: 60_000 },
+  },
+  {
+    bucket: "sensors-history",
+    // Bulk historical reads — expensive enough that we don't want even an
+    // authenticated client running them in a hot loop.
+    match: (req) =>
+      req.method === "GET" &&
+      req.nextUrl.pathname === "/api/sensors/history",
+    policy: { limit: 30, windowMs: 60_000 },
+  },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Content-Security-Policy builder                                   */
@@ -42,6 +55,7 @@ function buildCsp(): string {
   // Next.js App Router injects inline scripts that can't carry nonces
   // without custom Document wiring. Use 'unsafe-inline' + 'self' which
   // is still a meaningful restriction (blocks external script injection).
+  // TODO: migrate to a nonce-based policy via next.config + middleware.
   const scriptSrc = isDev
     ? `'self' 'unsafe-inline' 'unsafe-eval'`
     : `'self' 'unsafe-inline'`;
@@ -61,29 +75,54 @@ function buildCsp(): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  callbackUrl sanitizer                                             */
+/* ------------------------------------------------------------------ */
+//
+// Reject anything that isn't a same-origin path. Both `//evil.com` and
+// `https://evil.com` are absolute and would otherwise propagate through
+// /auth/login as an open redirect.
+function safeCallback(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    if (raw.startsWith("//")) return null;
+    if (!raw.startsWith("/")) return null;
+    // Reject paths that decode into something that escapes the origin.
+    const decoded = decodeURIComponent(raw);
+    if (decoded.startsWith("//") || decoded.includes("://")) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function tooManyRequestsResponse(resetAt: number): NextResponse {
+  const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+  return NextResponse.json(
+    { error: "Too many requests. Please try again later." },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(retryAfter),
+        "Cache-Control": "no-store",
+      },
+    },
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Middleware                                                         */
 /* ------------------------------------------------------------------ */
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-
   const csp = buildCsp();
 
-  // --- Rate-limit auth endpoints (POST only) ---
-  const isAuthPost =
-    req.method === "POST" &&
-    (pathname === "/api/auth/signup" ||
-      pathname.startsWith("/api/auth/callback"));
-
-  if (isAuthPost) {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.ip ||
-      "unknown";
-    if (isRateLimited(ip)) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429 },
-      );
+  // --- Rate limit policy match (checked before auth so unauth scrapers count) ---
+  for (const entry of POLICIES) {
+    if (entry.match(req)) {
+      const ip = clientIp(req.headers);
+      const result = await checkRateLimit(`${entry.bucket}:${ip}`, entry.policy);
+      if (!result.allowed) return tooManyRequestsResponse(result.resetAt);
+      break;
     }
   }
 
@@ -93,7 +132,8 @@ export async function middleware(req: NextRequest) {
   const isPublic =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/verify") ||
-    pathname.startsWith("/api/auth");
+    pathname.startsWith("/api/auth") ||
+    pathname === "/api/health";
 
   if (isPublic) {
     const res = NextResponse.next();
@@ -106,7 +146,8 @@ export async function middleware(req: NextRequest) {
 
   if (!token) {
     const loginUrl = new URL("/auth/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    const validated = safeCallback(pathname);
+    if (validated) loginUrl.searchParams.set("callbackUrl", validated);
     const res = NextResponse.redirect(loginUrl);
     res.headers.set("Content-Security-Policy", csp);
     return res;
