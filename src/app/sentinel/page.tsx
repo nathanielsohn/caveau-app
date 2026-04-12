@@ -150,7 +150,7 @@ export default function SentinelPage() {
 
   /* ── Initial load + range changes ──────────────── */
   useEffect(() => {
-    loadDbData(range);
+    void loadDbData(range);
   }, [range, loadDbData]);
 
   /* ── Live simulation (runs always for current values) */
