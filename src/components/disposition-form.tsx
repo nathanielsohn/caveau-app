@@ -66,13 +66,14 @@ export default function DispositionForm({
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-labelledby="disposition-title"
       className="fixed inset-0 z-50 m-auto w-full max-w-md p-0 bg-transparent backdrop:bg-black/60 backdrop:backdrop-blur-sm open:flex items-center justify-center"
     >
       {/* Modal */}
       <div className="w-full glass-card p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="font-serif text-xl text-primary">Record Disposition</h2>
+          <h2 id="disposition-title" className="font-serif text-xl text-primary">Record Disposition</h2>
           <button
             onClick={onClose}
             className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-muted hover:text-primary transition-colors"

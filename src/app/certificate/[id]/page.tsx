@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/auth";
 import CertificateDoc, { PrintButton } from "@/components/certificate-doc";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,12 @@ export default async function CertificatePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await getServerAuth();
+  if (!session?.user?.id) redirect("/auth/login");
+
   const { id } = await params;
-  const certificate = await prisma.provenanceCertificate.findUnique({
-    where: { id },
+  const certificate = await prisma.provenanceCertificate.findFirst({
+    where: { id, wine: { memberId: session.user.id } },
     include: {
       wine: {
         select: {

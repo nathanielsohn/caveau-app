@@ -10,6 +10,15 @@ const RATE_WINDOW_MS = 60_000;
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+
+  // Opportunistic sweep of expired entries to bound memory growth.
+  // Runs ~1% of calls; cheap and avoids needing a separate timer.
+  if (Math.random() < 0.01) {
+    rateLimitMap.forEach((value, key) => {
+      if (now > value.resetTime) rateLimitMap.delete(key);
+    });
+  }
+
   const entry = rateLimitMap.get(ip);
 
   // Expired or first request — start a new window
@@ -44,6 +53,10 @@ function buildCsp(): string {
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
     `connect-src 'self'`,
+    `form-action 'self'`,
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `upgrade-insecure-requests`,
   ].join("; ");
 }
 
@@ -75,10 +88,11 @@ export async function middleware(req: NextRequest) {
   }
 
   // --- Public paths — no auth required ---
+  // /verify/[hash] is intentionally public (third-party provenance check).
+  // /certificate/[id] is auth-protected; the page enforces ownership.
   const isPublic =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/verify") ||
-    pathname.startsWith("/certificate") ||
     pathname.startsWith("/api/auth");
 
   if (isPublic) {

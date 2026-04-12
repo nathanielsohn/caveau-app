@@ -20,10 +20,7 @@ import {
 import type { SensorDataPoint } from "@/components/sensor-charts";
 import AlertList from "@/components/alert-list";
 import type { AlertItem } from "@/components/alert-list";
-import {
-  fetchSensorReadings,
-  fetchAlerts,
-} from "./actions";
+import { fetchSentinelData } from "./actions";
 import type { DbSensorReading } from "./actions";
 import { THRESHOLDS } from "@/lib/sensors";
 
@@ -141,18 +138,9 @@ export default function SentinelPage() {
     setLoading(true);
     setError(null);
     try {
-      const [readingsResult, alertsResult] = await Promise.allSettled([
-        fetchSensorReadings(TIME_RANGE_HOURS[selectedRange]),
-        fetchAlerts(),
-      ]);
-      if (readingsResult.status === "fulfilled") setDbReadings(readingsResult.value);
-      if (alertsResult.status === "fulfilled") {
-        setDbAlerts(alertsResult.value.map((a) => ({ ...a, isNew: false })));
-      }
-      const failed = [readingsResult, alertsResult].filter(r => r.status === "rejected");
-      if (failed.length > 0) {
-        setError("Some sensor data failed to load");
-      }
+      const { readings, alerts } = await fetchSentinelData(TIME_RANGE_HOURS[selectedRange]);
+      setDbReadings(readings);
+      setDbAlerts(alerts.map((a) => ({ ...a, isNew: false })));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sensor data");
     } finally {

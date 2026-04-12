@@ -47,14 +47,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request" }, { status: 403 });
     }
 
-    if (!name || !email || !password) {
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string") {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
+    const nameTrimmed = name.trim();
+    if (!nameTrimmed || nameTrimmed.length > 200) {
+      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+    }
+
     const emailNormalized = email.toLowerCase().trim();
+    // RFC 5321 caps the full address at 254 chars. Practical regex covers
+    // local@domain.tld with no whitespace; we don't aim for full RFC 5322.
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailNormalized)) {
+    if (emailNormalized.length > 254 || !emailRegex.test(emailNormalized)) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+    }
+
+    if (password.length > 200) {
+      return NextResponse.json({ error: "Password too long" }, { status: 400 });
     }
 
     if (password.length < 10) {
@@ -75,11 +86,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true }, { status: 201 });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 13);
 
     await prisma.member.create({
       data: {
-        name: name.trim(),
+        name: nameTrimmed,
         email: emailNormalized,
         passwordHash,
         tier: Tier.gold,

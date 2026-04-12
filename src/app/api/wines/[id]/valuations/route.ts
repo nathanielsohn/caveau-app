@@ -72,7 +72,13 @@ export async function POST(
   }
 
   const validSources = ["manual", "liv-ex", "wine-searcher", "auction"];
-  const sourceStr = validSources.includes(source) ? source : "manual";
+  if (source !== undefined && !validSources.includes(source)) {
+    return NextResponse.json(
+      { error: "Invalid source" },
+      { status: 400 }
+    );
+  }
+  const sourceStr = source ?? "manual";
 
   const dateVal = date ? new Date(date) : new Date();
   if (isNaN(dateVal.getTime())) {
@@ -82,21 +88,34 @@ export async function POST(
     );
   }
 
-  // Create the valuation and update the wine's current value
-  const [valuation] = await prisma.$transaction([
-    prisma.wineValuation.create({
+  // Create the valuation. Only update wine.currentValue when this entry is
+  // at least as recent as every existing valuation — otherwise a backdated
+  // entry would silently overwrite the live current value.
+  const valuation = await prisma.$transaction(async (tx) => {
+    const created = await tx.wineValuation.create({
       data: {
         wineId: id,
         source: sourceStr,
         price: priceNum,
         date: dateVal,
       },
-    }),
-    prisma.wine.update({
-      where: { id },
-      data: { currentValue: priceNum },
-    }),
-  ]);
+    });
+
+    const latest = await tx.wineValuation.findFirst({
+      where: { wineId: id },
+      orderBy: { date: "desc" },
+      select: { id: true, price: true },
+    });
+
+    if (latest && latest.id === created.id) {
+      await tx.wine.update({
+        where: { id },
+        data: { currentValue: priceNum },
+      });
+    }
+
+    return created;
+  });
 
   return NextResponse.json(
     {

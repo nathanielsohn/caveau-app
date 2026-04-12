@@ -37,27 +37,31 @@ async function getMemberLockerId(): Promise<string | null> {
 }
 
 /**
- * Fetch sensor readings for the member's locker within a time range.
- * For longer ranges, downsamples to ~500 evenly-spaced points.
+ * Fetch sensor readings + alerts for the member's locker in a single round trip.
+ * Looks up the locker once, then queries readings (with downsampling) and alerts in parallel.
  * Returns data with Prisma Decimals converted to plain numbers.
  */
-export async function fetchSensorReadings(
+export async function fetchSentinelData(
   hoursBack: number
-): Promise<DbSensorReading[]> {
+): Promise<{ readings: DbSensorReading[]; alerts: DbAlert[] }> {
   const lockerId = await getMemberLockerId();
-  if (!lockerId) return [];
+  if (!lockerId) return { readings: [], alerts: [] };
 
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
-  const readings = await prisma.sensorReading.findMany({
-    where: {
-      lockerId,
-      timestamp: { gte: since },
-    },
-    orderBy: { timestamp: "asc" },
-  });
+  const [readings, alerts] = await Promise.all([
+    prisma.sensorReading.findMany({
+      where: { lockerId, timestamp: { gte: since } },
+      orderBy: { timestamp: "asc" },
+    }),
+    prisma.alert.findMany({
+      where: { lockerId },
+      orderBy: { timestamp: "desc" },
+      take: 50,
+    }),
+  ]);
 
-  // Downsample to ~500 points for large datasets
+  // Downsample readings to ~500 points for large datasets
   const TARGET_POINTS = 500;
   let sampled = readings;
   if (readings.length > TARGET_POINTS) {
@@ -66,40 +70,26 @@ export async function fetchSensorReadings(
     for (let i = 0; i < TARGET_POINTS; i++) {
       sampled.push(readings[Math.floor(i * step)]);
     }
-    // Always include the last reading
     if (sampled[sampled.length - 1] !== readings[readings.length - 1]) {
       sampled.push(readings[readings.length - 1]);
     }
   }
 
-  return sampled.map((r) => ({
-    temperature: Number(r.temperature),
-    humidity: Number(r.humidity),
-    vibration: Number(r.vibration),
-    lightLux: Number(r.lightLux),
-    timestamp: r.timestamp.toISOString(),
-  }));
-}
-
-/**
- * Fetch historical alerts for the member's locker.
- */
-export async function fetchAlerts(): Promise<DbAlert[]> {
-  const lockerId = await getMemberLockerId();
-  if (!lockerId) return [];
-
-  const alerts = await prisma.alert.findMany({
-    where: { lockerId },
-    orderBy: { timestamp: "desc" },
-    take: 50,
-  });
-
-  return alerts.map((a) => ({
-    id: a.id,
-    type: a.type,
-    severity: a.severity,
-    message: a.message,
-    timestamp: a.timestamp.toISOString(),
-    resolved: a.resolved,
-  }));
+  return {
+    readings: sampled.map((r) => ({
+      temperature: Number(r.temperature),
+      humidity: Number(r.humidity),
+      vibration: Number(r.vibration),
+      lightLux: Number(r.lightLux),
+      timestamp: r.timestamp.toISOString(),
+    })),
+    alerts: alerts.map((a) => ({
+      id: a.id,
+      type: a.type,
+      severity: a.severity,
+      message: a.message,
+      timestamp: a.timestamp.toISOString(),
+      resolved: a.resolved,
+    })),
+  };
 }
