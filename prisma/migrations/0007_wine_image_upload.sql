@@ -1,4 +1,4 @@
--- 0006: wine image upload (feature #18)
+-- 0007: wine image upload (feature #18)
 --
 -- Adds `wines.image_key` to store the S3 object key for a member-uploaded
 -- bottle photo. We persist the key (not the full URL) so the CDN domain
