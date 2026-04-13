@@ -531,13 +531,15 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
               onClick={() => { setPickerSlot(null); setActionError(null); }}
             />
 
-            {/* Modal */}
+            {/* Modal — wrapper handles centering so framer-motion's animated
+                transform doesn't fight Tailwind's translate utilities. */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed inset-x-4 top-4 bottom-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md sm:max-h-[85vh] z-50 bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              className="pointer-events-auto w-full sm:max-w-md max-h-full bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             >
               {showAddForm ? (
                 <form ref={addFormRef} action={handleAddWineToSlot} className="flex flex-col flex-1 min-h-0">
@@ -721,6 +723,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                 </>
               )}
             </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
