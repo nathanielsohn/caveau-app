@@ -71,7 +71,20 @@ export default async function CollectionPage() {
     },
     orderBy: { createdAt: "desc" },
     take: 500,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      vintage: true,
+      region: true,
+      varietal: true,
+      producer: true,
+      purchasePrice: true,
+      currentValue: true,
+      imageKey: true,
+      drinkWindowStart: true,
+      drinkWindowEnd: true,
+      status: true,
+      createdAt: true,
       lockerSlots: {
         select: {
           locker: {

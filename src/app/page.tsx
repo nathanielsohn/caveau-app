@@ -15,6 +15,20 @@ import DashboardClient from "./dashboard-client";
 // Force dynamic rendering — data comes from the database
 export const dynamic = "force-dynamic";
 
+/**
+ * Wrap a promise with a hard timeout. If the query hangs we'd rather see
+ * a partially-populated dashboard than a spinning page — the secondary
+ * queries all have sensible empty fallbacks.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`timeout:${label}`)), ms),
+    ),
+  ]);
+}
+
 export default async function DashboardPage() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
@@ -69,43 +83,70 @@ export default async function DashboardPage() {
 
     const lockerIds = memberLockerIds.map((l) => l.id);
 
-    // Fetch secondary data — use allSettled so one failure doesn't kill the dashboard
+    // Fetch secondary data — use allSettled so one failure doesn't kill the
+    // dashboard, and cap each query at 2.5s so a slow aggregation can't hold
+    // the whole page hostage.
+    const SECONDARY_TIMEOUT = 2500;
     const [readingResult, alertsResult, valuationResult, alertFreqResult] =
       await Promise.allSettled([
         lockerIds.length > 0
-          ? prisma.sensorReading.findFirst({
-              where: { lockerId: { in: lockerIds } },
-              orderBy: { timestamp: "desc" },
-            })
+          ? withTimeout(
+              prisma.sensorReading.findFirst({
+                where: { lockerId: { in: lockerIds } },
+                orderBy: { timestamp: "desc" },
+              }),
+              SECONDARY_TIMEOUT,
+              "latest-reading",
+            )
           : null,
-        prisma.alert.findMany({
-          where: { lockerId: { in: lockerIds } },
-          orderBy: { timestamp: "desc" },
-          take: 5,
-          include: { locker: { select: { id: true, lockerNumber: true } } },
-        }),
-        prisma.$queryRaw<{ month: string; total: number }[]>`
-          SELECT
-            to_char(wv.date, 'YYYY-MM') AS month,
-            SUM(wv.price)::float AS total
-          FROM wine_valuations wv
-          JOIN wines w ON w.id = wv.wine_id
-          WHERE w.member_id = ${memberId}
-            AND wv.date >= NOW() - INTERVAL '12 months'
-          GROUP BY to_char(wv.date, 'YYYY-MM')
-          ORDER BY month ASC
-        `,
+        withTimeout(
+          prisma.alert.findMany({
+            where: { lockerId: { in: lockerIds } },
+            orderBy: { timestamp: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              type: true,
+              severity: true,
+              message: true,
+              timestamp: true,
+              resolved: true,
+              locker: { select: { lockerNumber: true } },
+            },
+          }),
+          SECONDARY_TIMEOUT,
+          "recent-alerts",
+        ),
+        withTimeout(
+          prisma.$queryRaw<{ month: string; total: number }[]>`
+            SELECT
+              to_char(wv.date, 'YYYY-MM') AS month,
+              SUM(wv.price)::float AS total
+            FROM wine_valuations wv
+            JOIN wines w ON w.id = wv.wine_id
+            WHERE w.member_id = ${memberId}
+              AND wv.date >= NOW() - INTERVAL '12 months'
+            GROUP BY to_char(wv.date, 'YYYY-MM')
+            ORDER BY month ASC
+          `,
+          SECONDARY_TIMEOUT,
+          "valuation-trend",
+        ),
         lockerIds.length > 0
-          ? prisma.$queryRaw<{ day: string; count: bigint }[]>`
-              SELECT
-                to_char(timestamp, 'MM/DD') AS day,
-                COUNT(*)::bigint AS count
-              FROM alerts
-              WHERE locker_id = ANY(${lockerIds})
-                AND timestamp >= NOW() - INTERVAL '30 days'
-              GROUP BY to_char(timestamp, 'YYYY-MM-DD'), to_char(timestamp, 'MM/DD')
-              ORDER BY to_char(timestamp, 'YYYY-MM-DD') ASC
-            `
+          ? withTimeout(
+              prisma.$queryRaw<{ day: string; count: bigint }[]>`
+                SELECT
+                  to_char(timestamp, 'MM/DD') AS day,
+                  COUNT(*)::bigint AS count
+                FROM alerts
+                WHERE locker_id = ANY(${lockerIds})
+                  AND timestamp >= NOW() - INTERVAL '30 days'
+                GROUP BY to_char(timestamp, 'YYYY-MM-DD'), to_char(timestamp, 'MM/DD')
+                ORDER BY to_char(timestamp, 'YYYY-MM-DD') ASC
+              `,
+              SECONDARY_TIMEOUT,
+              "alert-frequency",
+            )
           : [],
       ]);
 

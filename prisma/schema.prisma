@@ -128,6 +128,7 @@ model Wine {
   @@index([memberId])
   @@index([memberId, region, varietal])
   @@index([memberId, status])
+  @@index([memberId, status, currentValue(sort: Desc)])
   @@map("wines")
 }
 
@@ -207,7 +208,9 @@ model Alert {
 
   @@index([lockerId, timestamp(sort: Desc)])
   @@index([resolved, lockerId, timestamp(sort: Desc)])
-  @@index([lockerId, type, notifiedAt(sort: Desc)])
+  // [lockerId, type, resolved, notifiedAt] is a strict superset of the
+  // older [lockerId, type, notifiedAt] index; Postgres can satisfy both
+  // query shapes from the 4-column B-tree without needing the shorter one.
   @@index([lockerId, type, resolved, notifiedAt(sort: Desc)])
   @@map("alerts")
 }

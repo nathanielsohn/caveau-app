@@ -38,15 +38,36 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
 
   const wine = await prisma.wine.findUnique({
     where: { id, memberId: session.user.id },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      vintage: true,
+      region: true,
+      varietal: true,
+      producer: true,
+      purchasePrice: true,
+      currentValue: true,
+      tastingNotes: true,
+      drinkWindowStart: true,
+      drinkWindowEnd: true,
+      status: true,
+      imageKey: true,
+      createdAt: true,
       lockerSlots: {
-        include: {
-          locker: true,
+        select: {
+          slotPosition: true,
+          dateStored: true,
+          locker: {
+            select: { lockerNumber: true, zone: true },
+          },
         },
       },
-      certificates: true,
+      certificates: {
+        select: { id: true, certificateNumber: true },
+      },
       valuations: {
         orderBy: { date: "desc" },
+        select: { id: true, source: true, price: true, date: true },
       },
     },
   });

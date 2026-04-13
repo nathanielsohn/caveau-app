@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireMemberFacility } from "@/lib/current-facility";
 import { notifyAlert } from "@/lib/notify-alert";
@@ -45,6 +46,64 @@ async function getMemberLockerContext(): Promise<
 }
 
 /**
+ * Inner fetch, cached by (lockerId, hoursBack). Wrapped via unstable_cache
+ * so repeated dashboard hits reuse the downsampled payload instead of
+ * re-scanning sensor_readings every time. 60s revalidate keeps the live
+ * tab feeling fresh while still absorbing bursty traffic.
+ */
+const fetchSentinelDataForLocker = unstable_cache(
+  async (lockerId: string, hoursBack: number) => {
+    const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
+
+    const [readings, alerts] = await Promise.all([
+      prisma.sensorReading.findMany({
+        where: { lockerId, timestamp: { gte: since } },
+        orderBy: { timestamp: "asc" },
+      }),
+      prisma.alert.findMany({
+        where: { lockerId },
+        orderBy: { timestamp: "desc" },
+        take: 50,
+      }),
+    ]);
+
+    // Downsample readings to ~500 points for large datasets
+    const TARGET_POINTS = 500;
+    let sampled = readings;
+    if (readings.length > TARGET_POINTS) {
+      const step = readings.length / TARGET_POINTS;
+      sampled = [];
+      for (let i = 0; i < TARGET_POINTS; i++) {
+        sampled.push(readings[Math.floor(i * step)]);
+      }
+      if (sampled[sampled.length - 1] !== readings[readings.length - 1]) {
+        sampled.push(readings[readings.length - 1]);
+      }
+    }
+
+    return {
+      readings: sampled.map((r) => ({
+        temperature: Number(r.temperature),
+        humidity: Number(r.humidity),
+        vibration: Number(r.vibration),
+        lightLux: Number(r.lightLux),
+        timestamp: r.timestamp.toISOString(),
+      })),
+      alerts: alerts.map((a) => ({
+        id: a.id,
+        type: a.type,
+        severity: a.severity,
+        message: a.message,
+        timestamp: a.timestamp.toISOString(),
+        resolved: a.resolved,
+      })),
+    };
+  },
+  ["sentinel-data"],
+  { revalidate: 60 },
+);
+
+/**
  * Fetch sensor readings + alerts for the member's locker in a single round trip.
  * Looks up the locker once, then queries readings (with downsampling) and alerts in parallel.
  * Returns data with Prisma Decimals converted to plain numbers.
@@ -54,53 +113,7 @@ export async function fetchSentinelData(
 ): Promise<{ readings: DbSensorReading[]; alerts: DbAlert[] }> {
   const ctx = await getMemberLockerContext();
   if (!ctx) return { readings: [], alerts: [] };
-  const { lockerId } = ctx;
-
-  const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
-
-  const [readings, alerts] = await Promise.all([
-    prisma.sensorReading.findMany({
-      where: { lockerId, timestamp: { gte: since } },
-      orderBy: { timestamp: "asc" },
-    }),
-    prisma.alert.findMany({
-      where: { lockerId },
-      orderBy: { timestamp: "desc" },
-      take: 50,
-    }),
-  ]);
-
-  // Downsample readings to ~500 points for large datasets
-  const TARGET_POINTS = 500;
-  let sampled = readings;
-  if (readings.length > TARGET_POINTS) {
-    const step = readings.length / TARGET_POINTS;
-    sampled = [];
-    for (let i = 0; i < TARGET_POINTS; i++) {
-      sampled.push(readings[Math.floor(i * step)]);
-    }
-    if (sampled[sampled.length - 1] !== readings[readings.length - 1]) {
-      sampled.push(readings[readings.length - 1]);
-    }
-  }
-
-  return {
-    readings: sampled.map((r) => ({
-      temperature: Number(r.temperature),
-      humidity: Number(r.humidity),
-      vibration: Number(r.vibration),
-      lightLux: Number(r.lightLux),
-      timestamp: r.timestamp.toISOString(),
-    })),
-    alerts: alerts.map((a) => ({
-      id: a.id,
-      type: a.type,
-      severity: a.severity,
-      message: a.message,
-      timestamp: a.timestamp.toISOString(),
-      resolved: a.resolved,
-    })),
-  };
+  return fetchSentinelDataForLocker(ctx.lockerId, hoursBack);
 }
 
 const ALERT_TYPES = new Set<AlertType>([

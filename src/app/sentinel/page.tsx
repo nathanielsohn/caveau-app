@@ -187,9 +187,10 @@ export default function SentinelPage() {
           type: a.type,
           severity: a.severity,
           message: a.message,
-        }).catch((err) => {
-          // Non-fatal: the in-memory alert is still shown to the user.
-          console.warn("[sentinel] recordLiveAlert failed", err);
+        }).catch(() => {
+          // Non-fatal: the in-memory alert is still shown to the user. We
+          // deliberately swallow silently rather than surfacing a toast for
+          // every failed tick — the server will also enforce its own cooldown.
         });
       }
     }
@@ -200,13 +201,31 @@ export default function SentinelPage() {
     const initial = simulateReading();
     setLiveReadings([initial]);
 
-    intervalRef.current = setInterval(() => tickRef.current(), 5000);
-
-    return () => {
+    const start = () => {
+      if (intervalRef.current) return;
+      intervalRef.current = setInterval(() => tickRef.current(), 5000);
+    };
+    const stop = () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+    };
+
+    // Pause the 5s simulation tick when the tab is hidden — iOS backgrounds
+    // throttle setInterval anyway and running it wastes battery + fires
+    // threshold alerts the user can't see.
+    const handleVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+
+    start();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      stop();
     };
   }, []);
 
