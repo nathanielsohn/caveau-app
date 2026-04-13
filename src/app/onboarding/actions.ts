@@ -65,12 +65,26 @@ export async function reserveOnboardingLocker(): Promise<
     };
   }
 
-  // Demo deployment is single-facility; pick whichever facility happens
-  // to exist so the new locker is reachable from the locker page.
-  const facility = await prisma.facility.findFirst({
-    select: { id: true },
+  // Reserve the locker in whichever facility the member already belongs
+  // to (signup attaches them to the oldest facility). Falling back to the
+  // oldest facility globally covers the edge case where membership is
+  // missing — defensive only, signup always creates one.
+  const membership = await prisma.facilityMember.findFirst({
+    where: { memberId },
+    select: { facilityId: true },
     orderBy: { createdAt: "asc" },
   });
+  const facilityId =
+    membership?.facilityId ??
+    (
+      await prisma.facility.findFirst({
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
+      })
+    )?.id;
+  if (!facilityId) {
+    return { ok: false, error: "No facility configured" };
+  }
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const max = await prisma.locker.aggregate({
@@ -86,7 +100,7 @@ export async function reserveOnboardingLocker(): Promise<
         data: {
           lockerNumber,
           zone,
-          facilityId: facility?.id,
+          facilityId,
           memberId,
           slots: {
             create: Array.from({ length: SLOTS_PER_LOCKER }, (_, i) => ({

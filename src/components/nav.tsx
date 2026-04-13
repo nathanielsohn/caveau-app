@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
@@ -10,7 +11,9 @@ import {
   Activity,
   LogOut,
   Settings as SettingsIcon,
+  Building2,
 } from "lucide-react";
+import { setCurrentFacility } from "@/app/facility-actions";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -20,9 +23,30 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export default function Nav() {
+interface FacilityOption {
+  id: string;
+  name: string;
+  location: string;
+}
+
+interface NavProps {
+  facilities: FacilityOption[];
+  currentFacilityId: string | null;
+}
+
+export default function Nav({ facilities, currentFacilityId }: NavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
+  const [isPending, startTransition] = useTransition();
+
+  const handleFacilityChange = (id: string) => {
+    if (id === currentFacilityId) return;
+    startTransition(async () => {
+      const result = await setCurrentFacility(id);
+      if (result.ok) router.refresh();
+    });
+  };
 
   // Hide nav on certificate, verify, and auth pages
   if (
@@ -49,6 +73,37 @@ export default function Nav() {
             </span>
           </Link>
         </div>
+
+        {/* Facility switcher — only if the member belongs to more than one */}
+        {facilities.length > 1 && (
+          <div className="px-4 mb-3">
+            <label
+              htmlFor="facility-switcher"
+              className="text-[10px] uppercase tracking-wider text-muted flex items-center gap-1.5 mb-1.5"
+            >
+              <Building2 size={11} strokeWidth={2} />
+              Facility
+            </label>
+            <div className="relative">
+              <select
+                id="facility-switcher"
+                value={currentFacilityId ?? ""}
+                onChange={(e) => handleFacilityChange(e.target.value)}
+                disabled={isPending}
+                className="w-full appearance-none bg-[#1C1C20]/80 border border-[#2A2A30]/60 rounded-lg px-3 py-2 pr-8 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-gold/40 disabled:opacity-50 cursor-pointer"
+              >
+                {facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted text-xs">
+                ▾
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Nav links */}
         <nav className="flex-1 px-3 mt-2">

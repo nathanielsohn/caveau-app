@@ -147,15 +147,19 @@ async function main() {
     prisma.lockerSlot.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
+    prisma.facilityMember.deleteMany(),
     prisma.member.deleteMany(),
     prisma.facility.deleteMany(),
   ]);
 
-  // 1. Facility
-  const facility = await prisma.facility.create({
+  // 1. Facilities — Naples is the flagship, Miami opened later as a 2nd location
+  const naples = await prisma.facility.create({
     data: { name: 'Caveau Naples', location: 'Naples, FL' },
   });
-  console.log(`  ✓ Facility: ${facility.name}`);
+  const miami = await prisma.facility.create({
+    data: { name: 'Caveau Miami', location: 'Miami, FL' },
+  });
+  console.log(`  ✓ Facilities: ${naples.name}, ${miami.name}`);
 
   // 2. Member (password: demo1234)
   const passwordHash = await bcrypt.hash('demo1234', 10);
@@ -170,6 +174,15 @@ async function main() {
     },
   });
   console.log(`  ✓ Member: ${member.name}`);
+
+  // 2b. Facility memberships — Robert holds wine in both locations
+  await prisma.facilityMember.createMany({
+    data: [
+      { memberId: member.id, facilityId: naples.id },
+      { memberId: member.id, facilityId: miami.id },
+    ],
+  });
+  console.log('  ✓ Facility memberships: Naples + Miami');
 
   // 3. Wines
   const createdWines = [];
@@ -193,20 +206,20 @@ async function main() {
   }
   console.log(`  ✓ Wines: ${createdWines.length}`);
 
-  // 4. Lockers
+  // 4. Lockers — three at Naples, one (the Champagne vault) at Miami
   const locker7 = await prisma.locker.create({
-    data: { lockerNumber: 7, zone: 'A', facilityId: facility.id, memberId: member.id },
+    data: { lockerNumber: 7, zone: 'A', facilityId: naples.id, memberId: member.id },
   });
   const locker12 = await prisma.locker.create({
-    data: { lockerNumber: 12, zone: 'B', facilityId: facility.id, memberId: member.id },
+    data: { lockerNumber: 12, zone: 'B', facilityId: naples.id, memberId: member.id },
   });
   const locker19 = await prisma.locker.create({
-    data: { lockerNumber: 19, zone: 'C', facilityId: facility.id, memberId: member.id },
+    data: { lockerNumber: 19, zone: 'C', facilityId: naples.id, memberId: member.id },
   });
   const locker24 = await prisma.locker.create({
-    data: { lockerNumber: 24, zone: 'D', facilityId: facility.id, memberId: member.id },
+    data: { lockerNumber: 24, zone: 'A', facilityId: miami.id, memberId: member.id },
   });
-  console.log('  ✓ Lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D)');
+  console.log('  ✓ Lockers: Naples #7/#12/#19, Miami #24');
 
   // 5. Locker slots — all 32 per locker, some occupied
   let wineIndex = 0;

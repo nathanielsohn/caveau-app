@@ -77,6 +77,14 @@ export async function POST(req: Request) {
 
     const passwordHash = await bcrypt.hash(password, 13);
 
+    // New members are attached to the oldest facility so the locker page,
+    // sentinel, and dashboard have a default scope to read from. The
+    // onboarding wizard reserves a locker inside this same facility.
+    const defaultFacility = await prisma.facility.findFirst({
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+
     await prisma.member.create({
       data: {
         name,
@@ -84,6 +92,11 @@ export async function POST(req: Request) {
         passwordHash,
         tier: Tier.gold,
         role: Role.member,
+        ...(defaultFacility && {
+          facilities: {
+            create: { facilityId: defaultFacility.id },
+          },
+        }),
       },
     });
 

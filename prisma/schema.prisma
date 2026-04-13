@@ -59,8 +59,21 @@ model Facility {
   location  String
   createdAt DateTime @default(now()) @map("created_at")
   lockers   Locker[]
+  members   FacilityMember[]
 
   @@map("facilities")
+}
+
+model FacilityMember {
+  memberId   String   @map("member_id")
+  facilityId String   @map("facility_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, facilityId])
+  @@index([facilityId])
+  @@map("facility_members")
 }
 
 model Member {
@@ -79,6 +92,7 @@ model Member {
   wines                 Wine[]
   lockers               Locker[]
   dispositions          WineDisposition[]
+  facilities            FacilityMember[]
 
   @@index([tier])
   @@index([role])
@@ -131,11 +145,11 @@ model Locker {
   id           String                @id @default(uuid())
   lockerNumber Int                   @unique @map("locker_number")
   zone         String
-  facilityId   String?               @map("facility_id")
+  facilityId   String                @map("facility_id")
   memberId     String?               @map("member_id")
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
-  facility     Facility?             @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  facility     Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   member       Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
   slots        LockerSlot[]
   readings     SensorReading[]

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getCurrentFacility } from "@/lib/current-facility";
 import { notifyAlert } from "@/lib/notify-alert";
 import type { AlertType, Severity } from "@prisma/client";
 
@@ -23,14 +24,19 @@ export interface DbAlert {
 }
 
 /**
- * Get the current member's first locker ID for sensor queries.
+ * Get the member's first locker at the active facility for sensor queries.
+ * Sentinel is single-locker today; the facility filter ensures we don't
+ * accidentally surface readings from a different location.
  */
 async function getMemberLockerId(): Promise<string | null> {
   const session = await getServerAuth();
   if (!session?.user?.id) return null;
 
+  const facility = await getCurrentFacility(session.user.id);
+  if (!facility) return null;
+
   const locker = await prisma.locker.findFirst({
-    where: { memberId: session.user.id },
+    where: { memberId: session.user.id, facilityId: facility.id },
     orderBy: { lockerNumber: "asc" },
     select: { id: true },
   });

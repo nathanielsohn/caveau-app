@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getCurrentFacility } from "@/lib/current-facility";
 import { Lock } from "lucide-react";
 import { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 import LockerSelector from "./locker-selector";
 
 export const dynamic = "force-dynamic";
 
-async function getLockers(memberId: string) {
+async function getLockers(memberId: string, facilityId: string) {
   const lockers = await prisma.locker.findMany({
-    where: { memberId },
+    where: { memberId, facilityId },
     orderBy: { lockerNumber: "asc" },
     take: 50,
     include: {
@@ -61,8 +62,9 @@ export default async function LockerPage() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
 
+  const facility = await getCurrentFacility(session.user.id);
   const [lockers, unassignedWines] = await Promise.all([
-    getLockers(session.user.id),
+    facility ? getLockers(session.user.id, facility.id) : [],
     getUnassignedWines(session.user.id),
   ]);
 
@@ -75,7 +77,9 @@ export default async function LockerPage() {
             No Locker Assigned
           </h2>
           <p className="text-secondary text-sm">
-            Contact Caveau to reserve your private storage locker.
+            {facility
+              ? `You don't have a locker at ${facility.name} yet. Switch facilities or contact Caveau to reserve one.`
+              : "Contact Caveau to reserve your private storage locker."}
           </p>
         </div>
       </div>

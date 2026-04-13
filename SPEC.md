@@ -440,7 +440,7 @@ Make it real enough for a pilot with actual members.
 | # | Feature | Description |
 |---|---------|-------------|
 | 15 | ~~Auth + Roles~~ | ~~NextAuth.js v4 with Credentials provider, JWT sessions, role-based access, member-scoped data. Done.~~ |
-| 16 | Multi-facility support | Facility switcher in nav. Lockers scoped to facility. Members can belong to multiple facilities. |
+| 16 | ~~Multi-facility support~~ | ~~Facility switcher in nav. Lockers scoped to facility. Members can belong to multiple facilities. Done.~~ |
 | 17 | ~~API routes~~ | ~~`/api/wines`, `/api/sensors`, `/api/alerts`, `/api/lockers`, `/api/certificates`. REST endpoints wrapping Prisma queries. Done.~~ |
 | 18 | Wine image upload | S3 bucket + CloudFront CDN. Presigned upload URLs from API route. Resize/optimize on upload via Sharp or Lambda. |
 | 19 | ~~Alert notifications~~ | ~~Real-time email alerts via AWS SES when sensor thresholds are breached. Configurable per-member notification preferences. Done.~~ |

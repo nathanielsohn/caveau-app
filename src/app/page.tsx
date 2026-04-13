@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getCurrentFacility } from "@/lib/current-facility";
 import { logger } from "@/lib/logger";
 import {
   formatCurrency,
@@ -19,9 +20,13 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/auth/login");
 
   const memberId = session.user.id;
+  const facility = await getCurrentFacility(memberId);
+  const facilityId = facility?.id;
 
   try {
-    // Fetch all data in parallel, scoped to this member
+    // Wines stay member-scoped (a member's collection spans facilities),
+    // but locker-derived metrics filter to the active facility so the
+    // dashboard reflects the location the user is currently viewing.
     const [
       wines,
       memberLockerIds,
@@ -41,19 +46,25 @@ export default async function DashboardPage() {
           purchasePrice: true,
         },
       }),
-      prisma.locker.findMany({
-        where: { memberId },
-        select: { id: true },
-      }),
-      prisma.lockerSlot.count({
-        where: {
-          wineId: { not: null },
-          locker: { memberId },
-        },
-      }),
-      prisma.lockerSlot.count({
-        where: { locker: { memberId } },
-      }),
+      facilityId
+        ? prisma.locker.findMany({
+            where: { memberId, facilityId },
+            select: { id: true },
+          })
+        : [],
+      facilityId
+        ? prisma.lockerSlot.count({
+            where: {
+              wineId: { not: null },
+              locker: { memberId, facilityId },
+            },
+          })
+        : 0,
+      facilityId
+        ? prisma.lockerSlot.count({
+            where: { locker: { memberId, facilityId } },
+          })
+        : 0,
     ]);
 
     const lockerIds = memberLockerIds.map((l) => l.id);
