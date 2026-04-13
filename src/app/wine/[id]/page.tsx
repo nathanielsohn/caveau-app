@@ -11,7 +11,6 @@ import {
 } from "@/lib/utils";
 import {
   ArrowLeft,
-  Wine,
   MapPin,
   Calendar,
   TrendingUp,
@@ -23,7 +22,9 @@ import {
 } from "lucide-react";
 import ValuationChart from "@/components/valuation-chart";
 import DispositionButton from "./disposition-button";
-import { recordDisposition } from "./actions";
+import WineImageUpload from "@/components/wine-image-upload";
+import { getPublicUrl } from "@/lib/s3";
+import { recordDisposition, requestWineUploadUrl, setWineImage } from "./actions";
 
 interface WineDetailPageProps {
   params: Promise<{ id: string }>;
@@ -144,13 +145,16 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         Back to Collection
       </Link>
 
-      {/* Header: image placeholder + wine info */}
+      {/* Header: bottle photo (uploadable) + wine info */}
       <div className="glass-card p-6 md:p-8">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Wine image placeholder */}
-          <div className="w-full md:w-48 h-56 md:h-64 rounded-xl bg-caveau-graphite border border-[#2A2A30]/50 flex items-center justify-center flex-shrink-0">
-            <Wine className="w-16 h-16 text-burgundy/60" />
-          </div>
+          {/* Bottle photo — feature #18 */}
+          <WineImageUpload
+            wineId={wine.id}
+            initialUrl={getPublicUrl(wine.imageKey)}
+            requestUrlAction={requestWineUploadUrl}
+            setImageAction={setWineImage}
+          />
 
           {/* Wine info */}
           <div className="flex-1 space-y-4">

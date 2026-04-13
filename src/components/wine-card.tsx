@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { formatCurrency, percentChange } from "@/lib/utils";
@@ -12,6 +13,8 @@ export interface WineCardData {
   purchasePrice: number;
   currentValue: number;
   imageUrl?: string | null;
+  /** Resolved public URL for the member-uploaded bottle photo (#18). */
+  photoUrl?: string | null;
   drinkWindowStart?: number | null;
   drinkWindowEnd?: number | null;
   status?: string;
@@ -95,8 +98,21 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
   return (
     <Link href={`/wine/${wine.id}`} className="block group">
       <div className={`glass-card p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5 ${isDisposed ? "opacity-70" : ""}`}>
-        {/* Wine label */}
-        <WinePlaceholder wine={wine} />
+        {/* Wine label — uploaded photo if present, otherwise the placeholder */}
+        {wine.photoUrl ? (
+          <div className="aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#0C0C0E] relative border border-transparent group-hover:border-gold/40 transition-colors duration-200">
+            <Image
+              src={wine.photoUrl}
+              alt={wine.name}
+              fill
+              sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 22vw, (min-width: 640px) 30vw, 45vw"
+              unoptimized
+              className="object-cover"
+            />
+          </div>
+        ) : (
+          <WinePlaceholder wine={wine} />
+        )}
 
         {/* Wine info */}
         <div className="flex-1 flex flex-col gap-1">
