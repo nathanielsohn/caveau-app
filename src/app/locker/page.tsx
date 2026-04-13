@@ -42,6 +42,7 @@ async function getUnassignedWines(memberId: string): Promise<UnassignedWine[]> {
   const wines = await prisma.wine.findMany({
     where: {
       memberId,
+      status: "in_cellar",
       lockerSlots: { none: {} },
     },
     orderBy: { name: "asc" },

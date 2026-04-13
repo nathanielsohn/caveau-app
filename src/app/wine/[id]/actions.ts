@@ -120,14 +120,23 @@ export async function setWineImage(
 
   const wine = await prisma.wine.findUnique({
     where: { id: wineId, memberId: session.user.id },
-    select: { id: true },
+    select: { id: true, imageKey: true },
   });
   if (!wine) throw new Error("Wine not found");
+
+  const oldKey = wine.imageKey;
 
   await prisma.wine.update({
     where: { id: wineId },
     data: { imageKey: key },
   });
+
+  // Best-effort cleanup of the previous photo so replacing a bottle image
+  // doesn't leak S3 objects. Runs outside any transaction — a delete failure
+  // just means one orphaned object, not a stuck write.
+  if (oldKey && oldKey !== key) {
+    void deleteObject(oldKey);
+  }
 
   revalidatePath(`/wine/${wineId}`);
   revalidatePath("/collection");

@@ -134,21 +134,30 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
     });
     if (!w) throw new Error("Wine not found");
 
-    // Create valuation and update wine's current value
-    await prisma.$transaction([
-      prisma.wineValuation.create({
+    // Create valuation, then only overwrite wine.currentValue if this new
+    // entry is the latest by date. A backdated valuation must not clobber
+    // the current market value.
+    await prisma.$transaction(async (tx) => {
+      const created = await tx.wineValuation.create({
         data: {
           wineId,
           source: sourceStr,
           price: priceNum,
           date: dateVal,
         },
-      }),
-      prisma.wine.update({
-        where: { id: wineId },
-        data: { currentValue: priceNum },
-      }),
-    ]);
+      });
+      const latest = await tx.wineValuation.findFirst({
+        where: { wineId },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
+        select: { id: true },
+      });
+      if (latest?.id === created.id) {
+        await tx.wine.update({
+          where: { id: wineId },
+          data: { currentValue: priceNum },
+        });
+      }
+    });
 
     revalidatePath(`/wine/${wineId}`);
     revalidatePath("/collection");
