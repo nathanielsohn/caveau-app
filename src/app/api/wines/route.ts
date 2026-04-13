@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { getPublicUrl } from "@/lib/s3";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const session = await getServerAuth();
@@ -40,7 +42,6 @@ export async function GET(request: NextRequest) {
       producer: true,
       purchasePrice: true,
       currentValue: true,
-      imageUrl: true,
       imageKey: true,
       drinkWindowStart: true,
       drinkWindowEnd: true,
@@ -62,6 +63,18 @@ export async function POST(request: NextRequest) {
   const session = await getServerAuth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip = clientIp(headers());
+  const limit = await checkRateLimit(`wine-create:${session.user.id}:${ip}`, {
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 },
+    );
   }
 
   const body = await request.json().catch(() => null);

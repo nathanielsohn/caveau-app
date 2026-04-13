@@ -28,7 +28,7 @@ export async function setCurrentFacility(
 
   cookies().set(FACILITY_COOKIE, facilityId, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,

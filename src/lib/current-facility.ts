@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
+import { getServerAuth } from "./auth";
 
 const FACILITY_COOKIE = "caveau_facility";
 
@@ -48,3 +49,23 @@ export async function getCurrentFacility(
 }
 
 export { FACILITY_COOKIE };
+
+/**
+ * Resolve the authenticated member + their active facility in one round trip.
+ * Returns null when there's no session or the member has zero memberships.
+ *
+ * Every endpoint that touches locker-scoped data (lockers, slots, sensors,
+ * alerts) should call this helper instead of `getServerAuth` + a raw query —
+ * it's the single point where we enforce that the cookie's facilityId
+ * actually matches a real membership of this member.
+ */
+export async function requireMemberFacility(): Promise<
+  { memberId: string; facilityId: string } | null
+> {
+  const session = await getServerAuth();
+  const memberId = session?.user?.id;
+  if (!memberId) return null;
+  const facility = await getCurrentFacility(memberId);
+  if (!facility) return null;
+  return { memberId, facilityId: facility.id };
+}

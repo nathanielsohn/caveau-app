@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
 
 export async function GET(request: NextRequest) {
-  const session = await getServerAuth();
-  if (!session?.user?.id) {
+  const ctx = await requireMemberFacility();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { searchParams } = request.nextUrl;
   const resolvedParam = searchParams.get("resolved");
 
-  // Single query: filter through locker→member relation instead of separate locker ID lookup
   const resolvedFilter =
     resolvedParam === "true" ? true :
     resolvedParam === "false" ? false :
@@ -19,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const alerts = await prisma.alert.findMany({
     where: {
-      locker: { memberId: session.user.id },
+      locker: { memberId: ctx.memberId, facilityId: ctx.facilityId },
       ...(resolvedFilter !== undefined && { resolved: resolvedFilter }),
     },
     orderBy: { timestamp: "desc" },

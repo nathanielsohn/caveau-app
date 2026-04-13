@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
@@ -36,7 +36,6 @@ interface NavProps {
 
 export default function Nav({ facilities, currentFacilityId }: NavProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
 
@@ -44,7 +43,12 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     if (id === currentFacilityId) return;
     startTransition(async () => {
       const result = await setCurrentFacility(id);
-      if (result.ok) router.refresh();
+      if (!result.ok) return;
+      // Hard navigate to the current path so client-side filter/sort state in
+      // collection-client and locker-grid resets — `router.refresh()` alone
+      // re-runs server components but leaves React state in place, which
+      // briefly applies one facility's filters to another facility's data.
+      window.location.href = pathname;
     });
   };
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
 import { SensorHistoryQuerySchema, parseOr400 } from "@/lib/schemas";
 
 const RANGE_HOURS = {
@@ -12,8 +12,8 @@ const RANGE_HOURS = {
 } as const satisfies Record<string, number>;
 
 export async function GET(request: NextRequest) {
-  const session = await getServerAuth();
-  if (!session?.user?.id) {
+  const ctx = await requireMemberFacility();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
 
   const { lockerId, range } = parsed.data;
 
-  // Verify the locker belongs to this member
+  // Verify the locker belongs to this member AND lives in the active facility.
   const locker = await prisma.locker.findFirst({
-    where: { id: lockerId, memberId: session.user.id },
+    where: { id: lockerId, memberId: ctx.memberId, facilityId: ctx.facilityId },
     select: { id: true },
   });
 
   if (!locker) {
-    return NextResponse.json({ error: "Locker not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const hours = RANGE_HOURS[range as keyof typeof RANGE_HOURS];

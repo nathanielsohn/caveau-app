@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
 import { UuidSchema, parsePathParamOr404 } from "@/lib/schemas";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerAuth();
-  if (!session?.user?.id) {
+  const ctx = await requireMemberFacility();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -18,7 +18,7 @@ export async function GET(
   const id = idResult.data;
 
   const locker = await prisma.locker.findFirst({
-    where: { id, memberId: session.user.id },
+    where: { id, memberId: ctx.memberId, facilityId: ctx.facilityId },
     include: {
       slots: {
         orderBy: { slotPosition: "asc" },
@@ -39,7 +39,7 @@ export async function GET(
   });
 
   if (!locker) {
-    return NextResponse.json({ error: "Locker not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const serialized = locker.slots.map((slot) => ({

@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerAuth();
-  if (!session?.user?.id) {
+  const ctx = await requireMemberFacility();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const lockers = await prisma.locker.findMany({
-    where: { memberId: session.user.id },
+    where: { memberId: ctx.memberId, facilityId: ctx.facilityId },
     orderBy: { lockerNumber: "asc" },
     include: {
       slots: {

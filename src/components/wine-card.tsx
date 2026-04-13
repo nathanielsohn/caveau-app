@@ -12,7 +12,6 @@ export interface WineCardData {
   producer: string;
   purchasePrice: number;
   currentValue: number;
-  imageUrl?: string | null;
   /** Resolved public URL for the member-uploaded bottle photo (#18). */
   photoUrl?: string | null;
   drinkWindowStart?: number | null;

@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerAuth();
-  if (!session?.user?.id) {
+  const ctx = await requireMemberFacility();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Single query: get latest sensor reading per locker using DISTINCT ON (PostgreSQL)
+  // Latest sensor reading per locker, scoped to the member's lockers in the
+  // active facility. DISTINCT ON gives us one row per locker without a
+  // window function or N+1 round trips.
   const results = await prisma.$queryRaw<
     {
       locker_id: string;
@@ -32,7 +34,8 @@ export async function GET() {
       sr.timestamp
     FROM sensor_readings sr
     JOIN lockers l ON l.id = sr.locker_id
-    WHERE l.member_id = ${session.user.id}
+    WHERE l.member_id = ${ctx.memberId}
+      AND l.facility_id = ${ctx.facilityId}
     ORDER BY sr.locker_id, sr.timestamp DESC
   `;
 
