@@ -64,14 +64,6 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     ? session.user.tier.charAt(0).toUpperCase() + session.user.tier.slice(1) + " Tier"
     : "";
 
-  // Pages whose data is actually scoped by facility. Settings is per-account,
-  // and wine/certificate detail pages would 404 after a switch since the id
-  // belongs to the previous facility.
-  const facilityScopedPaths = ["/", "/collection", "/locker", "/sentinel"];
-  const isFacilityScopedPage = facilityScopedPaths.some((p) =>
-    p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(p + "/"),
-  );
-
   return (
     <>
       {/* Desktop sidebar */}
@@ -159,34 +151,6 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
           </button>
         </div>
       </aside>
-
-      {/* Mobile top bar — facility switcher */}
-      {facilities.length > 1 && isFacilityScopedPage && (
-        <div className="md:hidden sticky top-0 z-40 border-b border-[#2A2A30]/50 bg-caveau-charcoal/90 backdrop-blur-xl px-4 py-2.5">
-          <div className="relative">
-            <Building2
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-            />
-            <select
-              aria-label="Switch facility"
-              value={currentFacilityId ?? ""}
-              onChange={(e) => handleFacilityChange(e.target.value)}
-              disabled={isPending}
-              className="w-full appearance-none bg-[#1C1C20]/80 border border-[#2A2A30]/60 rounded-lg pl-9 pr-8 py-2.5 min-h-[44px] text-sm text-primary focus:outline-none focus:ring-1 focus:ring-gold/40 disabled:opacity-50 cursor-pointer"
-            >
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs">
-              ▾
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Mobile bottom tab bar — pads for the iPhone home indicator via safe-area-inset. */}
       <nav

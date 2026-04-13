@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lock, Plus, ShieldCheck } from "lucide-react";
 import LockerGrid, { type SlotData, type UnassignedWine } from "@/components/locker-grid";
+import { FacilityPill } from "@/components/facility-context";
 
 interface LockerData {
   id: string;
@@ -28,13 +29,16 @@ export default function LockerSelector({ lockers, unassignedWines }: LockerSelec
     <>
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl text-primary">
-            My Locker
-          </h1>
-          <p className="text-secondary text-sm mt-1">
-            Visual map of your wine storage
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-2xl sm:text-3xl text-primary">
+              My Locker
+            </h1>
+            <p className="text-secondary text-sm mt-1">
+              Visual map of your wine storage
+            </p>
+          </div>
+          <FacilityPill />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

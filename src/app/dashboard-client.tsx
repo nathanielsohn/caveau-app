@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import MetricCard from "@/components/metric-card";
+import { FacilityPill } from "@/components/facility-context";
 
 // Recharts is ~80KB gzipped — defer it so the dashboard's LCP doesn't
 // pay for the chart bundle, and show a placeholder block in its place.
@@ -122,13 +123,16 @@ export default function DashboardClient({
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl md:text-4xl text-primary">
-          Dashboard
-        </h1>
-        <p className="text-secondary text-sm mt-1">
-          Welcome back, {firstName}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-3xl md:text-4xl text-primary">
+            Dashboard
+          </h1>
+          <p className="text-secondary text-sm mt-1">
+            Welcome back, {firstName}
+          </p>
+        </div>
+        <FacilityPill />
       </div>
 
       {/* Metric Cards Grid */}

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import WineCard, { type WineCardData } from "@/components/wine-card";
 import AddWineForm from "@/components/add-wine-form";
+import { FacilityPill } from "@/components/facility-context";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 
@@ -151,21 +152,24 @@ export default function CollectionClient({
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-primary">
-            {showHistory ? "Disposition History" : "Collection"}
-          </h1>
-          <div className="flex items-center gap-4 mt-2">
-            <div className="flex items-center gap-1.5 text-secondary">
-              <Package size={14} className="text-burgundy" />
-              <span className="text-sm">{filtered.length} bottle{filtered.length !== 1 ? "s" : ""}</span>
-            </div>
-            <div className="w-px h-3.5 bg-[#2A2A30]" />
-            <div className="flex items-center gap-1.5 text-secondary">
-              <TrendingUp size={14} className="text-ok" />
-              <span className="text-sm font-medium text-primary">{formatCurrency(totalValue)}</span>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-2xl md:text-3xl text-primary">
+              {showHistory ? "Disposition History" : "Collection"}
+            </h1>
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5 text-secondary">
+                <Package size={14} className="text-burgundy" />
+                <span className="text-sm">{filtered.length} bottle{filtered.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="w-px h-3.5 bg-[#2A2A30]" />
+              <div className="flex items-center gap-1.5 text-secondary">
+                <TrendingUp size={14} className="text-ok" />
+                <span className="text-sm font-medium text-primary">{formatCurrency(totalValue)}</span>
+              </div>
             </div>
           </div>
+          <FacilityPill />
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <button

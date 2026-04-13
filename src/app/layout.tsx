@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import Nav from "@/components/nav";
 import Providers from "@/components/providers";
+import { FacilityProvider } from "@/components/facility-context";
 import { getServerAuth } from "@/lib/auth";
 import {
   getCurrentFacility,
@@ -70,15 +71,20 @@ export default async function RootLayout({
         className={`${playfair.variable} ${inter.variable} font-sans bg-caveau-black text-primary min-h-screen`}
       >
         <Providers>
-          <Nav
+          <FacilityProvider
             facilities={facilities}
             currentFacilityId={currentFacilityId}
-          />
-          {/* md:ml-56 offsets for the desktop sidebar; mobile padding stacks the
-              bottom tab bar (h-16 = 4rem) on top of the iPhone home indicator. */}
-          <main className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen">
-            {children}
-          </main>
+          >
+            <Nav
+              facilities={facilities}
+              currentFacilityId={currentFacilityId}
+            />
+            {/* md:ml-56 offsets for the desktop sidebar; mobile padding stacks the
+                bottom tab bar (h-16 = 4rem) on top of the iPhone home indicator. */}
+            <main className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen">
+              {children}
+            </main>
+          </FacilityProvider>
         </Providers>
       </body>
     </html>

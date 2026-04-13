@@ -19,6 +19,7 @@ import {
 } from "@/components/sensor-charts";
 import type { SensorDataPoint } from "@/components/sensor-charts";
 import AlertList from "@/components/alert-list";
+import { FacilityPill } from "@/components/facility-context";
 import type { AlertItem } from "@/components/alert-list";
 import { fetchSentinelData, recordLiveAlert } from "./actions";
 import type { DbSensorReading } from "./actions";
@@ -296,18 +297,21 @@ export default function SentinelPage() {
     <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-gold" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-gold" />
+            </div>
+            <div>
+              <h1 className="font-serif text-2xl text-primary">
+                Sentinel Monitor
+              </h1>
+              <p className="text-sm text-muted">
+                Real-time environmental monitoring
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-serif text-2xl text-primary">
-              Sentinel Monitor
-            </h1>
-            <p className="text-sm text-muted">
-              Real-time environmental monitoring
-            </p>
-          </div>
+          <FacilityPill />
         </div>
 
         {/* Live indicator */}
