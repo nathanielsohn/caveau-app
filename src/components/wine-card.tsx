@@ -15,6 +15,7 @@ export interface WineCardData {
   drinkWindowStart?: number | null;
   drinkWindowEnd?: number | null;
   status?: string;
+  createdAt?: string;
 }
 
 function getDrinkStatus(start?: number | null, end?: number | null): { label: string; className: string } | null {

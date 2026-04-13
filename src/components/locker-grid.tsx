@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, ArrowLeft } from "lucide-react";
+import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, ArrowLeft, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 import { assignWineToSlot, removeWineFromSlot, addWineAndAssignToSlot } from "@/app/locker/actions";
@@ -31,8 +31,23 @@ export interface SlotData {
     region: string;
     varietal: string;
     currentValue: string; // serialized Decimal
+    drinkWindowStart: number | null;
+    drinkWindowEnd: number | null;
   } | null;
   dateStored: string | null; // serialized Date
+}
+
+type OccupancyFilter = "all" | "occupied" | "empty";
+type DrinkFilter = "all" | "ready" | "aging" | "past" | "none";
+
+/** Mirrors getDrinkStatus in wine-card.tsx */
+function drinkStatusKey(start: number | null, end: number | null): "ready" | "aging" | "past" | "none" {
+  if (!start && !end) return "none";
+  const year = new Date().getFullYear();
+  if (end && year > end) return "past";
+  if (start && year >= start && (!end || year <= end)) return "ready";
+  if (start && year < start) return "aging";
+  return "none";
 }
 
 export interface UnassignedWine {
@@ -75,6 +90,11 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
   const addFormRef = useRef<HTMLFormElement>(null);
   const lastHandledTrigger = useRef(0);
 
+  const [occupancyFilter, setOccupancyFilter] = useState<OccupancyFilter>("all");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [varietalFilter, setVarietalFilter] = useState("");
+  const [drinkFilter, setDrinkFilter] = useState<DrinkFilter>("all");
+
   // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
     const map = new Map<number, SlotData>();
@@ -95,6 +115,60 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
     setSearchQuery("");
     setActionError(null);
   }, [addTrigger, slots]);
+
+  const { regions, varietals } = useMemo(() => {
+    const r = new Set<string>();
+    const v = new Set<string>();
+    for (const s of slots) {
+      if (s.wine) {
+        r.add(s.wine.region);
+        v.add(s.wine.varietal);
+      }
+    }
+    return {
+      regions: Array.from(r).sort(),
+      varietals: Array.from(v).sort(),
+    };
+  }, [slots]);
+
+  const hasWineAttributeFilter =
+    regionFilter !== "" || varietalFilter !== "" || drinkFilter !== "all";
+  const filtersActive =
+    occupancyFilter !== "all" || hasWineAttributeFilter;
+
+  function slotMatchesFilters(slot: SlotData | undefined): boolean {
+    if (!slot) return false;
+    const wine = slot.wine;
+    if (!wine) {
+      if (hasWineAttributeFilter) return false;
+      if (occupancyFilter === "occupied") return false;
+      return true;
+    }
+    if (occupancyFilter === "empty") return false;
+    if (regionFilter && wine.region !== regionFilter) return false;
+    if (varietalFilter && wine.varietal !== varietalFilter) return false;
+    if (drinkFilter !== "all") {
+      const key = drinkStatusKey(wine.drinkWindowStart, wine.drinkWindowEnd);
+      if (key !== drinkFilter) return false;
+    }
+    return true;
+  }
+
+  const matchCount = useMemo(() => {
+    let count = 0;
+    for (let i = 1; i <= 32; i++) {
+      if (slotMatchesFilters(slotMap.get(i))) count++;
+    }
+    return count;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotMap, occupancyFilter, regionFilter, varietalFilter, drinkFilter]);
+
+  function clearFilters() {
+    setOccupancyFilter("all");
+    setRegionFilter("");
+    setVarietalFilter("");
+    setDrinkFilter("all");
+  }
 
   // Filter unassigned wines by search query
   const filteredWines = useMemo(() => {
@@ -165,6 +239,89 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
 
   return (
     <div className="relative">
+      {/* Filters */}
+      <div className="glass-card p-4 mb-4">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-1 bg-caveau-graphite rounded-xl p-1 border border-[#2A2A30] self-start">
+            {(["all", "occupied", "empty"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setOccupancyFilter(opt)}
+                className={`px-3 py-2 min-h-[44px] rounded-lg text-xs font-medium transition-colors ${
+                  occupancyFilter === opt
+                    ? "bg-gold/10 text-gold"
+                    : "text-muted hover:text-primary"
+                }`}
+              >
+                {opt === "all" ? "All" : opt === "occupied" ? "Occupied" : "Empty"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative">
+              <select
+                value={regionFilter}
+                onChange={(e) => setRegionFilter(e.target.value)}
+                aria-label="Filter by region"
+                className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2.5 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+              >
+                <option value="">All Regions</option>
+                {regions.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={varietalFilter}
+                onChange={(e) => setVarietalFilter(e.target.value)}
+                aria-label="Filter by varietal"
+                className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2.5 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+              >
+                <option value="">All Varietals</option>
+                {varietals.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={drinkFilter}
+                onChange={(e) => setDrinkFilter(e.target.value as DrinkFilter)}
+                aria-label="Filter by drink window"
+                className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2.5 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+              >
+                <option value="all">All Drink Status</option>
+                <option value="ready">Ready to Drink</option>
+                <option value="aging">Aging</option>
+                <option value="past">Past Peak</option>
+                <option value="none">No Window</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted">
+              <span className="text-gold font-medium">{matchCount}</span> of 32 slots match
+            </p>
+            {filtersActive && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-gold hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 4x8 grid */}
       <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
         {Array.from({ length: 32 }, (_, i) => {
@@ -173,6 +330,8 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
           const isOccupied = slot?.wine != null;
           const color = isOccupied ? varietalColor(slot!.wine!.varietal) : undefined;
           const isEmpty = !isOccupied && slot;
+          const matches = slotMatchesFilters(slot);
+          const dimmed = filtersActive && !matches;
 
           return (
             <button
@@ -195,13 +354,14 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                     ? "border-2 border-dashed border-gold/40 bg-[#141416]/30 cursor-pointer hover:border-gold hover:bg-gold/10 hover:scale-105 hover:shadow-[0_0_16px_rgba(255,209,102,0.25)]"
                     : "border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30 cursor-default"
                 }
+                ${dimmed ? "opacity-30 pointer-events-none" : ""}
               `}
               style={
                 isOccupied
                   ? { borderColor: color, boxShadow: `0 0 12px ${hexToRgba(color!, 0.125)}` }
                   : undefined
               }
-              disabled={!isOccupied && !isEmpty}
+              disabled={(!isOccupied && !isEmpty) || dimmed}
             >
               {isOccupied ? (
                 <>

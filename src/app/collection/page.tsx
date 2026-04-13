@@ -74,11 +74,13 @@ export default async function CollectionPage() {
     drinkWindowStart: w.drinkWindowStart,
     drinkWindowEnd: w.drinkWindowEnd,
     status: w.status,
+    createdAt: w.createdAt.toISOString(),
   }));
 
-  // Extract unique regions and varietals for filter dropdowns
+  // Extract unique regions, varietals, producers for filter dropdowns
   const regions = Array.from(new Set(wines.map((w) => w.region))).sort();
   const varietals = Array.from(new Set(wines.map((w) => w.varietal))).sort();
+  const producers = Array.from(new Set(wines.map((w) => w.producer))).sort();
   const vintages = Array.from(new Set(wines.map((w) => w.vintage))).sort((a, b) => a - b);
 
   return (
@@ -86,6 +88,7 @@ export default async function CollectionPage() {
       wines={serializedWines}
       regions={regions}
       varietals={varietals}
+      producers={producers}
       vintageRange={[vintages[0] ?? 2000, vintages[vintages.length - 1] ?? 2025]}
       addWineAction={addWine}
     />

@@ -24,6 +24,8 @@ async function getLockers(memberId: string) {
               region: true,
               varietal: true,
               currentValue: true,
+              drinkWindowStart: true,
+              drinkWindowEnd: true,
             },
           },
         },
@@ -97,6 +99,8 @@ export default async function LockerPage() {
               region: slot.wine.region,
               varietal: slot.wine.varietal,
               currentValue: slot.wine.currentValue.toString(),
+              drinkWindowStart: slot.wine.drinkWindowStart ?? null,
+              drinkWindowEnd: slot.wine.drinkWindowEnd ?? null,
             }
           : null,
         dateStored: slot.dateStored?.toISOString() ?? null,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import WineCard, { type WineCardData } from "@/components/wine-card";
 import AddWineForm from "@/components/add-wine-form";
 import { formatCurrency } from "@/lib/utils";
@@ -11,28 +11,59 @@ interface CollectionClientProps {
   wines: WineCardData[];
   regions: string[];
   varietals: string[];
+  producers: string[];
   vintageRange: [number, number];
   addWineAction: (formData: FormData) => Promise<void>;
+}
+
+type SortKey = "added" | "value" | "vintage" | "name" | "drinkWindow";
+type SortDir = "asc" | "desc";
+type DrinkStatus = "ready" | "aging" | "past" | "none";
+
+function getDrinkStatus(start?: number | null, end?: number | null): DrinkStatus {
+  const year = new Date().getFullYear();
+  if (!start && !end) return "none";
+  if (end && year > end) return "past";
+  if (start && year >= start && (!end || year <= end)) return "ready";
+  if (start && year < start) return "aging";
+  return "none";
+}
+
+function drinkWindowSortValue(start?: number | null, end?: number | null): number {
+  const year = new Date().getFullYear();
+  if (!start && !end) return Number.POSITIVE_INFINITY;
+  if (end && year > end) return -1;
+  if (start && year >= start && (!end || year <= end)) return 0;
+  if (start && year < start) return start - year;
+  return Number.POSITIVE_INFINITY;
 }
 
 export default function CollectionClient({
   wines,
   regions,
   varietals,
+  producers,
   vintageRange,
   addWineAction,
 }: CollectionClientProps) {
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [varietalFilter, setVarietalFilter] = useState("");
+  const [producerFilter, setProducerFilter] = useState("");
   const [vintageMin, setVintageMin] = useState<number | "">("");
   const [vintageMax, setVintageMax] = useState<number | "">("");
+  const [priceMin, setPriceMin] = useState<number | "">("");
+  const [priceMax, setPriceMax] = useState<number | "">("");
+  const [drinkFilter, setDrinkFilter] = useState<"" | DrinkStatus>("");
+  const [sortKey, setSortKey] = useState<SortKey>("added");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const filtered = useMemo(() => {
-    return wines.filter((w) => {
+    const result = wines.filter((w) => {
       // Filter by status: default shows only in_cellar, history shows disposed
       const isInCellar = !w.status || w.status === "in_cellar";
       if (!showHistory && !isInCellar) return false;
@@ -41,16 +72,62 @@ export default function CollectionClient({
       if (search && !w.name.toLowerCase().includes(search.toLowerCase())) {
         return false;
       }
-      // Filter by region
       if (regionFilter && w.region !== regionFilter) return false;
-      // Filter by varietal
       if (varietalFilter && w.varietal !== varietalFilter) return false;
-      // Filter by vintage range
+      if (producerFilter && w.producer !== producerFilter) return false;
       if (vintageMin !== "" && w.vintage < vintageMin) return false;
       if (vintageMax !== "" && w.vintage > vintageMax) return false;
+      if (priceMin !== "" && w.currentValue < priceMin) return false;
+      if (priceMax !== "" && w.currentValue > priceMax) return false;
+      if (drinkFilter && getDrinkStatus(w.drinkWindowStart, w.drinkWindowEnd) !== drinkFilter) return false;
       return true;
     });
-  }, [wines, search, regionFilter, varietalFilter, vintageMin, vintageMax, showHistory]);
+
+    const sorted = [...result].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "value":
+          cmp = a.currentValue - b.currentValue;
+          break;
+        case "vintage":
+          cmp = a.vintage - b.vintage;
+          break;
+        case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "drinkWindow":
+          cmp = drinkWindowSortValue(a.drinkWindowStart, a.drinkWindowEnd) - drinkWindowSortValue(b.drinkWindowStart, b.drinkWindowEnd);
+          break;
+        case "added":
+        default:
+          cmp = (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    return sorted;
+  }, [wines, search, regionFilter, varietalFilter, producerFilter, vintageMin, vintageMax, priceMin, priceMax, drinkFilter, sortKey, sortDir, showHistory]);
+
+  function clearFilters() {
+    setSearch("");
+    setRegionFilter("");
+    setVarietalFilter("");
+    setProducerFilter("");
+    setVintageMin("");
+    setVintageMax("");
+    setPriceMin("");
+    setPriceMax("");
+    setDrinkFilter("");
+  }
+
+  const activeFilterCount =
+    (regionFilter ? 1 : 0) +
+    (varietalFilter ? 1 : 0) +
+    (producerFilter ? 1 : 0) +
+    (vintageMin !== "" || vintageMax !== "" ? 1 : 0) +
+    (priceMin !== "" || priceMax !== "" ? 1 : 0) +
+    (drinkFilter ? 1 : 0);
 
   const totalValue = useMemo(
     () => filtered.reduce((sum, w) => sum + w.currentValue, 0),
@@ -117,74 +194,85 @@ export default function CollectionClient({
             />
           </div>
 
-          {/* Filter row */}
+          {/* Primary row: region, varietal, sort, more, view toggle */}
           <div className="flex flex-wrap gap-3 items-center">
-            {/* Region filter */}
             <div className="relative">
               <select
                 value={regionFilter}
                 onChange={(e) => setRegionFilter(e.target.value)}
+                aria-label="Filter by region"
                 className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">All Regions</option>
                 {regions.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
+                  <option key={r} value={r}>{r}</option>
                 ))}
               </select>
-              <ChevronDown
-                size={14}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-              />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             </div>
 
-            {/* Varietal filter */}
             <div className="relative">
               <select
                 value={varietalFilter}
                 onChange={(e) => setVarietalFilter(e.target.value)}
+                aria-label="Filter by varietal"
                 className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">All Varietals</option>
                 {varietals.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
+                  <option key={v} value={v}>{v}</option>
                 ))}
               </select>
-              <ChevronDown
-                size={14}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-              />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             </div>
 
-            {/* Vintage range */}
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={vintageMin}
-                onChange={(e) =>
-                  setVintageMin(e.target.value ? parseInt(e.target.value, 10) : "")
-                }
-                placeholder={String(vintageRange[0])}
-                min={vintageRange[0]}
-                max={vintageRange[1]}
-                className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
-              />
-              <span className="text-xs text-muted">to</span>
-              <input
-                type="number"
-                value={vintageMax}
-                onChange={(e) =>
-                  setVintageMax(e.target.value ? parseInt(e.target.value, 10) : "")
-                }
-                placeholder={String(vintageRange[1])}
-                min={vintageRange[0]}
-                max={vintageRange[1]}
-                className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
-              />
+            {/* Sort dropdown + direction toggle */}
+            <div className="flex items-center gap-1">
+              <div className="relative">
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  aria-label="Sort wines by"
+                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-8 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                >
+                  <option value="added">Recently added</option>
+                  <option value="value">Value</option>
+                  <option value="vintage">Vintage</option>
+                  <option value="name">Name</option>
+                  <option value="drinkWindow">Drink window</option>
+                </select>
+                <ArrowUpDown size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+              <button
+                onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+                aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}`}
+                title={sortDir === "asc" ? "Ascending" : "Descending"}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center px-3 rounded-xl bg-caveau-graphite border border-[#2A2A30] text-secondary hover:text-primary hover:border-gold/30 transition-colors text-xs font-medium"
+              >
+                {sortDir === "asc" ? "↑" : "↓"}
+              </button>
             </div>
+
+            {/* More filters toggle */}
+            <button
+              onClick={() => setShowMoreFilters(!showMoreFilters)}
+              aria-expanded={showMoreFilters}
+              aria-label="Toggle additional filters"
+              className={`flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl text-sm border transition-colors ${
+                showMoreFilters || activeFilterCount > 2
+                  ? "bg-gold/10 text-gold border-gold/30"
+                  : "bg-caveau-graphite text-secondary border-[#2A2A30] hover:border-gold/30 hover:text-primary"
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              More
+              {activeFilterCount > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold/20 text-gold text-[10px] font-semibold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
             {/* View toggle — pushed to end */}
             <div className="ml-auto flex items-center gap-1 bg-caveau-graphite rounded-xl p-1 border border-[#2A2A30]">
@@ -212,6 +300,99 @@ export default function CollectionClient({
               </button>
             </div>
           </div>
+
+          {/* Expanded filters: producer, drink window, vintage range, price range */}
+          {showMoreFilters && (
+            <div className="flex flex-wrap gap-3 items-center pt-3 border-t border-[#2A2A30]/50">
+              <div className="relative">
+                <select
+                  value={producerFilter}
+                  onChange={(e) => setProducerFilter(e.target.value)}
+                  aria-label="Filter by producer"
+                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer max-w-[200px] truncate"
+                >
+                  <option value="">All Producers</option>
+                  {producers.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+
+              <div className="relative">
+                <select
+                  value={drinkFilter}
+                  onChange={(e) => setDrinkFilter(e.target.value as "" | DrinkStatus)}
+                  aria-label="Filter by drink window status"
+                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                >
+                  <option value="">Any drink window</option>
+                  <option value="ready">Ready to drink</option>
+                  <option value="aging">Aging</option>
+                  <option value="past">Past peak</option>
+                  <option value="none">No window set</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Vintage</span>
+                <input
+                  type="number"
+                  value={vintageMin}
+                  onChange={(e) => setVintageMin(e.target.value ? parseInt(e.target.value, 10) : "")}
+                  placeholder={String(vintageRange[0])}
+                  min={vintageRange[0]}
+                  max={vintageRange[1]}
+                  aria-label="Minimum vintage"
+                  className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                />
+                <span className="text-xs text-muted">to</span>
+                <input
+                  type="number"
+                  value={vintageMax}
+                  onChange={(e) => setVintageMax(e.target.value ? parseInt(e.target.value, 10) : "")}
+                  placeholder={String(vintageRange[1])}
+                  min={vintageRange[0]}
+                  max={vintageRange[1]}
+                  aria-label="Maximum vintage"
+                  className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Price</span>
+                <input
+                  type="number"
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(e.target.value ? parseFloat(e.target.value) : "")}
+                  placeholder="$ min"
+                  min={0}
+                  aria-label="Minimum value"
+                  className="w-24 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                />
+                <span className="text-xs text-muted">to</span>
+                <input
+                  type="number"
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(e.target.value ? parseFloat(e.target.value) : "")}
+                  placeholder="$ max"
+                  min={0}
+                  aria-label="Maximum value"
+                  className="w-24 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                />
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-auto text-xs text-gold hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -223,13 +404,7 @@ export default function CollectionClient({
             {showHistory ? "No disposed wines yet" : "No wines match your filters"}
           </p>
           <button
-            onClick={() => {
-              setSearch("");
-              setRegionFilter("");
-              setVarietalFilter("");
-              setVintageMin("");
-              setVintageMax("");
-            }}
+            onClick={clearFilters}
             className="text-gold text-sm mt-2 hover:underline"
           >
             Clear filters
