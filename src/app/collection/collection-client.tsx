@@ -7,11 +7,17 @@ import AddWineForm from "@/components/add-wine-form";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 
+interface LockerOption {
+  id: string;
+  lockerNumber: number;
+}
+
 interface CollectionClientProps {
   wines: WineCardData[];
   regions: string[];
   varietals: string[];
   producers: string[];
+  lockerOptions: LockerOption[];
   vintageRange: [number, number];
   addWineAction: (formData: FormData) => Promise<void>;
 }
@@ -43,6 +49,7 @@ export default function CollectionClient({
   regions,
   varietals,
   producers,
+  lockerOptions,
   vintageRange,
   addWineAction,
 }: CollectionClientProps) {
@@ -50,6 +57,8 @@ export default function CollectionClient({
   const [regionFilter, setRegionFilter] = useState("");
   const [varietalFilter, setVarietalFilter] = useState("");
   const [producerFilter, setProducerFilter] = useState("");
+  // "" = all, "unassigned" = no locker, otherwise a locker id
+  const [lockerFilter, setLockerFilter] = useState("");
   const [vintageMin, setVintageMin] = useState<number | "">("");
   const [vintageMax, setVintageMax] = useState<number | "">("");
   const [priceMin, setPriceMin] = useState<number | "">("");
@@ -75,6 +84,8 @@ export default function CollectionClient({
       if (regionFilter && w.region !== regionFilter) return false;
       if (varietalFilter && w.varietal !== varietalFilter) return false;
       if (producerFilter && w.producer !== producerFilter) return false;
+      if (lockerFilter === "unassigned" && w.lockerId) return false;
+      if (lockerFilter && lockerFilter !== "unassigned" && w.lockerId !== lockerFilter) return false;
       if (vintageMin !== "" && w.vintage < vintageMin) return false;
       if (vintageMax !== "" && w.vintage > vintageMax) return false;
       if (priceMin !== "" && w.currentValue < priceMin) return false;
@@ -107,13 +118,14 @@ export default function CollectionClient({
     });
 
     return sorted;
-  }, [wines, search, regionFilter, varietalFilter, producerFilter, vintageMin, vintageMax, priceMin, priceMax, drinkFilter, sortKey, sortDir, showHistory]);
+  }, [wines, search, regionFilter, varietalFilter, producerFilter, lockerFilter, vintageMin, vintageMax, priceMin, priceMax, drinkFilter, sortKey, sortDir, showHistory]);
 
   function clearFilters() {
     setSearch("");
     setRegionFilter("");
     setVarietalFilter("");
     setProducerFilter("");
+    setLockerFilter("");
     setVintageMin("");
     setVintageMax("");
     setPriceMin("");
@@ -125,6 +137,7 @@ export default function CollectionClient({
     (regionFilter ? 1 : 0) +
     (varietalFilter ? 1 : 0) +
     (producerFilter ? 1 : 0) +
+    (lockerFilter ? 1 : 0) +
     (vintageMin !== "" || vintageMax !== "" ? 1 : 0) +
     (priceMin !== "" || priceMax !== "" ? 1 : 0) +
     (drinkFilter ? 1 : 0);
@@ -225,6 +238,24 @@ export default function CollectionClient({
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             </div>
+
+            {lockerOptions.length > 0 && (
+              <div className="relative">
+                <select
+                  value={lockerFilter}
+                  onChange={(e) => setLockerFilter(e.target.value)}
+                  aria-label="Filter by locker"
+                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                >
+                  <option value="">All Lockers</option>
+                  {lockerOptions.map((l) => (
+                    <option key={l.id} value={l.id}>Locker #{l.lockerNumber}</option>
+                  ))}
+                  <option value="unassigned">Unassigned</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+            )}
 
             {/* Sort dropdown + direction toggle */}
             <div className="flex items-center gap-1">

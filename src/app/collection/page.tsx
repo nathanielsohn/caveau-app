@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getCurrentFacility } from "@/lib/current-facility";
 import { toNumber } from "@/lib/utils";
 import { getPublicUrl } from "@/lib/s3";
 import { revalidatePath } from "next/cache";
@@ -50,30 +51,75 @@ export default async function CollectionPage() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
 
+  const memberId = session.user.id;
+  const facility = await getCurrentFacility(memberId);
+
+  // Scope wines to the active facility: include wines whose slot lives in
+  // this facility, plus unassigned wines (not yet in any slot) — those are
+  // member-owned so we show them regardless of the current facility.
   const wines = await prisma.wine.findMany({
-    where: { memberId: session.user.id },
+    where: {
+      memberId,
+      ...(facility
+        ? {
+            OR: [
+              { lockerSlots: { none: {} } },
+              { lockerSlots: { some: { locker: { facilityId: facility.id } } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "desc" },
     take: 500,
+    include: {
+      lockerSlots: {
+        select: {
+          locker: {
+            select: { id: true, lockerNumber: true, facilityId: true },
+          },
+        },
+      },
+    },
   });
 
-  // Serialize Prisma Decimals to plain numbers for the client
-  const serializedWines: WineCardData[] = wines.map((w) => ({
-    id: w.id,
-    name: w.name,
-    vintage: w.vintage,
-    region: w.region,
-    varietal: w.varietal,
-    producer: w.producer,
-    purchasePrice: toNumber(w.purchasePrice),
-    currentValue: toNumber(w.currentValue),
-    photoUrl: getPublicUrl(w.imageKey),
-    drinkWindowStart: w.drinkWindowStart,
-    drinkWindowEnd: w.drinkWindowEnd,
-    status: w.status,
-    createdAt: w.createdAt.toISOString(),
-  }));
+  // Pick the locker assignment that belongs to the current facility so the
+  // client can both display and filter by locker number.
+  const serializedWines: WineCardData[] = wines.map((w) => {
+    const slot = facility
+      ? w.lockerSlots.find((s) => s.locker.facilityId === facility.id)
+      : w.lockerSlots[0];
+    return {
+      id: w.id,
+      name: w.name,
+      vintage: w.vintage,
+      region: w.region,
+      varietal: w.varietal,
+      producer: w.producer,
+      purchasePrice: toNumber(w.purchasePrice),
+      currentValue: toNumber(w.currentValue),
+      photoUrl: getPublicUrl(w.imageKey),
+      drinkWindowStart: w.drinkWindowStart,
+      drinkWindowEnd: w.drinkWindowEnd,
+      status: w.status,
+      createdAt: w.createdAt.toISOString(),
+      lockerId: slot?.locker.id ?? null,
+      lockerNumber: slot?.locker.lockerNumber ?? null,
+    };
+  });
 
-  // Extract unique regions, varietals, producers for filter dropdowns
+  // Build the locker dropdown from whichever lockers in the active facility
+  // currently hold at least one of this member's wines.
+  const lockerMap = new Map<string, number>();
+  for (const w of serializedWines) {
+    if (w.lockerId && w.lockerNumber != null) {
+      lockerMap.set(w.lockerId, w.lockerNumber);
+    }
+  }
+  const lockerOptions = Array.from(lockerMap, ([id, lockerNumber]) => ({
+    id,
+    lockerNumber,
+  })).sort((a, b) => a.lockerNumber - b.lockerNumber);
+
   const regions = Array.from(new Set(wines.map((w) => w.region))).sort();
   const varietals = Array.from(new Set(wines.map((w) => w.varietal))).sort();
   const producers = Array.from(new Set(wines.map((w) => w.producer))).sort();
@@ -85,6 +131,7 @@ export default async function CollectionPage() {
       regions={regions}
       varietals={varietals}
       producers={producers}
+      lockerOptions={lockerOptions}
       vintageRange={[vintages[0] ?? 2000, vintages[vintages.length - 1] ?? 2025]}
       addWineAction={addWine}
     />
