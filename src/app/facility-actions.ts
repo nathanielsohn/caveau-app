@@ -26,12 +26,16 @@ export async function setCurrentFacility(
   });
   if (!membership) return { ok: false, error: "Not a member of that facility" };
 
+  // Scope the cookie to the current NextAuth session (4h). A year-long
+  // cookie outlives the session and leaves a stale facility preference
+  // active after logout — we'd rather the nav default to the first
+  // membership than a cookie the user can't see.
   cookies().set(FACILITY_COOKIE, facilityId, {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 365,
+    maxAge: 60 * 60 * 4,
   });
 
   revalidatePath("/", "layout");

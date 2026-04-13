@@ -1,5 +1,5 @@
 import { PrismaClient, Role, Tier, AlertType, Severity } from '@prisma/client';
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -282,7 +282,17 @@ async function main() {
     if (!wine) continue;
     const monitoringStart = new Date(Date.now() - (180 + i * 15) * 86400000);
     const monitoringEnd = new Date();
-    const hash = createHash('sha256')
+    // HMAC-SHA256 keyed on NEXTAUTH_SECRET so the public verify hash
+    // can't be forged even if an attacker learns the tuple format.
+    // Mirrors src/lib/certificate-hash.ts — kept inlined here so the
+    // seed script stays a single file Prisma can execute directly.
+    const certKey = process.env.NEXTAUTH_SECRET;
+    if (!certKey) {
+      throw new Error(
+        'NEXTAUTH_SECRET is required to seed provenance certificates',
+      );
+    }
+    const hash = createHmac('sha256', certKey)
       .update(`${wine.id}|${lockerId}|${monitoringStart.toISOString()}|${monitoringEnd.toISOString()}`)
       .digest('hex');
 

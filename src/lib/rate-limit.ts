@@ -42,8 +42,24 @@ export interface RateLimitResult {
 // start (epoch ms) and the count inside that window. We sweep expired entries
 // opportunistically to bound memory growth without scheduling a timer (which
 // would keep the Lambda warm and bill us for nothing).
+//
+// MEM_CAP is a hard ceiling so a botnet rotating through IPs can't grow the
+// Map without bound. When the cap is exceeded we evict the oldest entries
+// (by window start) until we're back under the limit — a crude LRU that
+// costs O(n log n) but only runs when the cap is already breached. On a
+// single Vercel Lambda, 10k entries is ~1MB, well inside the budget.
 
+const MEM_CAP = 10_000;
 const memStore = new Map<string, { start: number; count: number }>();
+
+function evictOldest(): void {
+  const entries = Array.from(memStore.entries());
+  entries.sort((a, b) => a[1].start - b[1].start);
+  const toEvict = entries.length - Math.floor(MEM_CAP * 0.9);
+  for (let i = 0; i < toEvict; i++) {
+    memStore.delete(entries[i][0]);
+  }
+}
 
 function memoryCheck(
   key: string,
@@ -55,6 +71,10 @@ function memoryCheck(
     memStore.forEach((v, k) => {
       if (now - v.start >= policy.windowMs) memStore.delete(k);
     });
+  }
+
+  if (memStore.size >= MEM_CAP) {
+    evictOldest();
   }
 
   const entry = memStore.get(key);
