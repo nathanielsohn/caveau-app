@@ -475,6 +475,8 @@ Turn it into a business.
 | 34 | ~~Wine disposition tracking~~ | ~~WineStatus enum, WineDisposition model, history toggle on collection page, dashboard metrics scoped to active wines. Done.~~ |
 | 35 | ~~Locker self-service (member)~~ | ~~Assign/remove wines from locker slots via modal picker. Done.~~ |
 | 36 | ~~Add wine from locker slot~~ | ~~Inline add-wine form in slot picker modal, single-transaction create + assign. Done.~~ |
+| 37 | Collection sort + expanded filters | Sort dropdown (value, vintage, name, drink-window, recently added, asc/desc). Add price-range, drink-window status (ready/aging/past peak), and producer filters alongside existing region/varietal/vintage. |
+| 38 | Locker slot filtering | Filter the 4×8 slot grid by occupancy (occupied/empty) and by attributes of the wine inside (region, varietal, drink-window status). Visually dim non-matching slots so the physical layout stays intact. |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 
