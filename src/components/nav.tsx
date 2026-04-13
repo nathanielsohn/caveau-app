@@ -64,6 +64,14 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     ? session.user.tier.charAt(0).toUpperCase() + session.user.tier.slice(1) + " Tier"
     : "";
 
+  // Pages whose data is actually scoped by facility. Settings is per-account,
+  // and wine/certificate detail pages would 404 after a switch since the id
+  // belongs to the previous facility.
+  const facilityScopedPaths = ["/", "/collection", "/locker", "/sentinel"];
+  const isFacilityScopedPage = facilityScopedPaths.some((p) =>
+    p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(p + "/"),
+  );
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -152,8 +160,8 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
         </div>
       </aside>
 
-      {/* Mobile top bar — facility switcher (only when member belongs to >1) */}
-      {facilities.length > 1 && (
+      {/* Mobile top bar — facility switcher */}
+      {facilities.length > 1 && isFacilityScopedPage && (
         <div className="md:hidden sticky top-0 z-40 border-b border-[#2A2A30]/50 bg-caveau-charcoal/90 backdrop-blur-xl px-4 py-2.5">
           <div className="relative">
             <Building2
