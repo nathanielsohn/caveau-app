@@ -108,7 +108,6 @@ model Wine {
   producer         String
   purchasePrice    Decimal               @map("purchase_price") @db.Decimal(14, 2)
   currentValue     Decimal               @map("current_value") @db.Decimal(14, 2)
-  imageUrl         String?               @map("image_url")
   tastingNotes     String?               @map("tasting_notes")
   drinkWindowStart Int?                  @map("drink_window_start")
   drinkWindowEnd   Int?                  @map("drink_window_end")
@@ -147,7 +146,7 @@ model WineValuation {
 
 model Locker {
   id           String                @id @default(uuid())
-  lockerNumber Int                   @unique @map("locker_number")
+  lockerNumber Int                   @map("locker_number")
   zone         String
   facilityId   String                @map("facility_id")
   memberId     String?               @map("member_id")
@@ -160,7 +159,7 @@ model Locker {
   alerts       Alert[]
   certificates ProvenanceCertificate[]
 
-  @@index([facilityId])
+  @@unique([facilityId, lockerNumber])
   @@index([memberId])
   @@map("lockers")
 }
@@ -209,6 +208,7 @@ model Alert {
   @@index([lockerId, timestamp(sort: Desc)])
   @@index([resolved, lockerId, timestamp(sort: Desc)])
   @@index([lockerId, type, notifiedAt(sort: Desc)])
+  @@index([lockerId, type, resolved, notifiedAt(sort: Desc)])
   @@map("alerts")
 }
 
