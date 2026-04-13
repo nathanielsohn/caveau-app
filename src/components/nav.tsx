@@ -9,6 +9,7 @@ import {
   Lock,
   Activity,
   LogOut,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { href: "/collection", label: "Collection", icon: Wine },
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function Nav() {

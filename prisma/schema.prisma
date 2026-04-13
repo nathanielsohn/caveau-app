@@ -64,17 +64,20 @@ model Facility {
 }
 
 model Member {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  tier         Tier
-  role         Role     @default(member)
-  passwordHash String?  @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  wines        Wine[]
-  lockers      Locker[]
-  dispositions WineDisposition[]
+  id                    String   @id @default(uuid())
+  name                  String
+  email                 String   @unique
+  tier                  Tier
+  role                  Role     @default(member)
+  passwordHash          String?  @map("password_hash")
+  emailAlertsEnabled    Boolean  @default(true) @map("email_alerts_enabled")
+  emailAlertSeverity    String   @default("warning") @map("email_alert_severity")
+  emailAlertCooldownMin Int      @default(30) @map("email_alert_cooldown_min")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  wines                 Wine[]
+  lockers               Locker[]
+  dispositions          WineDisposition[]
 
   @@index([tier])
   @@index([role])
@@ -173,18 +176,20 @@ model SensorReading {
 }
 
 model Alert {
-  id        String   @id @default(uuid())
-  lockerId  String    @map("locker_id")
-  type      AlertType
-  severity  Severity
-  message   String
-  timestamp DateTime @default(now())
-  resolved  Boolean  @default(false)
-  updatedAt DateTime @updatedAt @map("updated_at")
-  locker    Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  lockerId   String    @map("locker_id")
+  type       AlertType
+  severity   Severity
+  message    String
+  timestamp  DateTime  @default(now())
+  resolved   Boolean   @default(false)
+  notifiedAt DateTime? @map("notified_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  locker     Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
   @@index([lockerId, timestamp(sort: Desc)])
   @@index([resolved, lockerId, timestamp(sort: Desc)])
+  @@index([lockerId, type, notifiedAt(sort: Desc)])
   @@map("alerts")
 }
 
