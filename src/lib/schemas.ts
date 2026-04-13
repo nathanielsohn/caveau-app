@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { z, ZodError, type ZodSchema } from "zod";
+import { z, ZodError, type ZodTypeAny, type ZodTypeDef, type ZodType } from "zod";
 
 // ── Primitives ────────────────────────────────────────────────────────────
 
@@ -107,11 +107,15 @@ export const AlertsQuerySchema = z.object({
  * also help an attacker map the validation graph. Server logs still see the
  * full error via the logger.
  */
-export function parseOr400<T>(
-  schema: ZodSchema<T>,
+// We accept any ZodType (not just ZodSchema<T>) so callers can pass
+// schemas with transforms / preprocess steps where the input and output
+// types differ — e.g. FormData parsing where strings get coerced into
+// numbers and dates.
+export function parseOr400<S extends ZodTypeAny>(
+  schema: S,
   data: unknown,
 ):
-  | { ok: true; data: T }
+  | { ok: true; data: z.infer<S> }
   | { ok: false; response: NextResponse } {
   try {
     const parsed = schema.parse(data);
@@ -131,7 +135,7 @@ export function parseOr400<T>(
 /** Parse a path param. Same shape, returns 404 instead of 400 for bad UUIDs
  *  to avoid leaking that the route exists. */
 export function parsePathParamOr404<T>(
-  schema: ZodSchema<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   data: unknown,
 ):
   | { ok: true; data: T }

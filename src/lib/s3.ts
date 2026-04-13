@@ -18,7 +18,11 @@
  * Mirrors the SES wrapper in `./email.ts` — same lazy-init + no-op fallback
  * pattern, kept identical so a future maintainer only has to learn it once.
  */
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "./env";
 
@@ -104,6 +108,26 @@ export function getPublicUrl(key: string | null | undefined): string | null {
   if (!bucket) return null;
   const region = env.AWS_REGION ?? "us-east-1";
   return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/**
+ * Best-effort delete of a wine photo. Called when a wine leaves the
+ * collection (disposition flow, feature #34) so we don't leak storage.
+ * Returns true on success, false on any failure — never throws so callers
+ * don't have to wrap in try/catch.
+ */
+export async function deleteObject(key: string | null | undefined): Promise<boolean> {
+  if (!key) return false;
+  const bucket = env.AWS_S3_BUCKET;
+  if (!bucket) return false;
+  try {
+    const client = getClient();
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch (err) {
+    console.error("[s3] deleteObject failed:", err);
+    return false;
+  }
 }
 
 /** True when the upload pipeline is fully configured. */

@@ -3,57 +3,83 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
+import { requireMemberFacility } from "@/lib/current-facility";
+import { CreateWineBodySchema, UuidSchema, parseOr400 } from "@/lib/schemas";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
-function actionError(e: unknown, fallback: string): { error: string } {
+const NOT_FOUND_ERROR = { error: "Not found" } as const;
+const RATE_LIMITED_ERROR = { error: "Too many requests" } as const;
+const MUTATION_POLICY = { limit: 30, windowMs: 60_000 };
+
+async function checkMutationLimit(
+  bucket: string,
+  memberId: string,
+): Promise<boolean> {
+  const ip = clientIp(headers());
+  const result = await checkRateLimit(
+    `${bucket}:${memberId}:${ip}`,
+    MUTATION_POLICY,
+  );
+  return result.allowed;
+}
+
+function actionError(e: unknown): { error: string } {
   if (
     e instanceof Prisma.PrismaClientKnownRequestError &&
     e.code === "P2002"
   ) {
-    return { error: "Wine is already assigned to a slot" };
+    // Wine already in a slot, or any other unique violation. Surface as a
+    // generic conflict so we don't leak slot-vs-wine details.
+    return { error: "That bottle is already stored in a slot" };
   }
-  return { error: e instanceof Error ? e.message : fallback };
+  return NOT_FOUND_ERROR;
 }
 
 /**
  * Assign a wine to an empty locker slot.
- * Validates that the authenticated member owns both the wine and the locker.
+ * Validates that both the wine and the locker belong to the authenticated
+ * member, and that the locker lives in the active facility. Errors collapse
+ * to a single "Not found" so callers can't probe ownership via error text.
  */
 export async function assignWineToSlot(
   slotId: string,
   wineId: string
 ): Promise<{ error?: string }> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return { error: "Not authenticated" };
+  const ctx = await requireMemberFacility();
+  if (!ctx) return NOT_FOUND_ERROR;
 
-  const memberId = session.user.id;
+  if (!UuidSchema.safeParse(slotId).success) return NOT_FOUND_ERROR;
+  if (!UuidSchema.safeParse(wineId).success) return NOT_FOUND_ERROR;
+
+  if (!(await checkMutationLimit("locker-assign", ctx.memberId))) {
+    return RATE_LIMITED_ERROR;
+  }
 
   try {
     await prisma.$transaction(
       async (tx) => {
-        // Verify the slot exists, belongs to the member's locker, and is empty
-        const slot = await tx.lockerSlot.findUnique({
-          where: { id: slotId },
-          include: { locker: { select: { memberId: true } } },
+        const slot = await tx.lockerSlot.findFirst({
+          where: {
+            id: slotId,
+            wineId: null,
+            locker: {
+              memberId: ctx.memberId,
+              facilityId: ctx.facilityId,
+            },
+          },
+          select: { id: true },
         });
+        if (!slot) throw new Error("not_found");
 
-        if (!slot) throw new Error("Slot not found");
-        if (slot.locker.memberId !== memberId) throw new Error("Not your locker");
-        if (slot.wineId) throw new Error("Slot is already occupied");
-
-        // Verify the wine belongs to the member and is not already in a slot
-        const wine = await tx.wine.findUnique({
-          where: { id: wineId },
-          select: { memberId: true },
+        const wine = await tx.wine.findFirst({
+          where: { id: wineId, memberId: ctx.memberId },
+          select: { id: true },
         });
+        if (!wine) throw new Error("not_found");
 
-        if (!wine) throw new Error("Wine not found");
-        if (wine.memberId !== memberId) throw new Error("Not your wine");
-
-        // The partial unique index on locker_slots.wine_id (migration 0002)
-        // makes "wine already assigned to a slot" a hard DB constraint, so
-        // we don't need an application-layer pre-check. The unique violation
-        // bubbles up as a Prisma error and gets caught below.
+        // The partial unique index on locker_slots.wine_id makes "wine
+        // already assigned" a hard DB constraint — caught below as P2002.
         await tx.lockerSlot.update({
           where: { id: slotId },
           data: { wineId, dateStored: new Date() },
@@ -65,70 +91,61 @@ export async function assignWineToSlot(
     revalidatePath("/locker");
     return {};
   } catch (e) {
-    return actionError(e, "Failed to assign wine");
+    return actionError(e);
   }
 }
 
 /**
  * Create a new wine and assign it to an empty locker slot in one transaction.
- * Validates that the authenticated member owns the locker.
+ * Same scoping rules as assignWineToSlot.
  */
 export async function addWineAndAssignToSlot(
   slotId: string,
   formData: FormData
 ): Promise<{ error?: string }> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return { error: "Not authenticated" };
+  const ctx = await requireMemberFacility();
+  if (!ctx) return NOT_FOUND_ERROR;
 
-  const memberId = session.user.id;
+  if (!UuidSchema.safeParse(slotId).success) return NOT_FOUND_ERROR;
 
-  const name = (formData.get("name") as string | null)?.trim();
-  const vintageRaw = formData.get("vintage") as string | null;
-  const region = (formData.get("region") as string | null)?.trim();
-  const varietal = (formData.get("varietal") as string | null)?.trim();
-  const producer = (formData.get("producer") as string | null)?.trim();
-  const priceRaw = formData.get("purchasePrice") as string | null;
-
-  const vintage = vintageRaw ? parseInt(vintageRaw, 10) : NaN;
-  const purchasePrice = priceRaw ? parseFloat(priceRaw) : NaN;
-
-  if (!name || name.length > 500 || !region || !varietal || !producer) {
-    return { error: "All fields are required" };
+  if (!(await checkMutationLimit("locker-add-wine", ctx.memberId))) {
+    return RATE_LIMITED_ERROR;
   }
-  if (isNaN(vintage) || vintage < 1800 || vintage > new Date().getFullYear() + 1) {
-    return { error: "Invalid vintage year" };
-  }
-  if (isNaN(purchasePrice) || purchasePrice < 0 || purchasePrice > 10_000_000) {
-    return { error: "Invalid purchase price" };
-  }
+
+  const parsed = parseOr400(CreateWineBodySchema, {
+    name: formData.get("name"),
+    vintage: formData.get("vintage"),
+    region: formData.get("region"),
+    varietal: formData.get("varietal"),
+    producer: formData.get("producer"),
+    purchasePrice: formData.get("purchasePrice"),
+  });
+  if (!parsed.ok) return { error: "Invalid wine data" };
+  const wineData = parsed.data;
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Verify the slot exists, belongs to the member's locker, and is empty
-      const slot = await tx.lockerSlot.findUnique({
-        where: { id: slotId },
-        include: { locker: { select: { memberId: true } } },
+      const slot = await tx.lockerSlot.findFirst({
+        where: {
+          id: slotId,
+          wineId: null,
+          locker: {
+            memberId: ctx.memberId,
+            facilityId: ctx.facilityId,
+          },
+        },
+        select: { id: true },
       });
+      if (!slot) throw new Error("not_found");
 
-      if (!slot) throw new Error("Slot not found");
-      if (slot.locker.memberId !== memberId) throw new Error("Not your locker");
-      if (slot.wineId) throw new Error("Slot is already occupied");
-
-      // Create the wine
       const wine = await tx.wine.create({
         data: {
-          name,
-          vintage,
-          region,
-          varietal,
-          producer,
-          purchasePrice,
-          currentValue: purchasePrice,
-          memberId,
+          ...wineData,
+          currentValue: wineData.purchasePrice,
+          memberId: ctx.memberId,
         },
       });
 
-      // Assign it to the slot
       await tx.lockerSlot.update({
         where: { id: slotId },
         data: { wineId: wine.id, dateStored: new Date() },
@@ -139,44 +156,49 @@ export async function addWineAndAssignToSlot(
     revalidatePath("/collection");
     return {};
   } catch (e) {
-    return actionError(e, "Failed to add wine");
+    return actionError(e);
   }
 }
 
 /**
  * Remove a wine from a locker slot.
- * Validates that the authenticated member owns the locker.
  */
 export async function removeWineFromSlot(
   slotId: string
 ): Promise<{ error?: string }> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return { error: "Not authenticated" };
+  const ctx = await requireMemberFacility();
+  if (!ctx) return NOT_FOUND_ERROR;
 
-  const memberId = session.user.id;
+  if (!UuidSchema.safeParse(slotId).success) return NOT_FOUND_ERROR;
+
+  if (!(await checkMutationLimit("locker-remove", ctx.memberId))) {
+    return RATE_LIMITED_ERROR;
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Verify the slot exists and belongs to the member's locker
-      const slot = await tx.lockerSlot.findUnique({
-        where: { id: slotId },
-        include: { locker: { select: { memberId: true } } },
+      const slot = await tx.lockerSlot.findFirst({
+        where: {
+          id: slotId,
+          wineId: { not: null },
+          locker: {
+            memberId: ctx.memberId,
+            facilityId: ctx.facilityId,
+          },
+        },
+        select: { id: true },
       });
+      if (!slot) throw new Error("not_found");
 
-      if (!slot) throw new Error("Slot not found");
-      if (slot.locker.memberId !== memberId) throw new Error("Not your locker");
-      if (!slot.wineId) throw new Error("Slot is already empty");
-
-      // Clear the wine from the slot
       await tx.lockerSlot.update({
-        where: { id: slotId },
+        where: { id: slot.id },
         data: { wineId: null, dateStored: null },
       });
     });
 
     revalidatePath("/locker");
     return {};
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Failed to remove wine" };
+  } catch {
+    return NOT_FOUND_ERROR;
   }
 }

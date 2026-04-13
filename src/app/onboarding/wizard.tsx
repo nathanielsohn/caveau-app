@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Tier } from "@prisma/client";
@@ -55,7 +54,6 @@ export default function OnboardingWizard({
   initialStep,
   reservedLocker: initialReservedLocker,
 }: Props) {
-  const router = useRouter();
   const { update } = useSession();
   const prefersReducedMotion = useReducedMotion();
 
@@ -66,6 +64,7 @@ export default function OnboardingWizard({
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [submitted, setSubmitted] = useState(false);
 
   function handleTierContinue() {
     setError(null);
@@ -96,20 +95,27 @@ export default function OnboardingWizard({
     const res = await completeOnboarding();
     if (!res.ok) {
       setError(res.error);
+      setSubmitted(false);
       return;
     }
-    // Refresh the JWT so middleware sees the new onboarded flag.
+    // Refresh the JWT so middleware sees the new onboarded flag, THEN
+    // hard-navigate. Using window.location.assign instead of router.push
+    // forces middleware to re-evaluate against the new cookie state on the
+    // very next request — a router.refresh() races with the JWT update and
+    // can briefly bounce the user back to /onboarding.
     await update();
-    router.push("/");
-    router.refresh();
+    window.location.assign("/");
   }
 
   function handleAddWine(formData: FormData) {
+    if (submitted) return;
+    setSubmitted(true);
     setError(null);
     startTransition(async () => {
       const res = await addFirstWine(formData);
       if (!res.ok) {
         setError(res.error);
+        setSubmitted(false);
         return;
       }
       await finish();
@@ -117,6 +123,8 @@ export default function OnboardingWizard({
   }
 
   function handleSkipWine() {
+    if (submitted) return;
+    setSubmitted(true);
     setError(null);
     startTransition(async () => {
       await finish();
@@ -255,7 +263,7 @@ export default function OnboardingWizard({
                   <button
                     type="button"
                     onClick={handleTierContinue}
-                    disabled={isPending}
+                    disabled={isPending || submitted}
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Continue <ChevronRight size={16} />
@@ -300,7 +308,7 @@ export default function OnboardingWizard({
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    disabled={isPending}
+                    disabled={isPending || submitted}
                     className="text-secondary hover:text-primary text-sm transition-colors"
                   >
                     ← Back
@@ -308,7 +316,7 @@ export default function OnboardingWizard({
                   <button
                     type="button"
                     onClick={handleReserveLocker}
-                    disabled={isPending}
+                    disabled={isPending || submitted}
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isPending ? "Reserving..." : "Reserve locker"}
@@ -448,14 +456,14 @@ export default function OnboardingWizard({
                     <button
                       type="button"
                       onClick={handleSkipWine}
-                      disabled={isPending}
+                      disabled={isPending || submitted}
                       className="text-secondary hover:text-primary text-sm transition-colors"
                     >
                       Skip — I&rsquo;ll add bottles later
                     </button>
                     <button
                       type="submit"
-                      disabled={isPending}
+                      disabled={isPending || submitted}
                       className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isPending ? "Adding..." : "Add bottle & finish"}

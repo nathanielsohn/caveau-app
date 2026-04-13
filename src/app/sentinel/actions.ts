@@ -1,9 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getServerAuth } from "@/lib/auth";
-import { getCurrentFacility } from "@/lib/current-facility";
+import { requireMemberFacility } from "@/lib/current-facility";
 import { notifyAlert } from "@/lib/notify-alert";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import type { AlertType, Severity } from "@prisma/client";
 
 export interface DbSensorReading {
@@ -28,20 +29,19 @@ export interface DbAlert {
  * Sentinel is single-locker today; the facility filter ensures we don't
  * accidentally surface readings from a different location.
  */
-async function getMemberLockerId(): Promise<string | null> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return null;
-
-  const facility = await getCurrentFacility(session.user.id);
-  if (!facility) return null;
+async function getMemberLockerContext(): Promise<
+  { memberId: string; lockerId: string } | null
+> {
+  const ctx = await requireMemberFacility();
+  if (!ctx) return null;
 
   const locker = await prisma.locker.findFirst({
-    where: { memberId: session.user.id, facilityId: facility.id },
+    where: { memberId: ctx.memberId, facilityId: ctx.facilityId },
     orderBy: { lockerNumber: "asc" },
     select: { id: true },
   });
 
-  return locker?.id ?? null;
+  return locker ? { memberId: ctx.memberId, lockerId: locker.id } : null;
 }
 
 /**
@@ -52,8 +52,9 @@ async function getMemberLockerId(): Promise<string | null> {
 export async function fetchSentinelData(
   hoursBack: number
 ): Promise<{ readings: DbSensorReading[]; alerts: DbAlert[] }> {
-  const lockerId = await getMemberLockerId();
-  if (!lockerId) return { readings: [], alerts: [] };
+  const ctx = await getMemberLockerContext();
+  if (!ctx) return { readings: [], alerts: [] };
+  const { lockerId } = ctx;
 
   const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
@@ -125,8 +126,20 @@ export async function recordLiveAlert(input: {
   severity: string;
   message: string;
 }): Promise<string | null> {
-  const lockerId = await getMemberLockerId();
-  if (!lockerId) return null;
+  const ctx = await getMemberLockerContext();
+  if (!ctx) return null;
+  const { memberId, lockerId } = ctx;
+
+  // Per-member cap: the client uses a 5-minute dedupe but a malicious caller
+  // could still spam this action in a hot loop and grow the alerts table
+  // unboundedly. 12/min is comfortably above the legitimate ceiling (one
+  // alert per type per cooldown).
+  const ip = clientIp(headers());
+  const limit = await checkRateLimit(`live-alert:${memberId}:${ip}`, {
+    limit: 12,
+    windowMs: 60_000,
+  });
+  if (!limit.allowed) return null;
 
   // Validate the discriminated-union inputs. Unknown values are rejected
   // silently rather than throwing — the client is a live simulation and we

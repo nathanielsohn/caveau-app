@@ -4,6 +4,7 @@ import { Prisma, Tier } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
 
 const SLOTS_PER_LOCKER = 32;
 
@@ -15,19 +16,44 @@ function unauthorized<T = undefined>(): ActionResult<T> {
   return { ok: false, error: "Not authenticated" };
 }
 
+function alreadyOnboarded<T = undefined>(): ActionResult<T> {
+  return { ok: false, error: "Onboarding already complete" };
+}
+
+/**
+ * Resolve the caller and assert they are still mid-onboarding. Once a member
+ * finishes the wizard their `onboardedAt` is set; after that, every wizard
+ * action becomes a no-op so a malicious client cannot replay step 1 to
+ * upgrade tier, or step 2 to reserve a second locker.
+ */
+async function requirePendingMember(): Promise<
+  | { ok: true; memberId: string }
+  | { ok: false; error: string }
+> {
+  const session = await getServerAuth();
+  if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  const member = await prisma.member.findUnique({
+    where: { id: session.user.id },
+    select: { onboardedAt: true },
+  });
+  if (!member) return { ok: false, error: "Not authenticated" };
+  if (member.onboardedAt) return { ok: false, error: "Onboarding already complete" };
+  return { ok: true, memberId: session.user.id };
+}
+
 /** Step 1 — set the member's preferred tier. */
 export async function setOnboardingTier(
   tier: Tier,
 ): Promise<ActionResult> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return unauthorized();
+  const gate = await requirePendingMember();
+  if (!gate.ok) return gate;
 
   if (!Object.values(Tier).includes(tier)) {
     return { ok: false, error: "Invalid tier" };
   }
 
   await prisma.member.update({
-    where: { id: session.user.id },
+    where: { id: gate.memberId },
     data: { tier },
   });
 
@@ -49,9 +75,9 @@ export async function setOnboardingTier(
 export async function reserveOnboardingLocker(): Promise<
   ActionResult<{ lockerNumber: number; zone: string }>
 > {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return unauthorized();
-  const memberId = session.user.id;
+  const gate = await requirePendingMember();
+  if (!gate.ok) return gate as ActionResult<{ lockerNumber: number; zone: string }>;
+  const memberId = gate.memberId;
 
   const existing = await prisma.locker.findFirst({
     where: { memberId },
@@ -87,7 +113,10 @@ export async function reserveOnboardingLocker(): Promise<
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
+    // Locker numbers are unique PER facility (migration 0008), so the max
+    // we care about is scoped to the facility we're about to insert into.
     const max = await prisma.locker.aggregate({
+      where: { facilityId },
       _max: { lockerNumber: true },
     });
     const lockerNumber = (max._max.lockerNumber ?? 0) + 1 + attempt;
@@ -134,33 +163,19 @@ export async function reserveOnboardingLocker(): Promise<
 export async function addFirstWine(
   formData: FormData,
 ): Promise<ActionResult> {
-  const session = await getServerAuth();
-  if (!session?.user?.id) return unauthorized();
-  const memberId = session.user.id;
+  const gate = await requirePendingMember();
+  if (!gate.ok) return gate;
+  const memberId = gate.memberId;
 
-  const name = (formData.get("name") as string | null)?.trim();
-  const region = (formData.get("region") as string | null)?.trim();
-  const varietal = (formData.get("varietal") as string | null)?.trim();
-  const producer = (formData.get("producer") as string | null)?.trim();
-  const vintageRaw = formData.get("vintage") as string | null;
-  const priceRaw = formData.get("purchasePrice") as string | null;
-
-  const vintage = vintageRaw ? parseInt(vintageRaw, 10) : NaN;
-  const purchasePrice = priceRaw ? parseFloat(priceRaw) : NaN;
-
-  if (!name || name.length > 500 || !region || !varietal || !producer) {
-    return { ok: false, error: "All fields are required" };
-  }
-  if (
-    isNaN(vintage) ||
-    vintage < 1800 ||
-    vintage > new Date().getFullYear() + 1
-  ) {
-    return { ok: false, error: "Invalid vintage year" };
-  }
-  if (isNaN(purchasePrice) || purchasePrice < 0 || purchasePrice > 10_000_000) {
-    return { ok: false, error: "Invalid purchase price" };
-  }
+  const parsed = parseOr400(CreateWineBodySchema, {
+    name: formData.get("name"),
+    vintage: formData.get("vintage"),
+    region: formData.get("region"),
+    varietal: formData.get("varietal"),
+    producer: formData.get("producer"),
+    purchasePrice: formData.get("purchasePrice"),
+  });
+  if (!parsed.ok) return { ok: false, error: "Invalid wine data" };
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -182,13 +197,8 @@ export async function addFirstWine(
 
       const wine = await tx.wine.create({
         data: {
-          name,
-          vintage,
-          region,
-          varietal,
-          producer,
-          purchasePrice,
-          currentValue: purchasePrice,
+          ...parsed.data,
+          currentValue: parsed.data.purchasePrice,
           memberId,
         },
       });
@@ -210,15 +220,20 @@ export async function addFirstWine(
   }
 }
 
-/** Final step — mark the member as onboarded. Idempotent. */
+/**
+ * Final step — mark the member as onboarded. Atomic: only flips the column
+ * when it's still null, so a replay can't reset onboardedAt or signal
+ * "I just onboarded" twice.
+ */
 export async function completeOnboarding(): Promise<ActionResult> {
   const session = await getServerAuth();
   if (!session?.user?.id) return unauthorized();
 
-  await prisma.member.update({
-    where: { id: session.user.id },
+  const result = await prisma.member.updateMany({
+    where: { id: session.user.id, onboardedAt: null },
     data: { onboardedAt: new Date() },
   });
+  if (result.count === 0) return alreadyOnboarded();
 
   return { ok: true };
 }

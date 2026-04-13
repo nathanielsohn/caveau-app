@@ -1,10 +1,15 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { headers } from "next/headers";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { UuidSchema, PriceSchema, parseOr400 } from "@/lib/schemas";
 import {
+  deleteObject,
   extensionForType,
   getPublicUrl,
   getUploadUrl,
@@ -12,6 +17,27 @@ import {
 } from "@/lib/s3";
 
 const VALID_TYPES = ["sold", "transferred", "consumed", "gifted", "removed"] as const;
+
+const DispositionFormSchema = z.object({
+  wineId: UuidSchema,
+  type: z.enum(VALID_TYPES),
+  date: z
+    .string()
+    .optional()
+    .transform((v) => (v ? new Date(v) : new Date()))
+    .refine((d) => !isNaN(d.getTime()), "Invalid date"),
+  salePrice: z
+    .preprocess(
+      (v) => (v === null || v === "" || v === undefined ? undefined : v),
+      z.coerce.number().pipe(PriceSchema).optional(),
+    ),
+  recipient: z
+    .preprocess((v) => (typeof v === "string" ? v.trim() || null : null),
+      z.string().max(200).nullable()),
+  notes: z
+    .preprocess((v) => (typeof v === "string" ? v.trim() || null : null),
+      z.string().max(2000).nullable()),
+});
 
 /* ------------------------------------------------------------------ */
 /*  Image upload (feature #18)                                         */
@@ -113,57 +139,47 @@ export async function setWineImage(
 
 export async function recordDisposition(formData: FormData) {
   const session = await getServerAuth();
-  if (!session?.user?.id) throw new Error("Not authenticated");
+  if (!session?.user?.id) throw new Error("Not found");
 
-  const wineId = formData.get("wineId") as string | null;
-  const typeRaw = formData.get("type") as string | null;
-  const dateRaw = formData.get("date") as string | null;
-  const salePriceRaw = formData.get("salePrice") as string | null;
-  const recipient = (formData.get("recipient") as string | null)?.trim() || null;
-  const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const ip = clientIp(headers());
+  const limit = await checkRateLimit(
+    `disposition:${session.user.id}:${ip}`,
+    { limit: 30, windowMs: 60_000 },
+  );
+  if (!limit.allowed) throw new Error("Too many requests");
 
-  if (!wineId) throw new Error("Wine ID is required");
-  if (!typeRaw || !VALID_TYPES.includes(typeRaw as typeof VALID_TYPES[number])) {
-    throw new Error("Invalid disposition type");
-  }
+  const parsed = parseOr400(DispositionFormSchema, {
+    wineId: formData.get("wineId"),
+    type: formData.get("type"),
+    date: formData.get("date") ?? undefined,
+    salePrice: formData.get("salePrice"),
+    recipient: formData.get("recipient"),
+    notes: formData.get("notes"),
+  });
+  if (!parsed.ok) throw new Error("Invalid disposition data");
+  const { wineId, type, date, recipient, notes } = parsed.data;
+  const salePrice = type === "sold" ? parsed.data.salePrice ?? null : null;
 
-  const type = typeRaw as typeof VALID_TYPES[number];
+  // Capture imageKey BEFORE the transaction so we can clean up S3 after the
+  // wine row has been updated. We do the delete outside the transaction so a
+  // slow/failing S3 call never holds a database write lock.
+  let imageKeyToDelete: string | null = null;
 
-  const dateVal = dateRaw ? new Date(dateRaw) : new Date();
-  if (isNaN(dateVal.getTime())) throw new Error("Invalid date");
-
-  let salePrice: number | null = null;
-  if (type === "sold" && salePriceRaw) {
-    salePrice = parseFloat(salePriceRaw);
-    if (isNaN(salePrice) || salePrice < 0 || salePrice > 10_000_000) {
-      throw new Error("Invalid sale price");
-    }
-  }
-
-  // Map disposition type to wine status
-  const statusMap: Record<string, "sold" | "transferred" | "consumed" | "gifted" | "removed"> = {
-    sold: "sold",
-    transferred: "transferred",
-    consumed: "consumed",
-    gifted: "gifted",
-    removed: "removed",
-  };
-
-  // Verify ownership and update atomically inside a transaction
   await prisma.$transaction(async (tx) => {
-    const wine = await tx.wine.findUnique({
+    const wine = await tx.wine.findFirst({
       where: { id: wineId, memberId: session.user.id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, imageKey: true },
     });
-    if (!wine) throw new Error("Wine not found");
-    if (wine.status !== "in_cellar") throw new Error("Wine is already disposed");
+    if (!wine) throw new Error("Not found");
+    if (wine.status !== "in_cellar") throw new Error("Wine already disposed");
+    imageKeyToDelete = wine.imageKey;
 
     await tx.wineDisposition.create({
       data: {
         wineId,
         memberId: session.user.id,
         type,
-        date: dateVal,
+        date,
         salePrice,
         recipient,
         notes,
@@ -172,9 +188,15 @@ export async function recordDisposition(formData: FormData) {
 
     await tx.wine.update({
       where: { id: wineId },
-      data: { status: statusMap[type] },
+      data: { status: type, imageKey: null },
     });
   });
+
+  // Best-effort S3 cleanup. A failure here just leaks a single object;
+  // the database is already in the correct state.
+  if (imageKeyToDelete) {
+    void deleteObject(imageKeyToDelete);
+  }
 
   revalidatePath(`/wine/${wineId}`);
   revalidatePath("/collection");
