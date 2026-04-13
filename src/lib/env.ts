@@ -18,7 +18,9 @@ type OptionalKey =
   | "UPSTASH_REDIS_REST_TOKEN"
   | "NEXT_PUBLIC_SHOW_DEMO_CREDS"
   | "AWS_REGION"
-  | "AWS_SES_FROM_EMAIL";
+  | "AWS_SES_FROM_EMAIL"
+  | "AWS_S3_BUCKET"
+  | "AWS_CLOUDFRONT_DOMAIN";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -67,5 +69,7 @@ export const env = {
   NEXT_PUBLIC_SHOW_DEMO_CREDS: read("NEXT_PUBLIC_SHOW_DEMO_CREDS") === "true",
   AWS_REGION: read("AWS_REGION"),
   AWS_SES_FROM_EMAIL: read("AWS_SES_FROM_EMAIL"),
+  AWS_S3_BUCKET: read("AWS_S3_BUCKET"),
+  AWS_CLOUDFRONT_DOMAIN: read("AWS_CLOUDFRONT_DOMAIN"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

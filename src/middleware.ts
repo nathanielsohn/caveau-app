@@ -61,13 +61,18 @@ function buildCsp(): string {
     ? `'self' 'unsafe-inline' 'unsafe-eval'`
     : `'self' 'unsafe-inline'`;
 
+  // `connect-src` must include AWS S3 (and CloudFront, if used) so the
+  // wine-image upload form (#18) can PUT directly to a presigned URL from
+  // the browser. We allow the broad amazonaws.com / cloudfront.net domains
+  // rather than the specific bucket so the same CSP works in dev, staging,
+  // and prod without per-env wiring.
   return [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self'`,
+    `connect-src 'self' https://*.amazonaws.com https://*.cloudfront.net`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,

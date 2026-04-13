@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { toNumber } from "@/lib/utils";
+import { getPublicUrl } from "@/lib/s3";
 import { revalidatePath } from "next/cache";
 import CollectionClient from "./collection-client";
 import type { WineCardData } from "@/components/wine-card";
@@ -71,6 +72,7 @@ export default async function CollectionPage() {
     purchasePrice: toNumber(w.purchasePrice),
     currentValue: toNumber(w.currentValue),
     imageUrl: w.imageUrl,
+    photoUrl: getPublicUrl(w.imageKey),
     drinkWindowStart: w.drinkWindowStart,
     drinkWindowEnd: w.drinkWindowEnd,
     status: w.status,

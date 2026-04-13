@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getPublicUrl } from "@/lib/s3";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
 
 export async function GET(request: NextRequest) {
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       purchasePrice: true,
       currentValue: true,
       imageUrl: true,
+      imageKey: true,
       drinkWindowStart: true,
       drinkWindowEnd: true,
       createdAt: true,
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
     ...w,
     purchasePrice: Number(w.purchasePrice),
     currentValue: Number(w.currentValue),
+    photoUrl: getPublicUrl(w.imageKey),
   }));
 
   return NextResponse.json(serialized);

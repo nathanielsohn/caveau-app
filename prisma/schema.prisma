@@ -102,6 +102,10 @@ model Wine {
   memberId         String                @map("member_id")
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
+  // S3 object key for member-uploaded bottle photo (feature #18). The full
+  // public URL is derived at read time via `getPublicUrl(imageKey)` so we
+  // can swap CDN domains without rewriting rows.
+  imageKey         String?               @map("image_key")
   member           Member                @relation(fields: [memberId], references: [id], onDelete: Restrict)
   lockerSlots      LockerSlot[]
   certificates     ProvenanceCertificate[]

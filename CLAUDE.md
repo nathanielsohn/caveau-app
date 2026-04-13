@@ -36,6 +36,13 @@ NEXTAUTH_URL=http://localhost:3000
 # If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of sending.
 AWS_REGION=us-east-1
 AWS_SES_FROM_EMAIL=alerts@caveau.com
+
+# Optional — enables wine bottle photo uploads to S3 (feature #18).
+# If AWS_S3_BUCKET is unset, the upload UI shows a friendly "disabled" state
+# and the rest of the app keeps working. AWS_CLOUDFRONT_DOMAIN is optional;
+# when set, public image URLs go through the CDN instead of S3 directly.
+AWS_S3_BUCKET=caveau-wine-images
+AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 ## Project Structure
@@ -166,7 +173,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Not Yet Implemented (on roadmap)
 
 - Multi-facility support (#16)
-- Wine image upload (#18)
 - Real IoT device connections (#21, #22)
 - Label scanning (#24)
 - Locker check-in/out staff workflow (#25)

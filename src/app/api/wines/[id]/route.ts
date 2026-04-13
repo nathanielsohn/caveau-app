@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { getPublicUrl } from "@/lib/s3";
 import { UuidSchema, parsePathParamOr404 } from "@/lib/schemas";
 
 export async function GET(
@@ -41,6 +42,7 @@ export async function GET(
     ...wine,
     purchasePrice: Number(wine.purchasePrice),
     currentValue: Number(wine.currentValue),
+    photoUrl: getPublicUrl(wine.imageKey),
     valuations: wine.valuations.map((v) => ({
       ...v,
       price: Number(v.price),
