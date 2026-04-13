@@ -5,12 +5,14 @@ declare module "next-auth" {
   interface User {
     role: Role;
     tier: Tier;
+    onboarded: boolean;
   }
   interface Session {
     user: {
       id: string;
       role: Role;
       tier: Tier;
+      onboarded: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -20,5 +22,6 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     tier: Tier;
+    onboarded: boolean;
   }
 }

@@ -32,6 +32,7 @@ export const authOptions: NextAuthOptions = {
           email: member.email,
           role: member.role,
           tier: member.tier,
+          onboarded: member.onboardedAt != null,
         };
       },
     }),
@@ -41,11 +42,25 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.tier = user.tier;
+        token.onboarded = user.onboarded;
+      }
+      // After the onboarding wizard completes, the client calls
+      // `useSession().update()` to force a JWT refresh. Re-read the latest
+      // tier + onboarded flag from the DB so middleware sees the new state.
+      if (trigger === "update" && token.id) {
+        const member = await prisma.member.findUnique({
+          where: { id: token.id },
+          select: { tier: true, onboardedAt: true },
+        });
+        if (member) {
+          token.tier = member.tier;
+          token.onboarded = member.onboardedAt != null;
+        }
       }
       return token;
     },
@@ -54,6 +69,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.tier = token.tier;
+        session.user.onboarded = token.onboarded;
       }
       return session;
     },

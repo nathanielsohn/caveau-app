@@ -133,6 +133,25 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
+  // --- Onboarding gate ---
+  // New members are routed through the guided walkthrough at /onboarding
+  // before they can reach the rest of the app. Server actions called from
+  // the wizard live under /api but the wizard itself uses Next.js server
+  // actions (not REST), so we only need to allow the /onboarding route +
+  // the framework's internal action POSTs (Next routes those to the same
+  // page path, which is already allowed).
+  const isOnboardingRoute = pathname.startsWith("/onboarding");
+  if (!token.onboarded && !isOnboardingRoute) {
+    const res = NextResponse.redirect(new URL("/onboarding", req.url));
+    res.headers.set("Content-Security-Policy", csp);
+    return res;
+  }
+  if (token.onboarded && isOnboardingRoute) {
+    const res = NextResponse.redirect(new URL("/", req.url));
+    res.headers.set("Content-Security-Policy", csp);
+    return res;
+  }
+
   const res = NextResponse.next();
   res.headers.set("Content-Security-Policy", csp);
   return res;

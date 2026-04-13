@@ -166,6 +166,7 @@ async function main() {
       tier: Tier.black,
       role: Role.member,
       passwordHash,
+      onboardedAt: new Date(),
     },
   });
   console.log(`  ✓ Member: ${member.name}`);
