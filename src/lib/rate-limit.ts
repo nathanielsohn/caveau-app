@@ -19,6 +19,15 @@ export interface RateLimitPolicy {
   limit: number;
   /** Window length in milliseconds. */
   windowMs: number;
+  /**
+   * What to do when the Upstash backend is unreachable.
+   *
+   *   - "open" (default): allow the request and fall back to in-memory.
+   *     Fine for read endpoints where availability beats hard ceilings.
+   *   - "closed": block the request. Use on auth/signup so a Redis outage
+   *     can't silently turn off brute-force protection.
+   */
+  failMode?: "open" | "closed";
 }
 
 export interface RateLimitResult {
@@ -83,6 +92,17 @@ function memoryCheck(
 // alternative is to fail-closed, but we want availability over a hard ceiling
 // here.
 
+function failResult(
+  policy: RateLimitPolicy,
+  allowed: boolean,
+): RateLimitResult {
+  return {
+    allowed,
+    remaining: 0,
+    resetAt: Date.now() + policy.windowMs,
+  };
+}
+
 async function upstashCheck(
   key: string,
   policy: RateLimitPolicy,
@@ -93,6 +113,8 @@ async function upstashCheck(
 
   const windowSec = Math.ceil(policy.windowMs / 1000);
   const redisKey = `rl:${key}:${Math.floor(Date.now() / policy.windowMs)}`;
+
+  const failClosed = policy.failMode === "closed";
 
   try {
     // Pipeline INCR + EXPIRE in a single round trip.
@@ -110,7 +132,13 @@ async function upstashCheck(
       signal: AbortSignal.timeout(500),
     });
 
-    if (!res.ok) return memoryCheck(key, policy);
+    if (!res.ok) {
+      // Auth endpoints (failClosed) MUST refuse traffic when their backing
+      // ceiling disappears — a silent fall-back to per-instance memory means
+      // a determined attacker just bursts across cold starts. Read endpoints
+      // (failOpen) prefer availability and degrade to memory.
+      return failClosed ? failResult(policy, false) : memoryCheck(key, policy);
+    }
 
     const data = (await res.json()) as Array<{ result: number | string }>;
     const count = Number(data[0]?.result ?? 0);
@@ -121,7 +149,7 @@ async function upstashCheck(
       resetAt: (Math.floor(Date.now() / policy.windowMs) + 1) * policy.windowMs,
     };
   } catch {
-    return memoryCheck(key, policy);
+    return failClosed ? failResult(policy, false) : memoryCheck(key, policy);
   }
 }
 

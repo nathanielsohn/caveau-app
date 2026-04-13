@@ -20,14 +20,16 @@ const POLICIES: Array<{
     bucket: "auth-signup",
     match: (req) =>
       req.method === "POST" && req.nextUrl.pathname === "/api/auth/signup",
-    policy: { limit: 5, windowMs: 60_000 },
+    // Fail closed: if Upstash is unreachable we'd rather reject signup
+    // attempts than silently disable brute-force protection.
+    policy: { limit: 5, windowMs: 60_000, failMode: "closed" },
   },
   {
     bucket: "auth-login",
     match: (req) =>
       req.method === "POST" &&
       req.nextUrl.pathname.startsWith("/api/auth/callback"),
-    policy: { limit: 10, windowMs: 60_000 },
+    policy: { limit: 10, windowMs: 60_000, failMode: "closed" },
   },
   {
     bucket: "verify",

@@ -37,16 +37,29 @@ export default function SignupPage() {
         return;
       }
 
-      // Auto-sign in after signup
-      const result = await signIn("credentials", {
+      // Auto-sign in after signup. Retry once on the first failure: the
+      // signup row may not have replicated to the auth read path yet on a
+      // cold serverless instance, and a single 200ms re-attempt is cheaper
+      // than asking the user to log in by hand.
+      let result = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("Account created but sign-in failed. Try logging in.");
+        await new Promise((r) => setTimeout(r, 250));
+        result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+      }
+
+      if (result?.error) {
+        setError("Account created — please sign in.");
         setLoading(false);
+        router.push("/auth/login");
       } else {
         router.push("/onboarding");
         router.refresh();

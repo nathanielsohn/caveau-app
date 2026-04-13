@@ -43,11 +43,9 @@ export async function POST(req: Request) {
 
     if (!submittedCsrf || !csrfCookie) return INVALID_REQUEST;
 
-    const separatorIndex = csrfCookie.indexOf("|");
-    if (separatorIndex === -1) return INVALID_REQUEST;
-
-    const cookieToken = csrfCookie.slice(0, separatorIndex);
-    const cookieHash = csrfCookie.slice(separatorIndex + 1);
+    const parts = csrfCookie.split("|", 2);
+    if (parts.length !== 2 || !parts[0] || !parts[1]) return INVALID_REQUEST;
+    const [cookieToken, cookieHash] = parts;
 
     if (!safeEqual(submittedCsrf, cookieToken)) return INVALID_REQUEST;
 
@@ -67,11 +65,11 @@ export async function POST(req: Request) {
 
     const existing = await prisma.member.findUnique({ where: { email } });
     if (existing) {
-      // Return 201 to prevent user enumeration. Note: a sophisticated attacker
-      // could still side-channel via timing because we skip the bcrypt.hash
-      // call below; for that we'd need to bcrypt.hash anyway and discard. The
-      // bcrypt cost is significant (~250ms) so we accept the small leak for
-      // now and revisit when this becomes a real attack vector.
+      // Burn an equivalent amount of CPU on the duplicate path so the
+      // response time is indistinguishable from the real signup path.
+      // Without this, ~250ms of bcrypt cost would be observable as a clean
+      // side-channel for email enumeration.
+      await bcrypt.hash(password, 13);
       return NextResponse.json({ success: true }, { status: 201 });
     }
 
