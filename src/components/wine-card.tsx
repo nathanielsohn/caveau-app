@@ -24,7 +24,7 @@ export interface WineCardData {
 
 function getDrinkStatus(start?: number | null, end?: number | null): { label: string; className: string } | null {
   if (!start && !end) return null;
-  const year = new Date().getFullYear();
+  const year = new Date().getUTCFullYear();
   if (end && year > end) return { label: "Past Peak", className: "bg-danger/10 text-danger border-danger/20" };
   if (start && year >= start && (!end || year <= end)) return { label: "Ready to Drink", className: "bg-ok/10 text-ok border-ok/20" };
   if (start && year < start) return { label: "Aging", className: "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20" };
@@ -107,7 +107,6 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
               alt={wine.name}
               fill
               sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 22vw, (min-width: 640px) 30vw, 45vw"
-              unoptimized
               className="object-cover"
             />
           </div>

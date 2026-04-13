@@ -102,6 +102,8 @@ export default function SignupPage() {
               <input
                 id="name"
                 type="text"
+                autoComplete="name"
+                autoCapitalize="words"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -117,6 +119,11 @@ export default function SignupPage() {
               <input
                 id="email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -132,6 +139,7 @@ export default function SignupPage() {
               <input
                 id="password"
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

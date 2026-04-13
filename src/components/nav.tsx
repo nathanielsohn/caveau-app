@@ -180,8 +180,11 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
         </div>
       )}
 
-      {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-[#2A2A30]/50 bg-caveau-charcoal/90 backdrop-blur-xl z-40">
+      {/* Mobile bottom tab bar — pads for the iPhone home indicator via safe-area-inset. */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 border-t border-[#2A2A30]/50 bg-caveau-charcoal/90 backdrop-blur-xl z-40"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const isActive =
@@ -197,7 +200,7 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
                 }`}
               >
                 <item.icon size={20} strokeWidth={1.8} />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[11px] font-medium">{item.label}</span>
               </Link>
             );
           })}

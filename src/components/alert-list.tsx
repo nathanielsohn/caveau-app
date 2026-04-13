@@ -45,8 +45,52 @@ export default function AlertList({ alerts }: { alerts: AlertItem[] }) {
       <h3 className="text-sm font-medium text-secondary mb-4">
         Alert History
       </h3>
-      <div className="overflow-x-auto -mx-5">
-        <table className="w-full text-sm min-w-[480px]">
+
+      {/* Mobile: stacked cards, no horizontal scroll. */}
+      <ul className="flex flex-col gap-2 md:hidden">
+        {alerts.map((alert) => (
+          <li
+            key={alert.id}
+            className="rounded-xl border border-[#2A2A30]/50 bg-[#1C1C20]/50 p-3 flex flex-col gap-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs text-secondary whitespace-nowrap">
+                  {typeLabels[alert.type] || alert.type}
+                </span>
+                <span
+                  className={severityStyles[alert.severity] || "badge-info"}
+                >
+                  {alert.severity}
+                </span>
+              </div>
+              {alert.isNew ? (
+                <span className="badge bg-gold/10 text-gold animate-pulse">
+                  NEW
+                </span>
+              ) : alert.resolved ? (
+                <span className="text-xs text-ok whitespace-nowrap">
+                  Resolved
+                </span>
+              ) : (
+                <span className="text-xs text-warn whitespace-nowrap">
+                  Active
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-primary leading-snug break-words">
+              {alert.message}
+            </p>
+            <p className="text-xs text-muted">
+              {formatRelativeTime(alert.timestamp)}
+            </p>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: table. */}
+      <div className="hidden md:block overflow-x-auto -mx-5">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#2A2A30]/50">
               <th className="text-left text-xs text-muted font-medium px-5 pb-3">
@@ -87,9 +131,7 @@ export default function AlertList({ alerts }: { alerts: AlertItem[] }) {
                     {alert.severity}
                   </span>
                 </td>
-                <td className="px-3 py-3 text-primary">
-                  {alert.message}
-                </td>
+                <td className="px-3 py-3 text-primary">{alert.message}</td>
                 <td className="px-5 py-3">
                   {alert.isNew ? (
                     <span className="badge bg-gold/10 text-gold animate-pulse">

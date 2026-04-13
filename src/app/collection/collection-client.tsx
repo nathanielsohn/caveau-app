@@ -27,7 +27,7 @@ type SortDir = "asc" | "desc";
 type DrinkStatus = "ready" | "aging" | "past" | "none";
 
 function getDrinkStatus(start?: number | null, end?: number | null): DrinkStatus {
-  const year = new Date().getFullYear();
+  const year = new Date().getUTCFullYear();
   if (!start && !end) return "none";
   if (end && year > end) return "past";
   if (start && year >= start && (!end || year <= end)) return "ready";
@@ -36,7 +36,7 @@ function getDrinkStatus(start?: number | null, end?: number | null): DrinkStatus
 }
 
 function drinkWindowSortValue(start?: number | null, end?: number | null): number {
-  const year = new Date().getFullYear();
+  const year = new Date().getUTCFullYear();
   if (!start && !end) return Number.POSITIVE_INFINITY;
   if (end && year > end) return -1;
   if (start && year >= start && (!end || year <= end)) return 0;
@@ -369,23 +369,25 @@ export default function CollectionClient({
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted">Vintage</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
                   value={vintageMin}
                   onChange={(e) => setVintageMin(e.target.value ? parseInt(e.target.value, 10) : "")}
                   placeholder={String(vintageRange[0])}
-                  min={vintageRange[0]}
-                  max={vintageRange[1]}
                   aria-label="Minimum vintage"
                   className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
                 />
                 <span className="text-xs text-muted">to</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
                   value={vintageMax}
                   onChange={(e) => setVintageMax(e.target.value ? parseInt(e.target.value, 10) : "")}
                   placeholder={String(vintageRange[1])}
-                  min={vintageRange[0]}
-                  max={vintageRange[1]}
                   aria-label="Maximum vintage"
                   className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
                 />
@@ -394,21 +396,23 @@ export default function CollectionClient({
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted">Price</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*\.?[0-9]*"
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value ? parseFloat(e.target.value) : "")}
                   placeholder="$ min"
-                  min={0}
                   aria-label="Minimum value"
                   className="w-24 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
                 />
                 <span className="text-xs text-muted">to</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*\.?[0-9]*"
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value ? parseFloat(e.target.value) : "")}
                   placeholder="$ max"
-                  min={0}
                   aria-label="Maximum value"
                   className="w-24 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
                 />

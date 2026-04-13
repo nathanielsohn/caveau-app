@@ -118,7 +118,9 @@ export default function WineImageUpload({
             alt="Wine bottle photo"
             fill
             sizes="(min-width: 768px) 192px, 100vw"
-            unoptimized
+            /* Blob: URLs (optimistic previews) can't be processed by the
+               Next.js image optimizer — skip it there, let S3 URLs optimize. */
+            unoptimized={displayUrl.startsWith("blob:")}
             className="object-cover"
           />
         ) : (

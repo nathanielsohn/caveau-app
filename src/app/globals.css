@@ -8,11 +8,33 @@
   --foreground: #E8E6E1;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* iOS Safari auto-zooms into any input with font-size < 16px on focus.
+   Force 16px on mobile only; desktop keeps the tighter text-sm (14px). */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Kill the 300ms tap delay and prevent long-press context menu on buttons. */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 /* Scrollbar styling */

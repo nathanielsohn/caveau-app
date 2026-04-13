@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { X } from "lucide-react";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 interface AddWineFormProps {
   open: boolean;
@@ -13,6 +14,8 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  useBodyScrollLock(open);
 
   if (!open) return null;
 
@@ -30,15 +33,24 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add wine"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+      }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-md glass-card p-6 max-h-[90vh] overflow-y-auto">
+      {/* Modal — max-h uses dvh to sidestep iOS Safari's address-bar vh bug. */}
+      <div className="relative w-full max-w-md glass-card p-6 max-h-[85dvh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-serif text-xl text-primary">Add Wine</h2>
@@ -85,11 +97,12 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
               <input
                 id="vintage"
                 name="vintage"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
                 required
                 aria-required="true"
-                min={1900}
-                max={2030}
                 placeholder="2020"
                 className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
               />
@@ -150,11 +163,12 @@ export default function AddWineForm({ open, onClose, addWineAction }: AddWineFor
             <input
               id="purchasePrice"
               name="purchasePrice"
-              type="number"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
               required
               aria-required="true"
-              min={0}
-              step={0.01}
+              maxLength={12}
               placeholder="250.00"
               className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
             />

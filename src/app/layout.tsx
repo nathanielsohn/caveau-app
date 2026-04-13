@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import Nav from "@/components/nav";
 import Providers from "@/components/providers";
@@ -13,6 +13,7 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 const inter = Inter({
@@ -25,6 +26,22 @@ export const metadata: Metadata = {
   title: "Caveau — Wine Cellar Management",
   description:
     "Luxury wine cellar management with IoT monitoring and provenance certificates",
+  applicationName: "Caveau",
+  appleWebApp: {
+    capable: true,
+    title: "Caveau",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0A0A0B",
 };
 
 export default async function RootLayout({
@@ -57,8 +74,9 @@ export default async function RootLayout({
             facilities={facilities}
             currentFacilityId={currentFacilityId}
           />
-          {/* md:ml-56 offsets for the desktop sidebar; pb-20 gives space for mobile bottom tabs */}
-          <main className="md:ml-56 pb-20 md:pb-0 min-h-screen">
+          {/* md:ml-56 offsets for the desktop sidebar; mobile padding stacks the
+              bottom tab bar (h-16 = 4rem) on top of the iPhone home indicator. */}
+          <main className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen">
             {children}
           </main>
         </Providers>

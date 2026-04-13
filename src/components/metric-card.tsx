@@ -99,6 +99,7 @@ export default function MetricCard({ icon: Icon, value, label, trend, index = 0 
         ease: [0.25, 0.1, 0.25, 1],
       }}
       whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
       className="glass-card p-5 flex flex-col gap-3 cursor-default"
     >
       <div className="flex items-center justify-between">

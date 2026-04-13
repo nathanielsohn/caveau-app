@@ -6,6 +6,7 @@ import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, Ar
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 import { assignWineToSlot, removeWineFromSlot, addWineAndAssignToSlot } from "@/app/locker/actions";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 /** Varietal -> accent color for the slot border/glow */
 function varietalColor(varietal: string): string {
@@ -43,7 +44,7 @@ type DrinkFilter = "all" | "ready" | "aging" | "past" | "none";
 /** Mirrors getDrinkStatus in wine-card.tsx */
 function drinkStatusKey(start: number | null, end: number | null): "ready" | "aging" | "past" | "none" {
   if (!start && !end) return "none";
-  const year = new Date().getFullYear();
+  const year = new Date().getUTCFullYear();
   if (end && year > end) return "past";
   if (start && year >= start && (!end || year <= end)) return "ready";
   if (start && year < start) return "aging";
@@ -94,6 +95,9 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
   const [regionFilter, setRegionFilter] = useState("");
   const [varietalFilter, setVarietalFilter] = useState("");
   const [drinkFilter, setDrinkFilter] = useState<DrinkFilter>("all");
+
+  // Any modal sheet open → lock body scroll so iOS doesn't scroll behind it.
+  useBodyScrollLock(Boolean(selectedSlot) || Boolean(pickerSlot));
 
   // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
@@ -325,8 +329,10 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
         </div>
       </div>
 
-      {/* 4x8 grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+      {/* 4x8 grid. At 375px four cols is edge-to-edge, so we drop to three
+          on the narrowest phones, step up to four by 420px, then the full
+          eight on sm+ where the panel becomes a side sheet. */}
+      <div className="grid grid-cols-3 min-[420px]:grid-cols-4 sm:grid-cols-8 gap-2">
         {Array.from({ length: 32 }, (_, i) => {
           const position = i + 1;
           const slot = slotMap.get(position);
@@ -421,7 +427,14 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              role="dialog"
+              aria-modal="true"
               className="fixed right-0 top-0 h-full w-full sm:w-96 bg-caveau-charcoal border-l border-[#2A2A30]/50 z-50 overflow-y-auto"
+              style={{
+                paddingTop: "env(safe-area-inset-top)",
+                paddingRight: "env(safe-area-inset-right)",
+                paddingBottom: "env(safe-area-inset-bottom)",
+              }}
             >
               <div className="p-6">
                 {/* Close button */}
@@ -585,7 +598,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="locker-wine-vintage" className="block text-sm text-secondary mb-1.5">Vintage</label>
-                        <input id="locker-wine-vintage" name="vintage" type="number" required min={1900} max={2030} placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <input id="locker-wine-vintage" name="vintage" type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                       <div>
                         <label htmlFor="locker-wine-region" className="block text-sm text-secondary mb-1.5">Region</label>
@@ -604,7 +617,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                     </div>
                     <div>
                       <label htmlFor="locker-wine-price" className="block text-sm text-secondary mb-1.5">Purchase Price (USD)</label>
-                      <input id="locker-wine-price" name="purchasePrice" type="number" required min={0} step={0.01} placeholder="250.00" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      <input id="locker-wine-price" name="purchasePrice" type="text" inputMode="decimal" pattern="[0-9]*\.?[0-9]*" maxLength={12} required placeholder="250.00" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                     </div>
                   </div>
 
