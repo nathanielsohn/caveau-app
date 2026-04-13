@@ -20,7 +20,7 @@ import {
 import type { SensorDataPoint } from "@/components/sensor-charts";
 import AlertList from "@/components/alert-list";
 import type { AlertItem } from "@/components/alert-list";
-import { fetchSentinelData } from "./actions";
+import { fetchSentinelData, recordLiveAlert } from "./actions";
 import type { DbSensorReading } from "./actions";
 import { THRESHOLDS } from "@/lib/sensors";
 
@@ -126,6 +126,13 @@ export default function SentinelPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Client-side dedupe for persisted live alerts: keeps the last time we
+  // sent a given alert type up to the server. Prevents every 5-second tick
+  // from spawning a DB write + email attempt while the breach persists.
+  // Server-side `notifyAlert` enforces its own cooldown too; this is just a
+  // cheap client guard so we don't hammer the action.
+  const lastPersistedRef = useRef<Map<string, number>>(new Map());
+  const PERSIST_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
   // Current reading is the latest live reading or a fresh simulated one
   const currentReading =
@@ -168,6 +175,23 @@ export default function SentinelPage() {
     const newAlerts = checkThresholds(reading);
     if (newAlerts.length > 0) {
       setLiveAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
+
+      // Persist + notify: one server call per alert type per cooldown window.
+      const now = Date.now();
+      for (const a of newAlerts) {
+        const key = `${a.type}:${a.severity}`;
+        const last = lastPersistedRef.current.get(key) ?? 0;
+        if (now - last < PERSIST_COOLDOWN_MS) continue;
+        lastPersistedRef.current.set(key, now);
+        void recordLiveAlert({
+          type: a.type,
+          severity: a.severity,
+          message: a.message,
+        }).catch((err) => {
+          // Non-fatal: the in-memory alert is still shown to the user.
+          console.warn("[sentinel] recordLiveAlert failed", err);
+        });
+      }
     }
   };
 

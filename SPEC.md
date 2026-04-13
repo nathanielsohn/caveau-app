@@ -409,7 +409,7 @@ gantt
     Multi-facility support    :p1b, after p1a, 5d
     API routes                :done, p1c, after p1a, 5d
     Wine image upload         :p1d, after p1c, 4d
-    Alert notifications       :p1e, after p1d, 4d
+    Alert notifications       :done, p1e, after p1d, 4d
     Member onboarding flow    :p1f, after p1e, 3d
 
     section Phase 2 — IoT & Data
@@ -443,7 +443,7 @@ Make it real enough for a pilot with actual members.
 | 16 | Multi-facility support | Facility switcher in nav. Lockers scoped to facility. Members can belong to multiple facilities. |
 | 17 | ~~API routes~~ | ~~`/api/wines`, `/api/sensors`, `/api/alerts`, `/api/lockers`, `/api/certificates`. REST endpoints wrapping Prisma queries. Done.~~ |
 | 18 | Wine image upload | S3 bucket + CloudFront CDN. Presigned upload URLs from API route. Resize/optimize on upload via Sharp or Lambda. |
-| 19 | Alert notifications | Real-time email alerts via AWS SES when sensor thresholds are breached. Configurable per-member notification preferences. |
+| 19 | ~~Alert notifications~~ | ~~Real-time email alerts via AWS SES when sensor thresholds are breached. Configurable per-member notification preferences. Done.~~ |
 | 20 | Member onboarding flow | Sign up → select tier → assign locker → first bottle check-in. Guided walkthrough for new members. |
 
 ### Phase 2 — IoT & Data (weeks 4–6)

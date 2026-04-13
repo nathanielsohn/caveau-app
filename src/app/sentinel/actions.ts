@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { notifyAlert } from "@/lib/notify-alert";
+import type { AlertType, Severity } from "@prisma/client";
 
 export interface DbSensorReading {
   temperature: number;
@@ -92,4 +94,51 @@ export async function fetchSentinelData(
       resolved: a.resolved,
     })),
   };
+}
+
+const ALERT_TYPES = new Set<AlertType>([
+  "temperature",
+  "humidity",
+  "vibration",
+  "light",
+  "door",
+  "access",
+]);
+const SEVERITIES = new Set<Severity>(["info", "warning", "critical"]);
+
+/**
+ * Persist a live (client-simulated) threshold breach as a real Alert row and
+ * trigger email notification via SES. Scoped to the current member's locker.
+ *
+ * Returns the new alert id, or null if the member has no locker or the call
+ * is not authenticated. Notification dispatch is best-effort and never
+ * blocks alert creation — see `notifyAlert`.
+ */
+export async function recordLiveAlert(input: {
+  type: string;
+  severity: string;
+  message: string;
+}): Promise<string | null> {
+  const lockerId = await getMemberLockerId();
+  if (!lockerId) return null;
+
+  // Validate the discriminated-union inputs. Unknown values are rejected
+  // silently rather than throwing — the client is a live simulation and we
+  // don't want a bad tick to spam error toasts.
+  const type = input.type as AlertType;
+  const severity = input.severity as Severity;
+  if (!ALERT_TYPES.has(type)) return null;
+  if (!SEVERITIES.has(severity)) return null;
+  if (typeof input.message !== "string" || input.message.length === 0) return null;
+  const message = input.message.slice(0, 500);
+
+  const alert = await prisma.alert.create({
+    data: { lockerId, type, severity, message },
+    select: { id: true },
+  });
+
+  // Fire-and-forget notification. `notifyAlert` handles its own errors.
+  void notifyAlert(alert.id);
+
+  return alert.id;
 }

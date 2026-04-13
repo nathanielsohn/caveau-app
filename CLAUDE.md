@@ -31,6 +31,11 @@ Requires `.env` with:
 DATABASE_URL=postgresql://<user>:<password>@<rds-host>:5432/caveau
 NEXTAUTH_SECRET=<random-base64-string>
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional — enables alert email notifications via AWS SES (feature #19).
+# If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of sending.
+AWS_REGION=us-east-1
+AWS_SES_FROM_EMAIL=alerts@caveau.com
 ```
 
 ## Project Structure
@@ -154,7 +159,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 - Multi-facility support (#16)
 - Wine image upload (#18)
-- Alert notifications via email (#19)
 - Member onboarding flow (#20)
 - Real IoT device connections (#21, #22)
 - Label scanning (#24)
