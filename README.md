@@ -47,9 +47,10 @@ Detailed docs are in the [`docs/`](./docs) folder:
 - [Getting Started](./docs/GETTING_STARTED.md) — setup, scripts, troubleshooting
 - [Design System](./docs/DESIGN_SYSTEM.md) — colors, fonts, components
 - [Component Guide](./docs/COMPONENT_GUIDE.md) — every component and its props
+- [Auth](./docs/AUTH.md) — NextAuth config, login/signup flows, route protection
 - [Deployment](./docs/DEPLOYMENT.md) — AWS RDS + Vercel setup
 - [Decisions](./docs/DECISIONS.md) — architecture decision records
-- [API Reference](./docs/API.md) — REST endpoints (stretch goal)
+- [API Reference](./docs/API.md) — REST endpoints
 
 ## License
 

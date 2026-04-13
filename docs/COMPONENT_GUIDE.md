@@ -1,12 +1,23 @@
 # Component Guide
 
-> Last updated: 2026-04-11 | All components built
+> Last updated: 2026-04-12 | All components built
 
 ## Overview
 
-Caveau uses ~12 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses ~13 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
 
 ## Components
+
+### providers.tsx
+**Status:** Complete (Track A — Auth)
+
+Thin client wrapper around NextAuth's `SessionProvider`. Exists as a separate file because `layout.tsx` is a Server Component and cannot import a client context directly.
+
+**Props:** `children`
+
+**Used in:** `app/layout.tsx` (wraps the entire app)
+
+---
 
 ### nav.tsx
 **Status:** Complete (Feature 03)
@@ -31,22 +42,24 @@ Reusable stat card showing an icon, large value, label, and optional trend indic
 ---
 
 ### wine-card.tsx
-**Status:** Complete (Feature 06, updated for investor demo)
+**Status:** Complete (Feature 06, updated for investor demo and #37)
 
 Wine bottle card for grid/list display. Shows wine image (or placeholder), name (serif font), vintage, region badge, drink window badge (Ready to Drink / Aging / Past Peak), current value with appreciation %. Clickable — links to `/wine/[id]`.
 
-**Props:** Wine object from Prisma (includes drinkWindowStart/drinkWindowEnd)
+**Props:** Wine object from Prisma (includes `drinkWindowStart`, `drinkWindowEnd`, and `createdAt` for sort-by-recently-added in the collection view)
 
-**Used in:** Collection page (grid mode)
+**Used in:** Collection page (grid mode). The collection page itself wraps the grid in a sort dropdown + expanded filter panel (#37) — see `src/app/collection/collection-client.tsx`.
 
 ---
 
 ### locker-grid.tsx
-**Status:** Complete (Feature 08)
+**Status:** Complete (Feature 08, extended by #35/#36/#38)
 
-4×8 CSS grid representing a locker's 32 slots. Empty slots have dashed borders. Occupied slots show wine name and varietal-colored accent. Clicking an occupied slot opens a slide-in detail panel.
+4×8 CSS grid representing a locker's 32 slots. Empty slots have dashed borders, occupied slots show wine name and a varietal-colored accent. Clicking an occupied slot opens a slide-in detail panel; clicking an empty slot opens the assign/add-wine modal (#35/#36).
 
-**Props:** Locker with slots and wine relations
+A filter bar above the grid (added in #38) supports occupancy (all/occupied/empty), region, varietal, and drink-window status. Non-matching slots dim to `opacity-30` and become non-interactive — the physical layout never reflows so the locker stays visually intact.
+
+**Props:** Locker slots (32), unassigned wines, add-wine trigger
 
 **Used in:** Locker page
 
@@ -136,7 +149,34 @@ Price history chart for a single wine. Shows valuation entries over time with an
 
 ---
 
+### skeleton.tsx
+**Status:** Complete
+
+Loading skeleton primitives used by route-level `loading.tsx` files. Exports a base `Skeleton` (shimmer block) plus higher-level pieces like `MetricCardSkeleton`, `WineCardSkeleton`, and grid wrappers. All match the glass-card visual language so the perceived layout doesn't shift when real data arrives.
+
+**Used in:** `app/loading.tsx`, `collection/loading.tsx`, `locker/loading.tsx`, `sentinel/loading.tsx`, `wine/[id]/loading.tsx`, `certificate/[id]/loading.tsx`, `verify/[hash]/loading.tsx`
+
+---
+
 ## Lib Utilities
+
+### auth.ts
+NextAuth v4 configuration: Credentials provider (email + bcrypt), JWT strategy, 4-hour session, role/tier copied into the token. Exports `getServerAuth()` for Server Components and Server Actions.
+
+### env.ts
+Boot-time environment validation. Throws if `DATABASE_URL`, `NEXTAUTH_SECRET`, or `NEXTAUTH_URL` are missing or malformed — fail fast at startup, not on the first request.
+
+### rate-limit.ts
+In-memory per-IP token bucket. Used by `middleware.ts` for auth and verify endpoints. Resets on deploy and does not persist across serverless instances — adequate for the demo, replace with Upstash/KV for production hardening.
+
+### safe-callback.ts
+Whitelists `callbackUrl` query params so the login page can't be turned into an open redirect. Only same-origin pathnames pass.
+
+### schemas.ts
+Zod schemas for every request body and query string parsed by API routes. Includes `parseOr400()` helper that returns either typed data or a `NextResponse` with a generic 400.
+
+### logger.ts
+Structured logging wrapper. Emits JSON in production, pretty output in development.
 
 ### prisma.ts
 Prisma client singleton. Uses `globalThis` trick to prevent multiple instances in development (hot reload).

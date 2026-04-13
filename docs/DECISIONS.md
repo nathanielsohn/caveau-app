@@ -115,24 +115,24 @@ light = rare_spike_or_near_zero
 - "Keep it simple" and "one developer maintains this" principles
 - Fewer files to navigate, less import boilerplate
 - Sub-components are tightly coupled to their parent anyway
-- Example: `sensor-charts.tsx` contains TemperatureChart, HumidityChart, VibrationGauge, and LightIndicator
+- Example: `sensor-charts.tsx` contains TemperatureChart, HumidityChart, VibrationGauge, and AccessLog
 
 ---
 
-## ADR-007: Server Actions over API routes
+## ADR-007: Server Actions for internal data, REST for external
 
 **Date:** 2026-04-10
-**Status:** Accepted
+**Status:** Accepted (REST surface added 2026-04-11 with roadmap #15)
 
 **Context:** Client components (like Sentinel) need to fetch data from the database. Options: Next.js API routes (`/api/...`) or Server Actions.
 
-**Decision:** Server Actions for data fetching from client components.
+**Decision:** Server Actions for in-app data flow, REST API routes (`/api/*`) as a parallel surface for mobile/external consumers.
 
 **Why:**
-- No separate API route files needed — keeps file count low
-- Type-safe end-to-end (TypeScript function call, not HTTP)
-- Simpler than setting up REST endpoints for internal data access
-- API routes are a stretch goal (Feature 15) for external/mobile consumption
+- Server Actions keep the in-app path type-safe end-to-end (TypeScript function call, not HTTP) and avoid REST boilerplate for internal use
+- REST routes are required for anything that lives outside the Next.js bundle (mobile app, integrations) — these were added in roadmap #15
+- Both surfaces share the same Prisma queries and Zod schemas, so behavior stays consistent regardless of caller
+- Auth scoping is enforced uniformly: server actions read `getServerAuth()`, API routes call it inside the handler
 
 ---
 

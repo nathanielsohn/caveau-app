@@ -1,6 +1,6 @@
 # Getting Started
 
-> Last updated: 2026-04-11 | All 14 core features complete
+> Last updated: 2026-04-12 | 14 core + 3 stretch features complete; 12 of 24 roadmap features done
 
 ## Prerequisites
 
@@ -57,15 +57,17 @@ Open [http://localhost:3000](http://localhost:3000).
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development server (hot reload) |
-| `npm run build` | Production build (type-checks + compiles) |
+| `npm run build` | Production build (`prisma generate` + `next build`) |
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Run `tsc --noEmit` (no compile, types only) |
 | `npm test` | Run tests in watch mode (Vitest) |
 | `npm run test:run` | Run tests once (CI mode) |
-| `npx prisma generate` | Regenerate Prisma client after schema changes |
-| `npx prisma migrate dev --name <name>` | Create a new migration |
-| `npx prisma migrate deploy` | Apply pending migrations |
-| `npx prisma db seed` | Run seed scripts |
+| `npm run ci` | Lint + typecheck + tests (mirror of GitHub Actions) |
+| `npm run db:generate` | Regenerate Prisma client after schema changes |
+| `npm run db:migrate` | Apply pending migrations (`prisma migrate deploy`) |
+| `npm run db:seed` | Run seed scripts (`prisma db seed`) |
+| `npx prisma migrate dev --name <name>` | Create a new migration in development |
 | `npx prisma studio` | Open Prisma Studio (visual DB browser) |
 
 ## Project Structure

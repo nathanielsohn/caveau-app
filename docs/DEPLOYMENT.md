@@ -87,11 +87,13 @@ npx prisma db seed
 
 ### 2. Configure environment variables
 
-Add in Vercel Dashboard → Settings → Environment Variables:
+Add in Vercel Dashboard → Settings → Environment Variables. **All three are required** — `env.ts` validates them at boot and the build will fail without them:
 
 | Key | Value |
 |-----|-------|
 | `DATABASE_URL` | Your RDS connection string |
+| `NEXTAUTH_SECRET` | JWT signing secret — generate with `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | Public app URL (e.g. `https://caveau.vercel.app`) |
 
 ### 3. Deploy
 
@@ -105,8 +107,8 @@ Add via Vercel Dashboard → Settings → Domains.
 
 The app's `src/middleware.ts` applies security controls to every request:
 
-- **Auth protection**: all routes except `/auth/*`, `/verify/*`, `/certificate/*`, `/api/auth/*` require a valid JWT token
-- **Rate limiting**: auth endpoints (`/api/auth/signup`, `/api/auth/callback/*`) are rate-limited to 5 POST requests per 60-second window per IP. This is in-memory only — it resets on deploy and doesn't persist across serverless instances. For production hardening, migrate to Upstash Redis or Vercel KV.
+- **Auth protection**: all routes require a valid JWT token, with these exceptions: `/auth/*` (login, signup), `/verify/*` (public certificate verification), `/api/auth/*` (NextAuth handlers), and `/api/health` (uptime probe). `/certificate/*` pages are auth-protected and the page enforces an ownership check before rendering.
+- **Rate limiting** (per-IP, in-memory): `POST /api/auth/signup` 5/60s, `POST /api/auth/callback/*` 10/60s, `/verify/*` 20/60s, `GET /api/sensors/history` 30/60s. The limiter resets on deploy and doesn't persist across serverless instances. For production hardening, migrate to Upstash Redis or Vercel KV.
 - **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support).
 - **Static security headers** (in `next.config.mjs`): HSTS (2 years + preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo), X-Permitted-Cross-Domain-Policies none.
 

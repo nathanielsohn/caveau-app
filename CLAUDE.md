@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 8 of 24 roadmap features are done (15, 17, 23, 26, 30, 34, 35, 36). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, and locker self-service are all live. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 12 of 24 roadmap features are done (15, 17, 19, 20, 23, 26, 30, 34, 35, 36, 37, 38). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, and member onboarding are all live. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -60,7 +60,13 @@ src/
 │   │   └── signup/route.ts         # Signup API (creates member)
 │   ├── auth/
 │   │   ├── login/page.tsx      # Login page
-│   │   └── signup/page.tsx     # Signup page
+│   │   └── signup/page.tsx     # Signup page (auto-routes new members to /onboarding)
+│   ├── onboarding/
+│   │   ├── page.tsx            # Wizard host (server — resume detection)
+│   │   ├── wizard.tsx          # 3-step client wizard (tier → locker → first bottle)
+│   │   ├── actions.ts          # Server actions (set tier, reserve locker, add wine, complete)
+│   │   ├── layout.tsx          # Minimal layout (no sidebar nav)
+│   │   └── loading.tsx
 │   ├── collection/
 │   │   ├── page.tsx            # Wine inventory (server)
 │   │   ├── collection-client.tsx # Filtering/sorting/grid (client)
@@ -87,7 +93,7 @@ src/
 │       └── loading.tsx
 ├── middleware.ts                # Route protection, rate limiting, CSP headers
 ├── types/
-│   └── next-auth.d.ts          # NextAuth type augmentation (role, tier on session)
+│   └── next-auth.d.ts          # NextAuth type augmentation (role, tier, onboarded on session)
 ├── components/
 │   ├── providers.tsx           # SessionProvider wrapper
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile) — shows session user
@@ -113,6 +119,7 @@ src/
 
 - **Facility** — Multi-location ready. Demo seeds one facility ("Caveau Naples"). Lockers have optional `facilityId`.
 - **Member.role** — `'admin' | 'staff' | 'member'`. Demo uses `'member'`. Enables RBAC in Phase 1.
+- **Member.onboardedAt** — `DateTime?`. Null until the member finishes the `/onboarding` wizard (#20). Mirrored on the JWT as `session.user.onboarded` so middleware can gate routes without an extra DB query. Existing rows are backfilled to NOW() in migration 0005.
 - **WineValuation** — Price history table. Seeds 4-6 entries per wine with sources: manual, liv-ex, wine-searcher, auction. Powers dashboard analytics trend chart.
 - **WineDisposition** — Audit trail for wines leaving the collection (sold, transferred, consumed, gifted, removed). Uses `onDelete: Restrict` on the wine FK to prevent accidental deletion of wines with disposition history. Unique constraint on `(wineId, type, date)` prevents duplicate entries.
 - **SensorReading.id** — Uses `autoincrement()` (not UUID) for write performance at scale.
@@ -142,14 +149,15 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Auth System
 
 - **NextAuth.js v4** with Credentials provider (email/password), JWT session strategy
-- **Middleware** (`src/middleware.ts`) protects all routes except `/auth/*`, `/verify/*`, `/api/auth/*`. Note: `/certificate/*` pages are public (middleware allows them) but the `/api/certificates/[id]` API route has its own auth guard + ownership check
-- **Session data** includes `id`, `name`, `email`, `role`, `tier` (see `src/types/next-auth.d.ts`)
+- **Middleware** (`src/middleware.ts`) protects all routes except `/auth/*`, `/verify/*`, `/api/auth/*`, `/api/health`. Authenticated members whose `onboardedAt` is null are routed to `/onboarding` for the guided walkthrough; completed members are bounced back to `/` if they revisit `/onboarding`. `/certificate/*` pages are auth-protected and the page enforces an ownership check before rendering.
+- **Session data** includes `id`, `name`, `email`, `role`, `tier`, `onboarded` (see `src/types/next-auth.d.ts`)
 - **Server-side auth**: use `getServerAuth()` from `src/lib/auth.ts` in server components/actions
 - **Client-side auth**: use `useSession()` from `next-auth/react` (app is wrapped in `SessionProvider`)
 - **All data queries are scoped to the authenticated member** — wines, lockers, alerts, sensor readings
 - **Demo credentials**: `robert@caveau.com` / `demo1234` (only shown on login page in development)
 - **Email normalization**: emails are lowercased and trimmed on both login and signup
-- **Signup** creates a new member with role `"member"` and tier `"gold"`, minimum 10-char password with uppercase + lowercase + digit required, email format validated. Returns 201 for both new and existing accounts to prevent user enumeration. CSRF double-submit cookie validated via SHA-256 hash.
+- **Signup** creates a new member with role `"member"` and tier `"gold"` (re-confirmed in the onboarding wizard), minimum 10-char password with uppercase + lowercase + digit required, email format validated. Returns 201 for both new and existing accounts to prevent user enumeration. CSRF double-submit cookie validated via SHA-256 hash. After signup the client auto-signs in and pushes the user to `/onboarding`.
+- **Onboarding wizard** (`/onboarding`, feature #20): three steps — pick tier, reserve a fresh 32-slot locker, add an optional first bottle. The wizard runs server actions for each step and calls `useSession().update()` on completion to refresh the JWT. The `jwt` callback re-reads `tier` and `onboardedAt` from the DB when `trigger === "update"` so middleware sees the new state without a relogin.
 - **Password hashing**: bcrypt with 12 rounds
 - **Session timeout**: 4 hours (14400 seconds), JWT strategy, no refresh token
 - **Rate limiting**: in-memory per-IP limiter on auth endpoints (5 requests / 60s window). Note: resets on deploy, does not persist across serverless instances.
@@ -159,7 +167,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 - Multi-facility support (#16)
 - Wine image upload (#18)
-- Member onboarding flow (#20)
 - Real IoT device connections (#21, #22)
 - Label scanning (#24)
 - Locker check-in/out staff workflow (#25)
