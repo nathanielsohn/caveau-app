@@ -87,13 +87,19 @@ npx prisma db seed
 
 ### 2. Configure environment variables
 
-Add in Vercel Dashboard → Settings → Environment Variables. **All three are required** — `env.ts` validates them at boot and the build will fail without them:
+Add in Vercel Dashboard → Settings → Environment Variables. **The three required vars** are validated at boot by `src/lib/env.ts` — the build will fail without them:
 
-| Key | Value |
-|-----|-------|
-| `DATABASE_URL` | Your RDS connection string |
-| `NEXTAUTH_SECRET` | JWT signing secret — generate with `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Public app URL (e.g. `https://caveau.vercel.app`) |
+| Key | Required | Value |
+|-----|----------|-------|
+| `DATABASE_URL` | Yes | Your RDS connection string |
+| `NEXTAUTH_SECRET` | Yes | JWT signing secret — generate with `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | Yes | Public app URL (e.g. `https://caveau.vercel.app`) |
+| `AWS_REGION` | No | AWS region for SES + S3 clients (e.g. `us-east-1`) |
+| `AWS_SES_FROM_EMAIL` | No | Enables feature #19 alert emails. If unset, the app logs + no-ops instead of calling SES. |
+| `AWS_S3_BUCKET` | No | Enables feature #18 wine image upload. If unset, the upload UI shows a friendly "disabled" state and the rest of the app keeps working. |
+| `AWS_CLOUDFRONT_DOMAIN` | No | When set, public image URLs go through the CDN instead of S3 directly. |
+
+The AWS vars degrade gracefully — the app boots and runs without them, features #18/#19 just become no-ops.
 
 ### 3. Deploy
 

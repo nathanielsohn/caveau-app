@@ -29,7 +29,7 @@ All colors are defined in `tailwind.config.ts`.
 |-------|-----|-------|
 | `primary` | `#E8E6E1` | Body text, headings |
 | `secondary` | `#9B9A97` | Labels, metadata |
-| `muted` | `#6B6B76` | Disabled, placeholder |
+| `muted` | `#8B8B96` | Disabled, placeholder (lightened from `#6B6B76` for WCAG AA contrast) |
 
 ### Accents
 | Token | Hex | Usage |

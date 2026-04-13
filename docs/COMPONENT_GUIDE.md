@@ -1,10 +1,10 @@
 # Component Guide
 
-> Last updated: 2026-04-12 | All components built
+> Last updated: 2026-04-13 | All components built
 
 ## Overview
 
-Caveau uses ~13 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses 14 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
 
 ## Components
 
@@ -49,6 +49,17 @@ Wine bottle card for grid/list display. Shows wine image (or placeholder), name 
 **Props:** Wine object from Prisma (includes `drinkWindowStart`, `drinkWindowEnd`, and `createdAt` for sort-by-recently-added in the collection view)
 
 **Used in:** Collection page (grid mode). The collection page itself wraps the grid in a sort dropdown + expanded filter panel (#37) — see `src/app/collection/collection-client.tsx`.
+
+---
+
+### wine-image-upload.tsx
+**Status:** Complete (Feature #18)
+
+Client component that handles wine bottle photo upload via presigned S3 URL. On mount it checks whether image uploads are enabled (via a flag returned from the server action) — when `AWS_S3_BUCKET` is unset, the UI renders a friendly "uploads disabled" state instead of the dropzone so the rest of the wine detail page keeps working. Calls `getUploadUrl()` server action to mint a presigned PUT URL, then PUTs the file straight to S3, then calls `confirmUpload()` to persist the key on the wine row.
+
+**Props:** `wineId`, `currentImageKey?`, `getUploadUrl`, `confirmUpload`
+
+**Used in:** Wine detail page
 
 ---
 
@@ -174,6 +185,24 @@ Whitelists `callbackUrl` query params so the login page can't be turned into an 
 
 ### schemas.ts
 Zod schemas for every request body and query string parsed by API routes. Includes `parseOr400()` helper that returns either typed data or a `NextResponse` with a generic 400.
+
+### current-facility.ts
+Facility cookie read/write used by the `/nav` facility switcher (#16). Encodes the member's currently-selected facility so server components can scope locker/sensor queries without a round-trip to the DB.
+
+### email.ts
+AWS SES client + `send()` wrapper. When `AWS_SES_FROM_EMAIL` is unset it logs the would-be send and no-ops, so dev/demo environments never hit SES.
+
+### notify-alert.ts
+Alert → email dispatch (#19). Reads each member's notification preferences (`emailAlertsEnabled`, severity threshold, cooldown), checks `Alert.notifiedAt` to enforce the cooldown, then calls `email.send()` and stamps `notifiedAt`. Safe to call from server actions and API routes.
+
+### s3.ts
+Presigned upload URL helpers + `getPublicUrl(imageKey)` (#18). Returns the CloudFront URL when `AWS_CLOUDFRONT_DOMAIN` is set, otherwise the direct S3 URL. When `AWS_S3_BUCKET` is unset, `isUploadEnabled()` returns false so the UI can show the disabled state.
+
+### certificate-hash.ts
+HMAC generation and verification for provenance certificate hashes. Keeps the hashing key in one place so `/verify/[hash]` and certificate creation use the same algorithm.
+
+### use-body-scroll-lock.ts
+React hook that locks background scroll when a modal is open — used by the disposition dialog, add-wine modal, and locker slot picker.
 
 ### logger.ts
 Structured logging wrapper. Emits JSON in production, pretty output in development.

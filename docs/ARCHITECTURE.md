@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-04-12 | 14 core + 3 stretch features complete; 12 of 24 roadmap features done
+> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 14 of 24 roadmap features done
 
 ## Overview
 
@@ -38,7 +38,9 @@ caveau-app/
 │   │   ├── loading.tsx         # Root loading skeleton
 │   │   ├── page.tsx            # Dashboard (server component)
 │   │   ├── dashboard-client.tsx
+│   │   ├── facility-actions.ts # Server actions for nav facility switcher (#16)
 │   │   ├── auth/
+│   │   │   ├── layout.tsx      # Minimal layout
 │   │   │   ├── login/page.tsx  # Login screen
 │   │   │   └── signup/page.tsx # Signup screen (auto-routes to /onboarding)
 │   │   ├── onboarding/         # Guided 3-step wizard for new members (#20)
@@ -46,28 +48,29 @@ caveau-app/
 │   │   ├── collection/         # Wine inventory (server + client hybrid)
 │   │   ├── locker/             # Locker visualization + server actions
 │   │   ├── sentinel/           # IoT monitoring + server actions
-│   │   ├── wine/[id]/          # Wine detail + disposition/valuation actions
+│   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
 │   │   ├── certificate/[id]/   # Provenance certificate
 │   │   ├── verify/[hash]/      # Public certificate verification
 │   │   └── api/                # REST endpoints
 │   │       ├── auth/
 │   │       │   ├── [...nextauth]/route.ts
 │   │       │   └── signup/route.ts
-│   │       ├── wines/          # GET list, POST create, [id], [id]/valuations
-│   │       ├── lockers/        # GET list, [id]/slots
-│   │       ├── sensors/        # latest, history
+│   │       ├── wines/          # GET list + POST create, [id] GET, [id]/valuations GET+POST
+│   │       ├── lockers/        # GET list, [id]/slots GET
+│   │       ├── sensors/        # latest GET, history GET (rate-limited)
 │   │       ├── alerts/         # GET recent
-│   │       ├── certificates/[id]/route.ts
+│   │       ├── certificates/[id]/route.ts  # GET (ownership-checked)
 │   │       └── health/route.ts # Public uptime probe
 │   ├── middleware.ts            # Auth gate, onboarding gate, per-route rate limiting, CSP headers
 │   ├── types/
 │   │   └── next-auth.d.ts      # Session augmentation (role, tier, onboarded)
 │   ├── components/             # Shared UI components
 │   │   ├── providers.tsx       # SessionProvider wrapper
-│   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile)
+│   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile) + facility switcher
 │   │   ├── metric-card.tsx     # Stat card (icon + value + label)
 │   │   ├── wine-card.tsx       # Wine card for grid/list views
-│   │   ├── locker-grid.tsx     # 4×8 slot grid + detail panel
+│   │   ├── wine-image-upload.tsx # Presigned S3 upload UI (#18) — no-ops when bucket unset
+│   │   ├── locker-grid.tsx     # 4×8 slot grid + detail panel + filter bar (#38)
 │   │   ├── sensor-charts.tsx   # Temp/humidity/vibration charts + access log
 │   │   ├── dashboard-charts.tsx # Analytics (value trend, utilization, alerts)
 │   │   ├── alert-list.tsx      # Alert history table
@@ -81,11 +84,18 @@ caveau-app/
 │       ├── prisma.ts           # Prisma client singleton
 │       ├── env.ts              # Boot-time env validation
 │       ├── logger.ts           # Structured logging
-│       ├── rate-limit.ts       # In-memory per-IP limiter
+│       ├── rate-limit.ts       # In-memory per-IP token bucket
 │       ├── safe-callback.ts    # Open-redirect-safe callbackUrl validator
-│       ├── schemas.ts          # Zod request/body schemas
+│       ├── schemas.ts          # Zod request/body schemas + parseOr400 helper
+│       ├── current-facility.ts # Facility cookie read/write for #16 switcher
+│       ├── email.ts            # AWS SES client + send() wrapper (no-op when unset)
+│       ├── notify-alert.ts     # Alert → email dispatch with cooldown tracking (#19)
+│       ├── s3.ts               # Presigned upload URLs + getPublicUrl (#18)
+│       ├── certificate-hash.ts # HMAC certificate hash generation/verification
+│       ├── use-body-scroll-lock.ts # Hook for locking background scroll behind modals
 │       ├── utils.ts            # Formatters (currency, date, sensors)
-│       └── sensors.ts          # Sensor simulation + threshold checks
+│       ├── sensors.ts          # Sensor simulation + threshold checks
+│       └── __tests__/          # Vitest unit tests for lib helpers
 ├── docs/                       # Developer documentation (you are here)
 └── [config files]              # package.json, tailwind.config.ts, etc.
 ```

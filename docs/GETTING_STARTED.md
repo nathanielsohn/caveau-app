@@ -1,6 +1,6 @@
 # Getting Started
 
-> Last updated: 2026-04-12 | 14 core + 3 stretch features complete; 12 of 24 roadmap features done
+> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 14 of 24 roadmap features done
 
 ## Prerequisites
 
@@ -29,6 +29,17 @@ Edit `.env` with your database connection and auth secrets:
 DATABASE_URL=postgresql://username:password@host:5432/caveau
 NEXTAUTH_SECRET=your-secret-here   # openssl rand -base64 32
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional — enable alert emails (feature #19) via AWS SES.
+# If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of calling SES.
+AWS_REGION=us-east-1
+AWS_SES_FROM_EMAIL=alerts@caveau.com
+
+# Optional — enable wine bottle photo uploads (feature #18) to S3.
+# If AWS_S3_BUCKET is unset, the upload UI shows a friendly "disabled" state.
+# AWS_CLOUDFRONT_DOMAIN is optional; when set, public image URLs route through the CDN.
+AWS_S3_BUCKET=caveau-wine-images
+AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 
 ### 3. Set up database
@@ -81,6 +92,10 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full directory tree and data fl
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `NEXTAUTH_SECRET` | Yes | JWT signing secret (`openssl rand -base64 32`) |
 | `NEXTAUTH_URL` | Yes | App base URL (`http://localhost:3000` for dev) |
+| `AWS_REGION` | No | AWS region for SES + S3 clients |
+| `AWS_SES_FROM_EMAIL` | No | Enables alert emails (#19). No-op when unset. |
+| `AWS_S3_BUCKET` | No | Enables wine image upload (#18). UI shows disabled state when unset. |
+| `AWS_CLOUDFRONT_DOMAIN` | No | Routes image URLs through CloudFront instead of S3. |
 
 ## Common Issues
 

@@ -50,55 +50,82 @@ AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 ```
 prisma/
 ├── schema.prisma               # Data models (generates TypeScript types)
-├── migrations/                 # SQL migration baseline
+├── migrations/                 # Flat SQL migrations (0001..0009)
 ├── seed.ts                     # Seed data script
 └── seed-sensors.ts             # Sensor reading seed script
 src/
 ├── app/
-│   ├── layout.tsx              # Root layout (fonts, dark bg, nav shell)
+│   ├── layout.tsx              # Root layout (fonts, dark bg, SessionProvider)
 │   ├── globals.css             # Tailwind + glass-card utilities
 │   ├── page.tsx                # Dashboard (server — data fetching)
 │   ├── dashboard-client.tsx    # Dashboard (client — metrics, charts, alerts)
+│   ├── facility-actions.ts     # Server actions for the nav facility switcher (#16)
 │   ├── error.tsx               # Global error boundary
 │   ├── not-found.tsx           # 404 page
 │   ├── loading.tsx             # Root loading skeleton
-│   ├── api/auth/
-│   │   ├── [...nextauth]/route.ts  # NextAuth API handler
-│   │   └── signup/route.ts         # Signup API (creates member)
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── [...nextauth]/route.ts  # NextAuth handlers
+│   │   │   └── signup/route.ts         # Signup API (CSRF + Zod)
+│   │   ├── wines/
+│   │   │   ├── route.ts                # GET list (search/filter), POST create
+│   │   │   └── [id]/
+│   │   │       ├── route.ts            # GET single wine
+│   │   │       └── valuations/route.ts # GET + POST valuations
+│   │   ├── lockers/
+│   │   │   ├── route.ts                # GET list with occupancy
+│   │   │   └── [id]/slots/route.ts     # GET slots with wine info
+│   │   ├── sensors/
+│   │   │   ├── latest/route.ts         # GET latest reading per locker
+│   │   │   └── history/route.ts        # GET historical readings (rate-limited)
+│   │   ├── alerts/route.ts             # GET recent alerts
+│   │   ├── certificates/[id]/route.ts  # GET certificate (ownership-checked)
+│   │   └── health/route.ts             # Public uptime probe
 │   ├── auth/
-│   │   ├── login/page.tsx      # Login page
-│   │   └── signup/page.tsx     # Signup page (auto-routes new members to /onboarding)
+│   │   ├── layout.tsx                  # Minimal layout
+│   │   ├── login/page.tsx
+│   │   └── signup/page.tsx             # Auto-routes new members to /onboarding
 │   ├── onboarding/
 │   │   ├── page.tsx            # Wizard host (server — resume detection)
 │   │   ├── wizard.tsx          # 3-step client wizard (tier → locker → first bottle)
 │   │   ├── actions.ts          # Server actions (set tier, reserve locker, add wine, complete)
 │   │   ├── layout.tsx          # Minimal layout (no sidebar nav)
 │   │   └── loading.tsx
+│   ├── settings/
+│   │   ├── page.tsx            # Alert notification preferences (#19)
+│   │   └── actions.ts          # Preference update server action
 │   ├── collection/
 │   │   ├── page.tsx            # Wine inventory (server)
 │   │   ├── collection-client.tsx # Filtering/sorting/grid (client)
+│   │   ├── error.tsx
 │   │   └── loading.tsx
 │   ├── locker/
 │   │   ├── page.tsx            # Locker visualization (server)
 │   │   ├── locker-selector.tsx # Locker tab selector (client)
 │   │   ├── actions.ts          # Server actions (assign/remove wine from slot)
+│   │   ├── error.tsx
 │   │   └── loading.tsx
 │   ├── sentinel/
 │   │   ├── page.tsx            # IoT monitoring (client — live sim)
-│   │   ├── actions.ts          # Server actions for sensor data
+│   │   ├── actions.ts          # Server actions for sensor history
+│   │   ├── error.tsx
 │   │   └── loading.tsx
 │   ├── wine/[id]/
 │   │   ├── page.tsx            # Wine detail
-│   │   ├── actions.ts          # Server actions (disposition, valuation)
+│   │   ├── actions.ts          # Server actions (disposition, valuation, image upload)
+│   │   ├── disposition-button.tsx # Client button that opens the disposition dialog
 │   │   └── loading.tsx
 │   ├── certificate/[id]/
 │   │   ├── page.tsx            # Provenance certificate (with QR code)
+│   │   ├── error.tsx
 │   │   └── loading.tsx
-│   └── verify/[hash]/
-│       ├── page.tsx            # Public certificate verification
+│   └── verify/
 │       ├── layout.tsx          # Minimal layout (no sidebar nav)
-│       └── loading.tsx
-├── middleware.ts                # Route protection, rate limiting, CSP headers
+│       └── [hash]/
+│           ├── page.tsx        # Public certificate verification
+│           ├── error.tsx
+│           └── loading.tsx
+├── middleware.ts               # Auth + onboarding gate, per-route rate limiting, CSP
 ├── types/
 │   └── next-auth.d.ts          # NextAuth type augmentation (role, tier, onboarded on session)
 ├── components/
@@ -106,7 +133,8 @@ src/
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile) — shows session user
 │   ├── metric-card.tsx         # Animated stat card (icon + value + label)
 │   ├── wine-card.tsx           # Wine card with drink window badges
-│   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel
+│   ├── wine-image-upload.tsx   # Presigned S3 upload UI (#18) — no-ops when bucket unset
+│   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel + filter bar (#38)
 │   ├── sensor-charts.tsx       # Recharts (temp, humidity, vibration, access log)
 │   ├── dashboard-charts.tsx    # Analytics (value trend, utilization, alert freq)
 │   ├── alert-list.tsx          # Alert history table
@@ -118,8 +146,20 @@ src/
 └── lib/
     ├── auth.ts                 # NextAuth config + getServerAuth() helper
     ├── prisma.ts               # Prisma client singleton
+    ├── env.ts                  # Boot-time env validation
+    ├── logger.ts               # Structured logging wrapper
+    ├── rate-limit.ts           # In-memory per-IP token bucket
+    ├── safe-callback.ts        # Open-redirect-safe callbackUrl validator
+    ├── schemas.ts              # Zod request/body schemas + parseOr400 helper
+    ├── current-facility.ts     # Facility cookie read/write for #16 switcher
+    ├── email.ts                # AWS SES client + send() wrapper (no-op when unset)
+    ├── notify-alert.ts         # Alert → email dispatch with cooldown tracking (#19)
+    ├── s3.ts                   # Presigned upload URLs + getPublicUrl (#18)
+    ├── certificate-hash.ts     # HMAC certificate hash generation/verification
+    ├── use-body-scroll-lock.ts # Hook for locking background scroll behind modals
     ├── sensors.ts              # Sensor simulation algorithm + thresholds
-    └── utils.ts                # Currency, date, number formatters
+    ├── utils.ts                # Currency, date, number formatters
+    └── __tests__/              # Vitest unit tests for lib helpers
 ```
 
 ### Data Models (key schema notes)
@@ -165,7 +205,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - **Email normalization**: emails are lowercased and trimmed on both login and signup
 - **Signup** creates a new member with role `"member"` and tier `"gold"` (re-confirmed in the onboarding wizard), minimum 10-char password with uppercase + lowercase + digit required, email format validated. Returns 201 for both new and existing accounts to prevent user enumeration. CSRF double-submit cookie validated via SHA-256 hash. After signup the client auto-signs in and pushes the user to `/onboarding`.
 - **Onboarding wizard** (`/onboarding`, feature #20): three steps — pick tier, reserve a fresh 32-slot locker, add an optional first bottle. The wizard runs server actions for each step and calls `useSession().update()` on completion to refresh the JWT. The `jwt` callback re-reads `tier` and `onboardedAt` from the DB when `trigger === "update"` so middleware sees the new state without a relogin.
-- **Password hashing**: bcrypt with 12 rounds
+- **Password hashing**: bcrypt with 13 rounds (on signup). Login uses `bcrypt.compare` which has no cost parameter.
 - **Session timeout**: 4 hours (14400 seconds), JWT strategy, no refresh token
 - **Rate limiting**: in-memory per-IP limiter on auth endpoints (5 requests / 60s window). Note: resets on deploy, does not persist across serverless instances.
 - **Role values**: `admin`, `staff`, `member` — RBAC guards are ready but admin panel (roadmap #28) is not yet built

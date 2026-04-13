@@ -122,7 +122,7 @@ light = rare_spike_or_near_zero
 ## ADR-007: Server Actions for internal data, REST for external
 
 **Date:** 2026-04-10
-**Status:** Accepted (REST surface added 2026-04-11 with roadmap #15)
+**Status:** Accepted (REST surface added 2026-04-11 with roadmap #17)
 
 **Context:** Client components (like Sentinel) need to fetch data from the database. Options: Next.js API routes (`/api/...`) or Server Actions.
 
@@ -130,7 +130,7 @@ light = rare_spike_or_near_zero
 
 **Why:**
 - Server Actions keep the in-app path type-safe end-to-end (TypeScript function call, not HTTP) and avoid REST boilerplate for internal use
-- REST routes are required for anything that lives outside the Next.js bundle (mobile app, integrations) — these were added in roadmap #15
+- REST routes are required for anything that lives outside the Next.js bundle (mobile app, integrations) — these were added in roadmap #17
 - Both surfaces share the same Prisma queries and Zod schemas, so behavior stays consistent regardless of caller
 - Auth scoping is enforced uniformly: server actions read `getServerAuth()`, API routes call it inside the handler
 

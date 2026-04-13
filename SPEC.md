@@ -29,7 +29,9 @@ Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder
 
 ---
 
-## Screens (6 total)
+## Screens
+
+The original demo had 6 member-facing screens, listed below. Since then `/auth/login`, `/auth/signup`, `/onboarding`, `/settings`, and `/verify/[hash]` have been added via roadmap features #15, #19, #20, and #30.
 
 ### 1. Dashboard (`/`)
 Overview: collection value, locker status, current conditions, recent alerts, top wines by value.
@@ -75,159 +77,25 @@ All cards use: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 roun
 
 ## Data Models (Prisma)
 
-> **Note on Prisma Decimal fields:** Prisma returns `Decimal` columns as `Prisma.Decimal` objects (string-backed), not native JS numbers. Any component displaying or computing with `purchasePrice`, `currentValue`, or sensor values must call `.toNumber()` or use `Number()` for arithmetic, and format with `utils.ts` helpers for display.
+> **Source of truth:** `prisma/schema.prisma`. The block below is a human-readable summary — when in doubt, read the schema file.
 
-```prisma
-// prisma/schema.prisma
+> **Note on Prisma Decimal fields:** Prisma returns `Decimal` columns as `Prisma.Decimal` objects (string-backed), not native JS numbers. Any component displaying or computing with `purchasePrice`, `currentValue`, `WineValuation.price`, or sensor values must call `.toNumber()` or use `Number()` for arithmetic, and format with `utils.ts` helpers for display.
 
-generator client {
-  provider = "prisma-client-js"
-}
+**Enums** (all real Postgres enum types): `Role` (admin/staff/member), `Tier` (gold/platinum/black), `AlertType` (temperature/humidity/vibration/light/door/access), `Severity` (info/warning/critical), `WineStatus` (in_cellar/sold/transferred/consumed/gifted/removed), `DispositionType` (sold/transferred/consumed/gifted/removed).
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+**Models:**
 
-model Facility {
-  id        String   @id @default(uuid())
-  name      String
-  location  String   // e.g. "Naples, FL"
-  createdAt DateTime @default(now()) @map("created_at")
-  lockers   Locker[]
-
-  @@map("facilities")
-}
-
-model Member {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  tier      String   // 'gold', 'platinum', 'black'
-  role      String   @default("member") // 'admin', 'staff', 'member'
-  createdAt DateTime @default(now()) @map("created_at")
-  wines     Wine[]
-  lockers   Locker[]
-
-  @@map("members")
-}
-
-model Wine {
-  id               String    @id @default(uuid())
-  name             String
-  vintage          Int
-  region           String
-  varietal         String
-  producer         String
-  purchasePrice    Decimal   @map("purchase_price") @db.Decimal(10, 2)
-  currentValue     Decimal   @map("current_value") @db.Decimal(10, 2)
-  imageUrl         String?   @map("image_url")
-  tastingNotes     String?   @map("tasting_notes")
-  drinkWindowStart Int?      @map("drink_window_start")
-  drinkWindowEnd   Int?      @map("drink_window_end")
-  memberId         String?   @map("member_id")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  member           Member?   @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  lockerSlots      LockerSlot[]
-  certificates     ProvenanceCertificate[]
-  valuations       WineValuation[]
-
-  @@index([memberId])
-  @@map("wines")
-}
-
-model WineValuation {
-  id        String   @id @default(uuid())
-  wineId    String   @map("wine_id")
-  source    String   // 'manual', 'liv-ex', 'wine-searcher', etc.
-  price     Decimal  @db.Decimal(10, 2)
-  date      DateTime
-  wine      Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
-
-  @@index([wineId, date(sort: Desc)])
-  @@map("wine_valuations")
-}
-
-model Locker {
-  id           String   @id @default(uuid())
-  lockerNumber Int      @unique @map("locker_number")
-  zone         String   // 'A', 'B', 'C'
-  facilityId   String?  @map("facility_id")
-  memberId     String?  @map("member_id")
-  facility     Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
-  member       Member?  @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  slots        LockerSlot[]
-  readings     SensorReading[]
-  alerts       Alert[]
-  certificates ProvenanceCertificate[]
-
-  @@index([facilityId])
-  @@index([memberId])
-  @@map("lockers")
-}
-
-model LockerSlot {
-  id           String    @id @default(uuid())
-  lockerId     String    @map("locker_id")
-  slotPosition Int       @map("slot_position")
-  wineId       String?   @map("wine_id")
-  dateStored   DateTime? @map("date_stored")
-  locker       Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
-  wine         Wine?     @relation(fields: [wineId], references: [id], onDelete: SetNull)
-
-  @@unique([lockerId, slotPosition])
-  @@map("locker_slots")
-}
-
-model SensorReading {
-  id          Int      @id @default(autoincrement())
-  lockerId    String   @map("locker_id")
-  temperature Decimal  @db.Decimal(5, 2)
-  humidity    Decimal  @db.Decimal(5, 2)
-  vibration   Decimal  @db.Decimal(5, 3)
-  lightLux    Decimal  @map("light_lux") @db.Decimal(5, 2)
-  timestamp   DateTime @default(now())
-  locker      Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
-
-  @@index([lockerId, timestamp(sort: Desc)])
-  @@index([timestamp(sort: Desc)])
-  @@map("sensor_readings")
-}
-
-model Alert {
-  id        String   @id @default(uuid())
-  lockerId  String   @map("locker_id")
-  type      String   // 'temperature', 'humidity', 'vibration', 'light', 'door'
-  severity  String   // 'info', 'warning', 'critical'
-  message   String
-  timestamp DateTime @default(now())
-  resolved  Boolean  @default(false)
-  locker    Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
-
-  @@index([lockerId, timestamp(sort: Desc)])
-  @@index([resolved, lockerId])
-  @@map("alerts")
-}
-
-model ProvenanceCertificate {
-  id                String   @id @default(uuid())
-  wineId            String   @map("wine_id")
-  lockerId          String   @map("locker_id")
-  monitoringStart   DateTime @map("monitoring_start")
-  monitoringEnd     DateTime @map("monitoring_end")
-  tempMean          Decimal? @map("temp_mean") @db.Decimal(5, 2)
-  tempMin           Decimal? @map("temp_min") @db.Decimal(5, 2)
-  tempMax           Decimal? @map("temp_max") @db.Decimal(5, 2)
-  humidityMean      Decimal? @map("humidity_mean") @db.Decimal(5, 2)
-  dataIntegrityHash String   @map("data_integrity_hash")
-  certificateNumber String   @unique @map("certificate_number")
-  createdAt         DateTime @default(now()) @map("created_at")
-  wine              Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
-  locker            Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
-
-  @@map("provenance_certificates")
-}
-```
+- **Facility** — `id`, `name`, `location`, `createdAt`. Has many lockers and many members (via `FacilityMember`).
+- **FacilityMember** — join table for multi-facility membership (#16). Composite PK `(memberId, facilityId)`; both FKs cascade on delete.
+- **Member** — `id`, `name`, `email` (unique), `tier: Tier`, `role: Role` (default `member`), `passwordHash?`, `emailAlertsEnabled` (default `true`), `emailAlertSeverity` (default `"warning"`), `emailAlertCooldownMin` (default `30`), `onboardedAt?`, `createdAt`, `updatedAt`.
+- **Wine** — `id`, `name`, `vintage`, `region`, `varietal`, `producer`, `purchasePrice: Decimal(14,2)`, `currentValue: Decimal(14,2)`, `tastingNotes?`, `drinkWindowStart?`, `drinkWindowEnd?`, `status: WineStatus` (default `in_cellar`), `memberId` (**non-null**, `onDelete: Restrict` — disposition history blocks accidental deletion), `imageKey?` (S3 object key for #18; public URL is derived at read time via `getPublicUrl(imageKey)` so CDN domains can change without rewriting rows), `createdAt`, `updatedAt`. Composite indexes: `[memberId]`, `[memberId, region, varietal]`, `[memberId, status]`, `[memberId, status, currentValue DESC]`.
+- **WineValuation** — `id`, `wineId`, `source`, `price: Decimal(14,2)`, `date`. Unique `(wineId, date, source)`; index `(wineId, date DESC)`.
+- **Locker** — `id`, `lockerNumber`, `zone`, `facilityId` (**non-null**, `onDelete: Restrict`), `memberId?` (`SetNull`), `createdAt`, `updatedAt`. Unique `(facilityId, lockerNumber)` — locker numbers are scoped per facility, not globally.
+- **LockerSlot** — `id`, `lockerId`, `slotPosition`, `wineId?`, `dateStored?`, `updatedAt`. Unique `(lockerId, slotPosition)`; index on `wineId`.
+- **SensorReading** — `id: Int autoincrement` (not UUID, for write performance at scale), `lockerId`, `temperature/humidity/vibration/lightLux: Decimal`, `timestamp`. Index `(lockerId, timestamp DESC)`.
+- **Alert** — `id`, `lockerId`, `type: AlertType`, `severity: Severity`, `message`, `timestamp`, `resolved`, `notifiedAt?` (SES cooldown tracking from #19), `updatedAt`. Indexes: `(lockerId, timestamp DESC)`, `(resolved, lockerId, timestamp DESC)`, `(lockerId, type, resolved, notifiedAt DESC)` — the 4-column index is a strict superset of the older `(lockerId, type, notifiedAt)` shape.
+- **ProvenanceCertificate** — `id`, `wineId`, `lockerId`, `monitoringStart/End`, `tempMean/Min/Max?`, `humidityMean?`, `dataIntegrityHash` (SHA-256 over pipe-joined sensor reading IDs in the window), `certificateNumber` (unique), `createdAt`. Index `(wineId, lockerId)`.
+- **WineDisposition** — `id`, `wineId` (`Restrict`), `memberId` (`Cascade`), `type: DispositionType`, `date`, `salePrice?: Decimal(14,2)`, `recipient?`, `notes?`, `createdAt`. Unique `(wineId, type, date)` to prevent duplicates; indexes on `wineId` and `memberId`.
 
 ### Seed Data
 - 1 facility: "Caveau Naples", location "Naples, FL"
@@ -283,15 +151,17 @@ When seeding `ProvenanceCertificate` records, calculate `tempMean`, `tempMin`, `
 
 ## Project Structure
 
-See CLAUDE.md for the canonical `src/` file tree. Key points:
+See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
-- **~20 source files total.** Each component file may contain multiple related sub-components.
-- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts)
-- Config files: package.json, next.config.mjs, tailwind.config.ts, .env
+- The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#38 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
+- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0009.sql).
+- Config files: package.json, next.config.mjs, tailwind.config.ts, .env, vitest.config.ts.
 
 ---
 
-## Build Sessions
+## Build Sessions (historical)
+
+> The sections below describe the original 3-session demo build that ran 2026-04-10 → 2026-04-13. They are kept for context; current work is tracked in the **Post-Demo Roadmap** section below, not here.
 
 ### Session 1: Foundation + Dashboard + Collection
 

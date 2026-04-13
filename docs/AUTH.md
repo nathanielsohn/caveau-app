@@ -69,7 +69,7 @@ sequenceDiagram
 
 **Hardening notes**
 - Email is lowercased and trimmed before lookup.
-- bcrypt cost is 12 (login) / 13 (signup hashing) — high enough to slow down offline cracking, low enough to fit in the 5s serverless budget.
+- bcrypt cost on signup hashing is 13 — high enough to slow down offline cracking, low enough to fit in the 5s serverless budget. Login uses `bcrypt.compare`, which has no cost parameter.
 - The `callbackUrl` query param is validated by `safe-callback.ts` so it can only point to same-origin paths.
 
 ## Signup flow
