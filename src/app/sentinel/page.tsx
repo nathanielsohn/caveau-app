@@ -203,7 +203,10 @@ export default function SentinelPage() {
     intervalRef.current = setInterval(() => tickRef.current(), 5000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, []);
 
@@ -222,18 +225,21 @@ export default function SentinelPage() {
   }, [range, dbReadings, liveReadings]);
 
   /* ── Merge alerts: live (NEW) on top, then DB ──── */
-  const allAlerts: AlertItem[] = [
-    ...liveAlerts.map((a) => ({
-      id: a.id,
-      type: a.type,
-      severity: a.severity,
-      message: a.message,
-      timestamp: a.timestamp,
-      resolved: a.resolved,
-      isNew: true,
-    })),
-    ...dbAlerts,
-  ];
+  const allAlerts: AlertItem[] = useMemo(
+    () => [
+      ...liveAlerts.map((a) => ({
+        id: a.id,
+        type: a.type,
+        severity: a.severity,
+        message: a.message,
+        timestamp: a.timestamp,
+        resolved: a.resolved,
+        isNew: true,
+      })),
+      ...dbAlerts,
+    ],
+    [liveAlerts, dbAlerts],
+  );
 
   /* ── Condition cards data ──────────────────────── */
   const conditions = [

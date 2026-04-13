@@ -42,4 +42,30 @@ describe("safeCallback", () => {
       "/wine/123?tab=details#top",
     );
   });
+
+  it("rejects backslash-prefixed paths (legacy IE/Edge)", () => {
+    expect(safeCallback("\\/evil.com")).toBeNull();
+    expect(safeCallback("\\\\evil.com")).toBeNull();
+  });
+
+  it("rejects URL-encoded backslash protocol-relative", () => {
+    expect(safeCallback("/%5Cevil.com")).toBeNull();
+  });
+
+  it("rejects javascript: and data: schemes", () => {
+    expect(safeCallback("javascript:alert(1)")).toBeNull();
+    expect(safeCallback("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(safeCallback("vbscript:msgbox()")).toBeNull();
+  });
+
+  it("rejects non-string input", () => {
+    // @ts-expect-error -- testing runtime defense against bad callers
+    expect(safeCallback(42)).toBeNull();
+    // @ts-expect-error -- testing runtime defense against bad callers
+    expect(safeCallback({})).toBeNull();
+  });
+
+  it("rejects absurdly long inputs", () => {
+    expect(safeCallback("/" + "a".repeat(2049))).toBeNull();
+  });
 });

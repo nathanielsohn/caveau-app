@@ -160,6 +160,9 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
       if (slotMatchesFilters(slotMap.get(i))) count++;
     }
     return count;
+    // slotMatchesFilters is a stable inline closure that already captures
+    // the four filter values, so we list those explicitly instead of the
+    // function reference (which changes every render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotMap, occupancyFilter, regionFilter, varietalFilter, drinkFilter]);
 

@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 12 of 24 roadmap features are done (15, 17, 19, 20, 23, 26, 30, 34, 35, 36, 37, 38). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, and member onboarding are all live. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 14 of 24 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 26, 30, 34, 35, 36, 37, 38). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, and wine image upload are all live. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -172,7 +172,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 ## Not Yet Implemented (on roadmap)
 
-- Multi-facility support (#16)
 - Real IoT device connections (#21, #22)
 - Label scanning (#24)
 - Locker check-in/out staff workflow (#25)

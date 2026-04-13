@@ -36,14 +36,50 @@ function shouldLog(level: Level): boolean {
   return LEVEL_RANK[level] >= LEVEL_RANK[minLevel];
 }
 
+// Anything matching one of these substrings (case-insensitive) is redacted
+// before the payload reaches stdout/Sentry. Defense in depth — the calling
+// code shouldn't be passing these in the first place, but a single missed
+// log statement shouldn't be the difference between safe and a leaked secret.
+const REDACT_KEY_PATTERNS = [
+  "password",
+  "passwd",
+  "secret",
+  "token",
+  "authorization",
+  "cookie",
+  "apikey",
+  "api_key",
+  "session",
+];
+
+function shouldRedact(key: string): boolean {
+  const k = key.toLowerCase();
+  return REDACT_KEY_PATTERNS.some((p) => k.includes(p));
+}
+
+function redact(input: unknown, depth = 0): unknown {
+  if (depth > 4 || input == null) return input;
+  if (Array.isArray(input)) return input.map((v) => redact(v, depth + 1));
+  if (typeof input !== "object") return input;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    out[k] = shouldRedact(k) ? "[REDACTED]" : redact(v, depth + 1);
+  }
+  return out;
+}
+
 function emit(level: Level, message: string, context?: LogContext): void {
   if (!shouldLog(level)) return;
+
+  const safeContext = context
+    ? (redact(context) as LogContext)
+    : undefined;
 
   const payload = {
     level,
     msg: message,
     ts: new Date().toISOString(),
-    ...context,
+    ...safeContext,
   };
 
   if (env.NODE_ENV === "production") {
@@ -57,8 +93,8 @@ function emit(level: Level, message: string, context?: LogContext): void {
   } else {
     // Dev: keep it readable.
     const tag = `[${level.toUpperCase()}]`;
-    if (context && Object.keys(context).length > 0) {
-      console.log(tag, message, context);
+    if (safeContext && Object.keys(safeContext).length > 0) {
+      console.log(tag, message, safeContext);
     } else {
       console.log(tag, message);
     }
