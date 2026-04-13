@@ -1,13 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import MetricCard from "@/components/metric-card";
-import {
-  CollectionValueChart,
-  StorageUtilizationChart,
-  AlertFrequencyChart,
-} from "@/components/dashboard-charts";
+
+// Recharts is ~80KB gzipped — defer it so the dashboard's LCP doesn't
+// pay for the chart bundle, and show a placeholder block in its place.
+const ChartPlaceholder = ({ height }: { height: string }) => (
+  <div
+    className={`glass-card ${height} animate-pulse`}
+    aria-label="Loading chart"
+  />
+);
+
+const CollectionValueChart = dynamic(
+  () => import("@/components/dashboard-charts").then((m) => m.CollectionValueChart),
+  { ssr: false, loading: () => <ChartPlaceholder height="h-80" /> },
+);
+const StorageUtilizationChart = dynamic(
+  () => import("@/components/dashboard-charts").then((m) => m.StorageUtilizationChart),
+  { ssr: false, loading: () => <ChartPlaceholder height="h-80" /> },
+);
+const AlertFrequencyChart = dynamic(
+  () => import("@/components/dashboard-charts").then((m) => m.AlertFrequencyChart),
+  { ssr: false, loading: () => <ChartPlaceholder height="h-80" /> },
+);
 import {
   DollarSign,
   Wine,

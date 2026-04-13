@@ -88,7 +88,12 @@ export async function assignWineToSlot(
       { isolationLevel: "Serializable" }
     );
 
+    // The dashboard shows bottles-stored + utilization and the collection
+    // surface shows per-locker filters — both need to re-fetch after an
+    // assign. revalidatePath is idempotent so extra calls are cheap.
     revalidatePath("/locker");
+    revalidatePath("/collection");
+    revalidatePath("/");
     return {};
   } catch (e) {
     return actionError(e);
@@ -154,6 +159,7 @@ export async function addWineAndAssignToSlot(
 
     revalidatePath("/locker");
     revalidatePath("/collection");
+    revalidatePath("/");
     return {};
   } catch (e) {
     return actionError(e);
@@ -197,6 +203,8 @@ export async function removeWineFromSlot(
     });
 
     revalidatePath("/locker");
+    revalidatePath("/collection");
+    revalidatePath("/");
     return {};
   } catch {
     return NOT_FOUND_ERROR;
