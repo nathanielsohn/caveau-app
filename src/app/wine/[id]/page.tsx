@@ -53,6 +53,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
       status: true,
       imageKey: true,
       createdAt: true,
+      lastValuationSyncAt: true,
       lockerSlots: {
         select: {
           slotPosition: true,
@@ -361,6 +362,9 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         appreciation={appreciation}
         wineId={wine.id}
         addValuationAction={addValuation}
+        lastSyncedAt={
+          (wine.lastValuationSyncAt ?? wine.valuations[0]?.date ?? null)?.toISOString() ?? null
+        }
       />
 
       {/* Tasting Notes */}

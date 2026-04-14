@@ -43,6 +43,8 @@ interface MetricsData {
   totalSlots: number;
   activeAlertCount: number;
   facilityCount: number;
+  /** ISO timestamp of the most recent Liv-ex sync (or latest valuation as fallback). */
+  latestValuationSyncAt: string | null;
 }
 
 interface TopWine {
@@ -141,6 +143,11 @@ export default function DashboardClient({
             value: metrics.valueTrend,
             label: "vs purchase price",
           }}
+          footnote={
+            metrics.latestValuationSyncAt
+              ? `Liv-ex · updated ${formatRelativeTime(metrics.latestValuationSyncAt)}`
+              : undefined
+          }
         />
         <MetricCard
           icon={Wine}

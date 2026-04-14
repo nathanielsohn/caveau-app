@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/livex-sync",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

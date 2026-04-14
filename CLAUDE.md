@@ -75,6 +75,19 @@ AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 # disabled with a tooltip and the rest of the add-wine flow keeps working.
 # Restrict the API key to the Vision API only in Google Cloud Console.
 GOOGLE_CLOUD_VISION_API_KEY=AIzaSy...
+
+# Optional — enables live Liv-ex price sync (feature #39). When
+# LIVEX_API_KEY is unset, `src/lib/livex.ts` short-circuits and the daily
+# sync job at `/api/cron/livex-sync` no-ops, so seeded WineValuation data
+# renders unchanged. LIVEX_BASE_URL is only needed to point at a sandbox
+# or a non-default endpoint. CRON_SECRET is the shared Bearer token that
+# guards the sync route in production — Vercel cron sends it automatically
+# when set in the project env; manual curl calls must supply the same
+# `Authorization: Bearer <secret>` header. Dev requests are allowed when
+# CRON_SECRET is unset so local testing doesn't need extra wiring.
+LIVEX_API_KEY=livex_live_...
+LIVEX_BASE_URL=https://api.liv-ex.com/v1
+CRON_SECRET=<random-base64-string>
 ```
 
 ## Project Structure

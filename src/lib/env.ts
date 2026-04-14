@@ -23,7 +23,10 @@ type OptionalKey =
   | "AWS_CLOUDFRONT_DOMAIN"
   | "GOOGLE_CLOUD_VISION_API_KEY"
   | "CERTIFICATE_HMAC_SECRET"
-  | "FACILITY_COOKIE_SECRET";
+  | "FACILITY_COOKIE_SECRET"
+  | "LIVEX_API_KEY"
+  | "LIVEX_BASE_URL"
+  | "CRON_SECRET";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -91,5 +94,15 @@ export const env = {
     required.NEXTAUTH_SECRET ??
     read("NEXTAUTH_SECRET") ??
     "",
+  // Liv-ex live pricing integration (feature #39). When LIVEX_API_KEY is
+  // unset the client in src/lib/livex.ts short-circuits to null and the
+  // sync job no-ops — seeded WineValuation data renders as it does today.
+  LIVEX_API_KEY: read("LIVEX_API_KEY"),
+  LIVEX_BASE_URL: read("LIVEX_BASE_URL"),
+  // Shared secret that guards /api/cron/livex-sync. Vercel cron sends
+  // `Authorization: Bearer <CRON_SECRET>`; the route returns 401 when the
+  // header doesn't match. Leave unset in dev if you plan to hit the route
+  // manually — it will still reject in production if you forget.
+  CRON_SECRET: read("CRON_SECRET"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

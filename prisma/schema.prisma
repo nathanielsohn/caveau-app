@@ -119,6 +119,10 @@ model Wine {
   // public URL is derived at read time via `getPublicUrl(imageKey)` so we
   // can swap CDN domains without rewriting rows.
   imageKey         String?               @map("image_key")
+  // Timestamp of the last successful Liv-ex price sync for this bottle
+  // (feature #39). Null for wines that have never been synced — the UI
+  // falls back to the most recent WineValuation.date in that case.
+  lastValuationSyncAt DateTime?           @map("last_valuation_sync_at")
   member           Member                @relation(fields: [memberId], references: [id], onDelete: Restrict)
   lockerSlots      LockerSlot[]
   certificates     ProvenanceCertificate[]

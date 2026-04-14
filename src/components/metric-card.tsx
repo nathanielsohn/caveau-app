@@ -12,6 +12,8 @@ interface MetricCardProps {
     value: number; // percent change, e.g. 5.2 or -3.1
     label?: string; // e.g. "vs last month"
   };
+  /** Small line rendered underneath the trend label, e.g. "Updated 2h ago" */
+  footnote?: string;
   /** Index for stagger animation (pass from parent grid) */
   index?: number;
 }
@@ -83,7 +85,7 @@ function replaceNumber(
   return template.replace(match[0], formatted);
 }
 
-export default function MetricCard({ icon: Icon, value, label, trend, index = 0 }: MetricCardProps) {
+export default function MetricCard({ icon: Icon, value, label, trend, footnote, index = 0 }: MetricCardProps) {
   const prefersReducedMotion = useReducedMotion();
   const targetNum = extractNumber(value);
   const animatedNum = useAnimatedNumber(targetNum);
@@ -126,6 +128,9 @@ export default function MetricCard({ icon: Icon, value, label, trend, index = 0 
       </div>
       {trend?.label && (
         <p className="text-xs text-muted">{trend.label}</p>
+      )}
+      {footnote && (
+        <p className="text-[11px] text-muted/80 tabular-nums">{footnote}</p>
       )}
     </motion.div>
   );

@@ -42,6 +42,7 @@ export default async function DashboardPage() {
       bottlesStored,
       totalSlots,
       facilityCount,
+      latestSyncRow,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -67,6 +68,15 @@ export default async function DashboardPage() {
         where: { locker: { memberId } },
       }),
       prisma.facilityMember.count({ where: { memberId } }),
+      // Most recent Liv-ex sync across the member's collection (feature #39).
+      // Powers the "Updated <relative>" footnote on the Collection Value
+      // card. When no wine has ever been synced (dev / unconfigured), this
+      // returns null and the UI falls back to the latest WineValuation.date.
+      prisma.wine.findFirst({
+        where: { memberId, lastValuationSyncAt: { not: null } },
+        orderBy: { lastValuationSyncAt: "desc" },
+        select: { lastValuationSyncAt: true },
+      }),
     ]);
 
     const lockerIds = memberLockerIds.map((l) => l.id);
@@ -164,6 +174,20 @@ export default async function DashboardPage() {
         ? ((totalValue - totalPurchase) / totalPurchase) * 100
         : 0;
 
+    // Fall back to the most recent WineValuation.date when no wine has a
+    // real Liv-ex sync stamped. One extra query, only when needed.
+    let latestSyncAt: Date | null = latestSyncRow?.lastValuationSyncAt ?? null;
+    if (!latestSyncAt) {
+      const fallback = await prisma.wineValuation
+        .findFirst({
+          where: { wine: { memberId } },
+          orderBy: { date: "desc" },
+          select: { date: true },
+        })
+        .catch(() => null);
+      latestSyncAt = fallback?.date ?? null;
+    }
+
     // Serialize data for the client component
     const metricsData = {
       totalValue: formatCurrencyCompact(totalValue),
@@ -172,6 +196,7 @@ export default async function DashboardPage() {
       totalSlots,
       activeAlertCount,
       facilityCount,
+      latestValuationSyncAt: latestSyncAt ? latestSyncAt.toISOString() : null,
     };
 
     // Calculate per-wine appreciation for sorting

@@ -12,6 +12,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
+import { formatRelativeTime } from "@/lib/utils";
 
 const tooltipStyle = {
   backgroundColor: "#141416",
@@ -42,6 +43,8 @@ interface ValuationChartProps {
   appreciation: number;
   wineId: string;
   addValuationAction: (formData: FormData) => Promise<void>;
+  /** ISO timestamp — most recent Liv-ex sync, or latest valuation as fallback. */
+  lastSyncedAt?: string | null;
 }
 
 function formatChartValue(v: number) {
@@ -61,6 +64,7 @@ export default function ValuationChart({
   appreciation,
   wineId,
   addValuationAction,
+  lastSyncedAt,
 }: ValuationChartProps) {
   const [showForm, setShowForm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -99,11 +103,18 @@ export default function ValuationChart({
 
   return (
     <div className="glass-card p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-xl text-primary">Price History</h2>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-serif text-xl text-primary">Price History</h2>
+          {lastSyncedAt && (
+            <p className="text-[11px] text-muted mt-0.5 tabular-nums">
+              Last updated {formatRelativeTime(lastSyncedAt)}
+            </p>
+          )}
+        </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-xs text-gold hover:text-gold-text transition-colors"
+          className="flex items-center gap-1.5 text-xs text-gold hover:text-gold-text transition-colors flex-shrink-0"
         >
           {showForm ? (
             <>

@@ -137,7 +137,11 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/api/auth") ||
-    pathname === "/api/health";
+    pathname === "/api/health" ||
+    // Cron endpoints are auth'd via shared-secret Bearer token (CRON_SECRET),
+    // not session cookies. Let them through the auth gate; the route handler
+    // rejects unauthenticated invocations itself.
+    pathname.startsWith("/api/cron/");
 
   if (isPublic) {
     return applySecurityHeaders(NextResponse.next(), csp);

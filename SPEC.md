@@ -348,6 +348,14 @@ Turn it into a business.
 | 37 | ~~Collection sort + expanded filters~~ | ~~Sort dropdown (value, vintage, name, drink-window, recently added, asc/desc). Add price-range, drink-window status (ready/aging/past peak), and producer filters alongside existing region/varietal/vintage. Done.~~ |
 | 38 | ~~Locker slot filtering~~ | ~~Filter the 4×8 slot grid by occupancy (occupied/empty) and by attributes of the wine inside (region, varietal, drink-window status). Visually dim non-matching slots so the physical layout stays intact. Done.~~ |
 
+### Phase 4 — Vault Business (weeks 13+)
+
+Framing comes from the April 2026 investor review (Robert Saenz): the locker program is the member entry point, the physical storage facility in Naples is the infrastructure play above it, Sentinel is the technology backbone, and the App ties it together into something no competitor — software-only (CellarTracker, Vinfolio) or storage-only (Carl's Wine Vault, Domaine, Octavian) — is building today. These features turn Caveau from a collection manager into the software layer of a trusted private vault operator serving Southwest Florida collectors.
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 39 | ~~Liv-ex live pricing integration~~ | ~~Real Liv-ex API client in `src/lib/livex.ts` with graceful fallback, daily sync via Vercel cron at `/api/cron/livex-sync`, per-wine `lastValuationSyncAt` timestamp, "Last updated" surface on dashboard collection-value card and wine detail valuation chart. LIVEX_API_KEY unset → sync no-ops and seeded data renders unchanged. Done.~~ |
+
 ### Code Audit — Technical Debt Backlog (April 2026)
 
 Full codebase audit identified the items below. Security hotfixes (certificate IDOR, email normalization, signup hardening, demo credential gating) were fixed immediately. Remaining items are slotted into the phase where they become load-bearing.
