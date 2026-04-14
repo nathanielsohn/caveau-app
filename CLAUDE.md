@@ -29,8 +29,19 @@ npm run dev
 Requires `.env` with:
 ```
 DATABASE_URL=postgresql://<user>:<password>@<rds-host>:5432/caveau
+# Production note: append `?connection_limit=5&pool_timeout=10` so each
+# Vercel Lambda caps its Prisma pool and can't exhaust the RDS
+# connection budget on a traffic spike. Migrate to RDS Proxy once
+# steady-state traffic justifies it.
 NEXTAUTH_SECRET=<random-base64-string>
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional — enables distributed rate limiting via Upstash Redis. If
+# either var is unset, src/lib/rate-limit.ts falls back to the per-Lambda
+# in-memory limiter (fine for dev, not a real ceiling in prod because
+# each cold start resets the counter).
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxx
 
 # Optional — enables alert email notifications via AWS SES (feature #19).
 # If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of sending.
