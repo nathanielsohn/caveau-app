@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Lock, Plus, ShieldCheck } from "lucide-react";
 import LockerGrid, { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 import { FacilityPill } from "@/components/facility-context";
+import type {
+  ScanUploadUrlResult,
+  ScanWineLabelResult,
+} from "@/app/collection/label-scan-actions";
 
 interface LockerData {
   id: string;
@@ -17,9 +21,22 @@ interface LockerData {
 interface LockerSelectorProps {
   lockers: LockerData[];
   unassignedWines: UnassignedWine[];
+  s3Configured: boolean;
+  visionConfigured: boolean;
+  requestScanUploadUrlAction: (
+    contentType: string,
+  ) => Promise<ScanUploadUrlResult>;
+  scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
 
-export default function LockerSelector({ lockers, unassignedWines }: LockerSelectorProps) {
+export default function LockerSelector({
+  lockers,
+  unassignedWines,
+  s3Configured,
+  visionConfigured,
+  requestScanUploadUrlAction,
+  scanWineLabelAction,
+}: LockerSelectorProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [addTrigger, setAddTrigger] = useState(0);
   const locker = lockers[activeIndex];
@@ -134,7 +151,15 @@ export default function LockerSelector({ lockers, unassignedWines }: LockerSelec
       </div>
 
       {/* Locker grid */}
-      <LockerGrid slots={locker.slots} unassignedWines={unassignedWines} addTrigger={addTrigger} />
+      <LockerGrid
+        slots={locker.slots}
+        unassignedWines={unassignedWines}
+        addTrigger={addTrigger}
+        s3Configured={s3Configured}
+        visionConfigured={visionConfigured}
+        requestScanUploadUrlAction={requestScanUploadUrlAction}
+        scanWineLabelAction={scanWineLabelAction}
+      />
     </>
   );
 }

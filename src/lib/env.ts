@@ -20,7 +20,8 @@ type OptionalKey =
   | "AWS_REGION"
   | "AWS_SES_FROM_EMAIL"
   | "AWS_S3_BUCKET"
-  | "AWS_CLOUDFRONT_DOMAIN";
+  | "AWS_CLOUDFRONT_DOMAIN"
+  | "GOOGLE_CLOUD_VISION_API_KEY";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -71,5 +72,6 @@ export const env = {
   AWS_SES_FROM_EMAIL: read("AWS_SES_FROM_EMAIL"),
   AWS_S3_BUCKET: read("AWS_S3_BUCKET"),
   AWS_CLOUDFRONT_DOMAIN: read("AWS_CLOUDFRONT_DOMAIN"),
+  GOOGLE_CLOUD_VISION_API_KEY: read("GOOGLE_CLOUD_VISION_API_KEY"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

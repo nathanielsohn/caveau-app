@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → provenance certificates → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 14 of 24 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 26, 30, 34, 35, 36, 37, 38). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, and wine image upload are all live. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 15 of 24 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -43,6 +43,12 @@ AWS_SES_FROM_EMAIL=alerts@caveau.com
 # when set, public image URLs go through the CDN instead of S3 directly.
 AWS_S3_BUCKET=caveau-wine-images
 AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
+
+# Optional — enables wine label OCR via Google Cloud Vision (feature #24).
+# If GOOGLE_CLOUD_VISION_API_KEY is unset, the Scan Label button renders
+# disabled with a tooltip and the rest of the add-wine flow keeps working.
+# Restrict the API key to the Vision API only in Google Cloud Console.
+GOOGLE_CLOUD_VISION_API_KEY=AIzaSy...
 ```
 
 ## Project Structure
@@ -213,7 +219,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Not Yet Implemented (on roadmap)
 
 - Real IoT device connections (#21, #22)
-- Label scanning (#24)
 - Locker check-in/out staff workflow (#25)
 - Payments / membership (#27)
 - Admin panel (#28)

@@ -124,9 +124,14 @@ export async function addWineAndAssignToSlot(
     varietal: formData.get("varietal"),
     producer: formData.get("producer"),
     purchasePrice: formData.get("purchasePrice"),
+    imageKey: formData.get("imageKey"),
   });
   if (!parsed.ok) return { error: "Invalid wine data" };
-  const wineData = parsed.data;
+  const { imageKey, ...wineData } = parsed.data;
+  // Same prefix defense as the collection addWine action — never trust a
+  // client-supplied object key without confirming it's under this member.
+  const safeImageKey =
+    imageKey && imageKey.startsWith(`wines/${ctx.memberId}/`) ? imageKey : null;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -148,6 +153,7 @@ export async function addWineAndAssignToSlot(
           ...wineData,
           currentValue: wineData.purchasePrice,
           memberId: ctx.memberId,
+          ...(safeImageKey ? { imageKey: safeImageKey } : {}),
         },
       });
 

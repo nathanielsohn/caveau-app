@@ -325,7 +325,7 @@ Connect to real hardware. Make the data real.
 | 21 | IoT ingestion endpoint | HTTP webhook or MQTT bridge for real Sentinel sensor devices. Validates payload, writes to SensorReading, triggers alert evaluation. |
 | 22 | Sensor data pipeline | Partition `sensor_readings` by month. Background job aggregates raw readings into hourly/daily rollup tables. Retention policy: raw data 90 days, rollups indefinitely. |
 | 23 | ~~Wine valuation engine~~ | ~~WineValuation model, price history chart on wine detail, appreciation metrics on dashboard. Done.~~ |
-| 24 | Label scanning | Phone camera → OCR via Google Cloud Vision or wine-specific API (Vivino, Wine-Searcher). Auto-fill wine form fields from label photo. |
+| 24 | ~~Label scanning~~ | ~~Phone camera → OCR via Google Cloud Vision. Photo uploaded directly to S3 via presigned PUT, server runs TEXT_DETECTION, parsed fields pre-fill the add-wine form, and the same image becomes the wine's photo (single S3 object). Done.~~ |
 | 25 | Locker check-in / check-out | Staff workflow: scan bottle barcode → assign to slot or remove from slot. Full audit trail in a new `LockerActivity` model. |
 | 26 | ~~Dashboard analytics~~ | ~~Collection value trend, storage utilization donut, alert frequency bar chart. Done.~~ |
 

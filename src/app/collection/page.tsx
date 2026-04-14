@@ -4,10 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { getCurrentFacility } from "@/lib/current-facility";
 import { toNumber } from "@/lib/utils";
-import { getPublicUrl } from "@/lib/s3";
+import { getPublicUrl, isS3Configured } from "@/lib/s3";
+import { isVisionConfigured } from "@/lib/vision";
 import { revalidatePath } from "next/cache";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import {
+  requestScanUploadUrl,
+  scanWineLabel,
+} from "./label-scan-actions";
 import CollectionClient from "./collection-client";
 import type { WineCardData } from "@/components/wine-card";
 
@@ -33,14 +38,24 @@ async function addWine(formData: FormData) {
     varietal: formData.get("varietal"),
     producer: formData.get("producer"),
     purchasePrice: formData.get("purchasePrice"),
+    imageKey: formData.get("imageKey"),
   });
   if (!parsed.ok) throw new Error("Invalid wine data");
 
+  // Defense-in-depth: an attacker could submit any string as imageKey.
+  // Only accept keys under the caller's own member prefix.
+  const { imageKey, ...wineData } = parsed.data;
+  const safeImageKey =
+    imageKey && imageKey.startsWith(`wines/${session.user.id}/`)
+      ? imageKey
+      : null;
+
   await prisma.wine.create({
     data: {
-      ...parsed.data,
-      currentValue: parsed.data.purchasePrice,
+      ...wineData,
+      currentValue: wineData.purchasePrice,
       memberId: session.user.id,
+      ...(safeImageKey ? { imageKey: safeImageKey } : {}),
     },
   });
 
@@ -147,6 +162,10 @@ export default async function CollectionPage() {
       lockerOptions={lockerOptions}
       vintageRange={[vintages[0] ?? 2000, vintages[vintages.length - 1] ?? 2025]}
       addWineAction={addWine}
+      s3Configured={isS3Configured()}
+      visionConfigured={isVisionConfigured()}
+      requestScanUploadUrlAction={requestScanUploadUrl}
+      scanWineLabelAction={scanWineLabel}
     />
   );
 }

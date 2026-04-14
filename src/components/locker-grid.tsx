@@ -7,6 +7,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 import { assignWineToSlot, removeWineFromSlot, addWineAndAssignToSlot } from "@/app/locker/actions";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import ScanLabelButton from "@/components/scan-label-button";
+import type {
+  ScanUploadUrlResult,
+  ScanWineLabelResult,
+} from "@/app/collection/label-scan-actions";
 
 /** Varietal -> accent color for the slot border/glow */
 function varietalColor(varietal: string): string {
@@ -64,6 +69,13 @@ interface LockerGridProps {
   unassignedWines: UnassignedWine[];
   /** Incremented by parent to request opening the add-wine form on the first empty slot */
   addTrigger?: number;
+  /** Wine label scanner (#24) — passed in from server component. */
+  s3Configured: boolean;
+  visionConfigured: boolean;
+  requestScanUploadUrlAction: (
+    contentType: string,
+  ) => Promise<ScanUploadUrlResult>;
+  scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
 
 function daysStored(dateStored: string | null): number {
@@ -81,7 +93,15 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export default function LockerGrid({ slots, unassignedWines, addTrigger }: LockerGridProps) {
+export default function LockerGrid({
+  slots,
+  unassignedWines,
+  addTrigger,
+  s3Configured,
+  visionConfigured,
+  requestScanUploadUrlAction,
+  scanWineLabelAction,
+}: LockerGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotData | null>(null);
   const [pickerSlot, setPickerSlot] = useState<SlotData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,6 +110,25 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
   const [actionError, setActionError] = useState<string | null>(null);
   const addFormRef = useRef<HTMLFormElement>(null);
   const lastHandledTrigger = useRef(0);
+
+  // Scanned-field state for the inline add-wine form. Controlled inputs so a
+  // successful scan can pre-fill them. imageKey gets threaded through the
+  // server action on submit.
+  const [addName, setAddName] = useState("");
+  const [addVintage, setAddVintage] = useState("");
+  const [addRegion, setAddRegion] = useState("");
+  const [addVarietal, setAddVarietal] = useState("");
+  const [addProducer, setAddProducer] = useState("");
+  const [addImageKey, setAddImageKey] = useState("");
+
+  function resetAddFormState() {
+    setAddName("");
+    setAddVintage("");
+    setAddRegion("");
+    setAddVarietal("");
+    setAddProducer("");
+    setAddImageKey("");
+  }
 
   const [occupancyFilter, setOccupancyFilter] = useState<OccupancyFilter>("all");
   const [regionFilter, setRegionFilter] = useState("");
@@ -218,6 +257,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
 
   function handleAddWineToSlot(formData: FormData) {
     if (!pickerSlot) return;
+    if (addImageKey) formData.set("imageKey", addImageKey);
     setActionError(null);
     startTransition(async () => {
       const result = await addWineAndAssignToSlot(pickerSlot.id, formData);
@@ -225,6 +265,7 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
         setActionError(result.error);
       } else {
         addFormRef.current?.reset();
+        resetAddFormState();
         setPickerSlot(null);
         setShowAddForm(false);
       }
@@ -591,28 +632,43 @@ export default function LockerGrid({ slots, unassignedWines, addTrigger }: Locke
                         {actionError}
                       </div>
                     )}
+                    {s3Configured && (
+                      <ScanLabelButton
+                        visionConfigured={visionConfigured}
+                        requestUploadUrlAction={requestScanUploadUrlAction}
+                        scanAction={scanWineLabelAction}
+                        onParsed={(r) => {
+                          if (r.producer) setAddProducer(r.producer);
+                          if (r.name) setAddName(r.name);
+                          if (typeof r.vintage === "number") setAddVintage(String(r.vintage));
+                          if (r.region) setAddRegion(r.region);
+                          if (r.varietal) setAddVarietal(r.varietal);
+                          setAddImageKey(r.imageKey);
+                        }}
+                      />
+                    )}
                     <div>
                       <label htmlFor="locker-wine-name" className="block text-sm text-secondary mb-1.5">Wine Name</label>
-                      <input id="locker-wine-name" name="name" type="text" required placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      <input id="locker-wine-name" name="name" type="text" required value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="locker-wine-vintage" className="block text-sm text-secondary mb-1.5">Vintage</label>
-                        <input id="locker-wine-vintage" name="vintage" type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <input id="locker-wine-vintage" name="vintage" type="text" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required value={addVintage} onChange={(e) => setAddVintage(e.target.value)} placeholder="2020" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                       <div>
                         <label htmlFor="locker-wine-region" className="block text-sm text-secondary mb-1.5">Region</label>
-                        <input id="locker-wine-region" name="region" type="text" required placeholder="Bordeaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <input id="locker-wine-region" name="region" type="text" required value={addRegion} onChange={(e) => setAddRegion(e.target.value)} placeholder="Bordeaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="locker-wine-varietal" className="block text-sm text-secondary mb-1.5">Varietal</label>
-                        <input id="locker-wine-varietal" name="varietal" type="text" required placeholder="Cabernet Sauvignon" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <input id="locker-wine-varietal" name="varietal" type="text" required value={addVarietal} onChange={(e) => setAddVarietal(e.target.value)} placeholder="Cabernet Sauvignon" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                       <div>
                         <label htmlFor="locker-wine-producer" className="block text-sm text-secondary mb-1.5">Producer</label>
-                        <input id="locker-wine-producer" name="producer" type="text" required placeholder="Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                        <input id="locker-wine-producer" name="producer" type="text" required value={addProducer} onChange={(e) => setAddProducer(e.target.value)} placeholder="Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                       </div>
                     </div>
                     <div>

@@ -76,6 +76,14 @@ export const CreateWineBodySchema = z.object({
   varietal: z.string().trim().min(1).max(200),
   producer: z.string().trim().min(1).max(200),
   purchasePrice: z.coerce.number().pipe(PriceSchema),
+  // Optional S3 key for a pre-uploaded photo (e.g. label scan, feature #24).
+  // Format is enforced at the call site against the caller's member prefix.
+  imageKey: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.length > 0 ? v : undefined),
+      z.string().max(512).optional(),
+    )
+    .optional(),
 });
 
 export const ValuationBodySchema = z.object({

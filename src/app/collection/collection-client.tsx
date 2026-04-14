@@ -7,6 +7,10 @@ import AddWineForm from "@/components/add-wine-form";
 import { FacilityPill } from "@/components/facility-context";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import type {
+  ScanUploadUrlResult,
+  ScanWineLabelResult,
+} from "@/app/collection/label-scan-actions";
 
 interface LockerOption {
   id: string;
@@ -21,6 +25,12 @@ interface CollectionClientProps {
   lockerOptions: LockerOption[];
   vintageRange: [number, number];
   addWineAction: (formData: FormData) => Promise<void>;
+  s3Configured: boolean;
+  visionConfigured: boolean;
+  requestScanUploadUrlAction: (
+    contentType: string,
+  ) => Promise<ScanUploadUrlResult>;
+  scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
 
 type SortKey = "added" | "value" | "vintage" | "name" | "drinkWindow";
@@ -53,6 +63,10 @@ export default function CollectionClient({
   lockerOptions,
   vintageRange,
   addWineAction,
+  s3Configured,
+  visionConfigured,
+  requestScanUploadUrlAction,
+  scanWineLabelAction,
 }: CollectionClientProps) {
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
@@ -508,6 +522,10 @@ export default function CollectionClient({
         open={showAddForm}
         onClose={() => setShowAddForm(false)}
         addWineAction={addWineAction}
+        s3Configured={s3Configured}
+        visionConfigured={visionConfigured}
+        requestScanUploadUrlAction={requestScanUploadUrlAction}
+        scanWineLabelAction={scanWineLabelAction}
       />
     </div>
   );

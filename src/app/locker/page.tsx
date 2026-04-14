@@ -4,6 +4,12 @@ import { getServerAuth } from "@/lib/auth";
 import { getCurrentFacility } from "@/lib/current-facility";
 import { Lock } from "lucide-react";
 import { type SlotData, type UnassignedWine } from "@/components/locker-grid";
+import { isS3Configured } from "@/lib/s3";
+import { isVisionConfigured } from "@/lib/vision";
+import {
+  requestScanUploadUrl,
+  scanWineLabel,
+} from "@/app/collection/label-scan-actions";
 import LockerSelector from "./locker-selector";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +123,14 @@ export default async function LockerPage() {
 
   return (
     <div className="p-6 md:p-10">
-      <LockerSelector lockers={serializedLockers} unassignedWines={unassignedWines} />
+      <LockerSelector
+        lockers={serializedLockers}
+        unassignedWines={unassignedWines}
+        s3Configured={isS3Configured()}
+        visionConfigured={isVisionConfigured()}
+        requestScanUploadUrlAction={requestScanUploadUrl}
+        scanWineLabelAction={scanWineLabel}
+      />
     </div>
   );
 }
