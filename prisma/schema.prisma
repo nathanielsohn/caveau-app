@@ -157,7 +157,6 @@ model Wine {
   valuations       WineValuation[]
   dispositions     WineDisposition[]
 
-  @@index([memberId])
   @@index([memberId, region, varietal])
   @@index([memberId, status])
   @@index([memberId, status, currentValue(sort: Desc)])
@@ -186,7 +185,7 @@ model Locker {
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
   facility     Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  member       Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  member       Member?               @relation(fields: [memberId], references: [id], onDelete: Restrict)
   slots        LockerSlot[]
   readings     SensorReading[]
   alerts       Alert[]

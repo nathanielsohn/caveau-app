@@ -97,7 +97,11 @@ export default function DispositionForm({
         </p>
 
         {error && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-3 py-2">
+          <div
+            id="disposition-error"
+            role="alert"
+            className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-xl px-3 py-2"
+          >
             {error}
           </div>
         )}
@@ -118,6 +122,8 @@ export default function DispositionForm({
                 required
                 aria-required="true"
                 aria-label="Disposition type"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? "disposition-error" : undefined}
                 className="appearance-none w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">Select type...</option>

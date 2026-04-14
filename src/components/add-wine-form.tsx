@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import ScanLabelButton from "@/components/scan-label-button";
@@ -34,8 +34,25 @@ export default function AddWineForm({
   scanWineLabelAction,
 }: AddWineFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Pull focus into the first field when the modal opens so keyboard users
+  // aren't stranded behind the backdrop. Escape handling is delegated to
+  // the backdrop click handler via key-capture below.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => nameInputRef.current?.focus(), 0);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(t);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
   // Controlled values so the Scan Label result can populate them. Empty
   // strings are sentinel "untouched" so the user keeps typing freedom.
   const [name, setName] = useState("");
@@ -113,7 +130,11 @@ export default function AddWineForm({
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+          <div
+            id="add-wine-error"
+            role="alert"
+            className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm"
+          >
             {error}
           </div>
         )}
@@ -143,11 +164,14 @@ export default function AddWineForm({
               Wine Name
             </label>
             <input
+              ref={nameInputRef}
               id="name"
               name="name"
               type="text"
               required
               aria-required="true"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "add-wine-error" : undefined}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Château Margaux"

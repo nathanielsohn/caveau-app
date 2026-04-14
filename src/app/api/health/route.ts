@@ -12,16 +12,16 @@ export const revalidate = 0;
  * beyond a status string and a timestamp.
  */
 export async function GET() {
-  const start = Date.now();
   try {
     // Cheapest possible round-trip. SELECT 1 keeps the connection pool warm
     // without touching any application table.
     await prisma.$queryRaw`SELECT 1`;
+    // Deliberately minimal: status + timestamp, nothing that could be used
+    // to fingerprint DB load or infer batch windows.
     return NextResponse.json(
       {
         status: "ok",
         ts: new Date().toISOString(),
-        dbLatencyMs: Date.now() - start,
       },
       {
         status: 200,

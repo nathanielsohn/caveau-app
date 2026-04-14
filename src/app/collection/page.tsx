@@ -69,46 +69,68 @@ export default async function CollectionPage() {
   const memberId = session.user.id;
   const facility = await getCurrentFacility(memberId);
 
-  // Scope wines to the active facility: include wines whose slot lives in
-  // this facility, plus unassigned wines (not yet in any slot) — those are
-  // member-owned so we show them regardless of the current facility.
-  const wines = await prisma.wine.findMany({
-    where: {
-      memberId,
-      ...(facility
-        ? {
-            OR: [
-              { lockerSlots: { none: {} } },
-              { lockerSlots: { some: { locker: { facilityId: facility.id } } } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 500,
-    select: {
-      id: true,
-      name: true,
-      vintage: true,
-      region: true,
-      varietal: true,
-      producer: true,
-      purchasePrice: true,
-      currentValue: true,
-      imageKey: true,
-      drinkWindowStart: true,
-      drinkWindowEnd: true,
-      status: true,
-      createdAt: true,
-      lockerSlots: {
-        select: {
-          locker: {
-            select: { id: true, lockerNumber: true, facilityId: true },
-          },
+  const wineSelect = {
+    id: true,
+    name: true,
+    vintage: true,
+    region: true,
+    varietal: true,
+    producer: true,
+    purchasePrice: true,
+    currentValue: true,
+    imageKey: true,
+    drinkWindowStart: true,
+    drinkWindowEnd: true,
+    status: true,
+    createdAt: true,
+    lockerSlots: {
+      select: {
+        locker: {
+          select: { id: true, lockerNumber: true, facilityId: true },
         },
       },
     },
-  });
+  } as const;
+
+  // Scope wines to the active facility. We split the OR query that used to
+  // live here into two parallel queries so Postgres can use the
+  // (memberId, status) index on each branch instead of falling back to a
+  // sequential scan on the negation:
+  //   1) assigned wines whose slot lives in this facility
+  //   2) unassigned wines (not in any slot) — member-owned, shown everywhere
+  // The facility-less case still runs one wide query.
+  const wines = await (async () => {
+    if (!facility) {
+      return prisma.wine.findMany({
+        where: { memberId },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        select: wineSelect,
+      });
+    }
+    const [assigned, unassigned] = await Promise.all([
+      prisma.wine.findMany({
+        where: {
+          memberId,
+          lockerSlots: { some: { locker: { facilityId: facility.id } } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        select: wineSelect,
+      }),
+      prisma.wine.findMany({
+        where: { memberId, lockerSlots: { none: {} } },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        select: wineSelect,
+      }),
+    ]);
+    const seen = new Set<string>();
+    return [...assigned, ...unassigned]
+      .filter((w) => (seen.has(w.id) ? false : (seen.add(w.id), true)))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 500);
+  })();
 
   // Pick the locker assignment that belongs to the current facility so the
   // client can both display and filter by locker number.

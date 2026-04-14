@@ -37,7 +37,10 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  session: { strategy: "jwt", maxAge: 14400 /* 4 hours */ },
+  // 1 hour absolute, with a 15-minute sliding refresh so an active user
+  // isn't kicked mid-session but an idle tab goes cold quickly. Shortens
+  // the window a stolen device has against a logged-in collector.
+  session: { strategy: "jwt", maxAge: 3600, updateAge: 900 },
   pages: {
     signIn: "/auth/login",
   },

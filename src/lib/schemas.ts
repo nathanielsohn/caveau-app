@@ -41,11 +41,15 @@ export const EmailSchema = z
 
 export const PasswordSchema = z
   .string()
-  .min(10, "Password must be at least 10 characters")
+  .min(12, "Password must be at least 12 characters")
   .max(200, "Password too long")
   .refine((p) => /[a-z]/.test(p), "Password must include a lowercase letter")
   .refine((p) => /[A-Z]/.test(p), "Password must include an uppercase letter")
-  .refine((p) => /\d/.test(p), "Password must include a number");
+  .refine((p) => /\d/.test(p), "Password must include a number")
+  .refine(
+    (p) => /[^A-Za-z0-9]/.test(p),
+    "Password must include a symbol (e.g. !@#$%)",
+  );
 
 // Sensible upper bound for date inputs — anything beyond +1 year from now is
 // almost certainly a typo or an attack.

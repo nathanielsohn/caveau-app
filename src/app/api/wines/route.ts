@@ -5,6 +5,7 @@ import { getServerAuth } from "@/lib/auth";
 import { getPublicUrl } from "@/lib/s3";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const session = await getServerAuth();
@@ -109,7 +110,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch {
+  } catch (err) {
+    logger.error("[api/wines] create failed", err, {
+      memberId: session.user.id,
+    });
     return NextResponse.json({ error: "Failed to create wine" }, { status: 500 });
   }
 }

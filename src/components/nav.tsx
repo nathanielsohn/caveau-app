@@ -162,6 +162,33 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
         </div>
       </aside>
 
+      {/* Mobile member + sign out — sits in flow at the top of every
+          non-auth page so mobile users can sign out without chasing the
+          desktop sidebar. The settings tab in the bottom bar is scoped to
+          notification prefs, so that's not the right home for this. */}
+      <div className="md:hidden flex items-center justify-between px-4 pt-3 pb-1 gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] text-muted uppercase tracking-wider">
+            Member
+          </p>
+          <p className="text-sm text-primary font-medium truncate">
+            {session?.user?.name || "—"}
+          </p>
+          {tierLabel && (
+            <p className="text-[11px] text-gold-text">{tierLabel}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/auth/login" })}
+          aria-label="Sign out"
+          className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg text-xs text-secondary hover:text-primary hover:bg-[#1C1C20]/60 active:bg-[#1C1C20] transition-colors flex-shrink-0"
+        >
+          <LogOut size={14} />
+          Sign out
+        </button>
+      </div>
+
       {/* Mobile facility switcher — sits in flow above page content on facility-scoped routes. */}
       {facilities.length > 1 && showFacilitySwitcher && (
         <div className="md:hidden px-4 pt-3 pb-1">

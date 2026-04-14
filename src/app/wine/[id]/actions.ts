@@ -8,7 +8,7 @@ import { getServerAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { UuidSchema, PriceSchema, parseOr400 } from "@/lib/schemas";
-import { assertCanDispose } from "@/lib/disposition-guard";
+import { DispositionGuardError } from "@/lib/disposition-guard";
 import {
   deleteObject,
   extensionForType,
@@ -193,13 +193,28 @@ export async function recordDisposition(formData: FormData) {
   // slow/failing S3 call never holds a database write lock.
   let imageKeyToDelete: string | null = null;
 
+  // The status transition is the source of truth for "can we dispose this
+  // wine". Two concurrent requests that both read status == 'in_cellar'
+  // then both write would race; updateMany with a status predicate makes
+  // the check and the write atomic — whichever transaction gets there
+  // second finds 0 rows and we surface an already_disposed error.
   await prisma.$transaction(async (tx) => {
     const wine = await tx.wine.findFirst({
       where: { id: wineId, memberId: session.user.id },
-      select: { id: true, status: true, imageKey: true },
+      select: { id: true, imageKey: true },
     });
-    assertCanDispose(wine);
+    if (!wine) {
+      throw new DispositionGuardError("not_found", "Not found");
+    }
     imageKeyToDelete = wine.imageKey;
+
+    const updated = await tx.wine.updateMany({
+      where: { id: wineId, memberId: session.user.id, status: "in_cellar" },
+      data: { status: type, imageKey: null },
+    });
+    if (updated.count === 0) {
+      throw new DispositionGuardError("already_disposed", "Wine already disposed");
+    }
 
     await tx.wineDisposition.create({
       data: {
@@ -211,11 +226,6 @@ export async function recordDisposition(formData: FormData) {
         recipient,
         notes,
       },
-    });
-
-    await tx.wine.update({
-      where: { id: wineId },
-      data: { status: type, imageKey: null },
     });
   });
 

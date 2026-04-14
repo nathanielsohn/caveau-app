@@ -57,36 +57,36 @@ export async function assignWineToSlot(
   }
 
   try {
-    await prisma.$transaction(
-      async (tx) => {
-        const slot = await tx.lockerSlot.findFirst({
-          where: {
-            id: slotId,
-            wineId: null,
-            locker: {
-              memberId: ctx.memberId,
-              facilityId: ctx.facilityId,
-            },
+    // ReadCommitted (Postgres default) is enough — the partial unique
+    // index on locker_slots.wine_id and the unique on (lockerId,
+    // slotPosition) make the real race conditions hard DB constraints,
+    // surfaced as P2002 below. Serializable here just added lock
+    // contention without buying anything.
+    await prisma.$transaction(async (tx) => {
+      const slot = await tx.lockerSlot.findFirst({
+        where: {
+          id: slotId,
+          wineId: null,
+          locker: {
+            memberId: ctx.memberId,
+            facilityId: ctx.facilityId,
           },
-          select: { id: true },
-        });
-        if (!slot) throw new Error("not_found");
+        },
+        select: { id: true },
+      });
+      if (!slot) throw new Error("not_found");
 
-        const wine = await tx.wine.findFirst({
-          where: { id: wineId, memberId: ctx.memberId },
-          select: { id: true },
-        });
-        if (!wine) throw new Error("not_found");
+      const wine = await tx.wine.findFirst({
+        where: { id: wineId, memberId: ctx.memberId },
+        select: { id: true },
+      });
+      if (!wine) throw new Error("not_found");
 
-        // The partial unique index on locker_slots.wine_id makes "wine
-        // already assigned" a hard DB constraint — caught below as P2002.
-        await tx.lockerSlot.update({
-          where: { id: slotId },
-          data: { wineId, dateStored: new Date() },
-        });
-      },
-      { isolationLevel: "Serializable" }
-    );
+      await tx.lockerSlot.update({
+        where: { id: slotId },
+        data: { wineId, dateStored: new Date() },
+      });
+    });
 
     // The dashboard shows bottles-stored + utilization and the collection
     // surface shows per-locker filters — both need to re-fetch after an

@@ -50,20 +50,24 @@ describe("EmailSchema", () => {
 });
 
 describe("PasswordSchema", () => {
-  it("rejects passwords shorter than 10 chars", () => {
-    expect(() => PasswordSchema.parse("Aa1bbbbb")).toThrow();
+  it("rejects passwords shorter than 12 chars", () => {
+    expect(() => PasswordSchema.parse("Aa1!bbbb")).toThrow();
   });
 
   it("rejects passwords missing an uppercase letter", () => {
-    expect(() => PasswordSchema.parse("aaaaaaaaa1")).toThrow();
+    expect(() => PasswordSchema.parse("aaaaaaaaaa1!")).toThrow();
   });
 
   it("rejects passwords missing a digit", () => {
-    expect(() => PasswordSchema.parse("Aaaaaaaaaa")).toThrow();
+    expect(() => PasswordSchema.parse("Aaaaaaaaaaa!")).toThrow();
   });
 
-  it("accepts a 10-char password with all classes", () => {
-    expect(() => PasswordSchema.parse("Password12")).not.toThrow();
+  it("rejects passwords missing a symbol", () => {
+    expect(() => PasswordSchema.parse("Password1234")).toThrow();
+  });
+
+  it("accepts a 12-char password with all classes", () => {
+    expect(() => PasswordSchema.parse("Password12!a")).not.toThrow();
   });
 });
 
@@ -90,7 +94,7 @@ describe("SignupBodySchema", () => {
   const valid = {
     name: "Jane Doe",
     email: "jane@example.com",
-    password: "Password12",
+    password: "Password12!a",
     csrfToken: "abc",
   };
 

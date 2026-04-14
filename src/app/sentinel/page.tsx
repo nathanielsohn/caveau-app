@@ -327,13 +327,20 @@ export default function SentinelPage() {
         </div>
       </div>
 
-      {/* Time range selector */}
-      <div className="flex gap-1 mb-6 bg-[#141416]/60 p-1 rounded-xl w-fit" role="tablist" aria-label="Time range">
+      {/* Time range selector — a radio group is the correct pattern here
+          (the content below isn't split into real tab panels) and it gets
+          arrow-key navigation for free from assistive tech. */}
+      <div
+        className="flex gap-1 mb-6 bg-[#141416]/60 p-1 rounded-xl w-fit"
+        role="radiogroup"
+        aria-label="Time range"
+      >
         {(["1H", "6H", "24H", "7D", "30D"] as TimeRange[]).map((r) => (
           <button
             key={r}
-            role="tab"
-            aria-selected={range === r}
+            type="button"
+            role="radio"
+            aria-checked={range === r}
             onClick={() => setRange(r)}
             className={`px-3 py-1.5 min-h-[44px] min-w-[44px] text-xs font-medium rounded-lg transition-colors duration-200 flex items-center justify-center ${
               range === r
