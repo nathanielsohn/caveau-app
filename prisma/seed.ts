@@ -1,4 +1,4 @@
-import { PrismaClient, Role, Tier, AlertType, Severity } from '@prisma/client';
+import { PrismaClient, Role, Tier, AlertType, Severity, FacilityEventType } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
 
@@ -147,6 +147,7 @@ async function main() {
     prisma.lockerSlot.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
+    prisma.facilityEvent.deleteMany(),
     prisma.facilityMember.deleteMany(),
     prisma.member.deleteMany(),
     prisma.facility.deleteMany(),
@@ -154,12 +155,64 @@ async function main() {
 
   // 1. Facilities — Naples is the flagship, Miami opened later as a 2nd location
   const naples = await prisma.facility.create({
-    data: { name: 'Caveau Naples', location: 'Naples, FL' },
+    data: {
+      name: 'Caveau Naples',
+      location: 'Naples, FL',
+      // Above-sea-level siting is the whole pitch vs. a home cellar
+      // in flood-zone Naples — 18 ft sits above the FEMA BFE for the
+      // surrounding blocks.
+      elevationFt: 18,
+      generatorStatus: 'operational',
+      fireSuppressionStatus: 'operational',
+      lastInspectionAt: new Date(Date.now() - 42 * 86400000),
+    },
   });
   const miami = await prisma.facility.create({
-    data: { name: 'Caveau Miami', location: 'Miami, FL' },
+    data: {
+      name: 'Caveau Miami',
+      location: 'Miami, FL',
+      elevationFt: 11,
+      generatorStatus: 'operational',
+      fireSuppressionStatus: 'operational',
+      lastInspectionAt: new Date(Date.now() - 67 * 86400000),
+    },
   });
   console.log(`  ✓ Facilities: ${naples.name}, ${miami.name}`);
+
+  // 1b. Facility events — historical resilience record. Hurricane Helene
+  // is the headline demo moment: the monitored cellar rode out a cat-4
+  // storm with a clean environmental record, which is the auto-generated
+  // post-event report a member sees on /facility/events/[id].
+  await prisma.facilityEvent.createMany({
+    data: [
+      {
+        facilityId: naples.id,
+        type: FacilityEventType.hurricane,
+        severity: Severity.critical,
+        startedAt: new Date('2024-09-26T00:00:00Z'),
+        endedAt: new Date('2024-09-28T12:00:00Z'),
+        notes:
+          'Hurricane Helene — Category 4 landfall in Big Bend. Facility switched to generator power for 31 hours; Sentinel environmental envelope held within spec throughout. No water intrusion (elevation +18 ft).',
+      },
+      {
+        facilityId: naples.id,
+        type: FacilityEventType.generator_test,
+        severity: Severity.info,
+        startedAt: new Date(Date.now() - 14 * 86400000),
+        endedAt: new Date(Date.now() - 14 * 86400000 + 45 * 60000),
+        notes: 'Quarterly 45-minute load test on the Kohler 150 kW standby. Transfer clean, temperature drift < 0.3°F.',
+      },
+      {
+        facilityId: naples.id,
+        type: FacilityEventType.inspection,
+        severity: Severity.info,
+        startedAt: new Date(Date.now() - 42 * 86400000),
+        endedAt: new Date(Date.now() - 42 * 86400000 + 3 * 3600000),
+        notes: 'Semi-annual fire suppression inspection — FM-200 system recertified, no deficiencies noted.',
+      },
+    ],
+  });
+  console.log('  ✓ Facility events: 3 (Helene + generator test + inspection)');
 
   // 2. Member (password: demo1234)
   const passwordHash = await bcrypt.hash('demo1234', 10);

@@ -355,6 +355,7 @@ Framing comes from the April 2026 investor review (Robert Saenz): the locker pro
 | # | Feature | Description |
 |---|---------|-------------|
 | 39 | ~~Liv-ex live pricing integration~~ | ~~Real Liv-ex API client in `src/lib/livex.ts` with graceful fallback, daily sync via Vercel cron at `/api/cron/livex-sync`, per-wine `lastValuationSyncAt` timestamp, "Last updated" surface on dashboard collection-value card and wine detail valuation chart. LIVEX_API_KEY unset → sync no-ops and seeded data renders unchanged. Done.~~ |
+| 42 | ~~Facility resilience & hurricane reporting~~ | ~~Facility-level dashboard for elevation, generator uptime, fire suppression status, and logged weather/hurricane events. Auto-generated post-event member reports ("your cellar was safe during Hurricane X — here's the environmental record"). Naples-specific differentiator vs. Carl's Wine Vault and the reason a collector picks an above-sea-level monitored facility over a home cellar. Done.~~ |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 

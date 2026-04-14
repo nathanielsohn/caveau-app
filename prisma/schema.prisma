@@ -53,15 +53,43 @@ enum DispositionType {
   removed
 }
 
+enum FacilityEventType {
+  weather
+  hurricane
+  generator_test
+  inspection
+  incident
+}
+
 model Facility {
-  id        String   @id @default(uuid())
-  name      String
-  location  String
-  createdAt DateTime @default(now()) @map("created_at")
-  lockers   Locker[]
-  members   FacilityMember[]
+  id                    String    @id @default(uuid())
+  name                  String
+  location              String
+  elevationFt           Int?      @map("elevation_ft")
+  generatorStatus       String    @default("operational") @map("generator_status")
+  fireSuppressionStatus String    @default("operational") @map("fire_suppression_status")
+  lastInspectionAt      DateTime? @map("last_inspection_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  lockers               Locker[]
+  members               FacilityMember[]
+  events                FacilityEvent[]
 
   @@map("facilities")
+}
+
+model FacilityEvent {
+  id         String            @id @default(uuid())
+  facilityId String            @map("facility_id")
+  type       FacilityEventType
+  severity   Severity
+  startedAt  DateTime          @map("started_at")
+  endedAt    DateTime?         @map("ended_at")
+  notes      String?
+  createdAt  DateTime          @default(now()) @map("created_at")
+  facility   Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([facilityId, startedAt(sort: Desc)])
+  @@map("facility_events")
 }
 
 model FacilityMember {

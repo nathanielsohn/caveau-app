@@ -12,6 +12,7 @@ import {
   LogOut,
   Settings as SettingsIcon,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { setCurrentFacility } from "@/app/facility-actions";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/collection", label: "Collection", icon: Wine },
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
+  { href: "/facility", label: "Facility", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -69,7 +71,8 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
   const showFacilitySwitcher =
     pathname.startsWith("/collection") ||
     pathname.startsWith("/locker") ||
-    pathname.startsWith("/sentinel");
+    pathname.startsWith("/sentinel") ||
+    pathname.startsWith("/facility");
 
   return (
     <>
