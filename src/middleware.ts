@@ -82,6 +82,23 @@ function buildCsp(): string {
   ].join("; ");
 }
 
+/**
+ * Tell the browser to refuse plaintext HTTP for a year. `preload` is
+ * deliberately omitted — the HSTS preload list is a one-way commitment
+ * (removal takes months) and we're not ready to opt in. Gated on prod
+ * so localhost dev over `http://` still works unhindered.
+ */
+function applySecurityHeaders(res: NextResponse, csp: string): NextResponse {
+  res.headers.set("Content-Security-Policy", csp);
+  if (process.env.NODE_ENV === "production") {
+    res.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+  }
+  return res;
+}
+
 function tooManyRequestsResponse(resetAt: number): NextResponse {
   const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
   return NextResponse.json(
@@ -123,9 +140,7 @@ export async function middleware(req: NextRequest) {
     pathname === "/api/health";
 
   if (isPublic) {
-    const res = NextResponse.next();
-    res.headers.set("Content-Security-Policy", csp);
-    return res;
+    return applySecurityHeaders(NextResponse.next(), csp);
   }
 
   // --- Protected paths — require auth ---
@@ -135,9 +150,7 @@ export async function middleware(req: NextRequest) {
     const loginUrl = new URL("/auth/login", req.url);
     const validated = safeCallback(pathname);
     if (validated) loginUrl.searchParams.set("callbackUrl", validated);
-    const res = NextResponse.redirect(loginUrl);
-    res.headers.set("Content-Security-Policy", csp);
-    return res;
+    return applySecurityHeaders(NextResponse.redirect(loginUrl), csp);
   }
 
   // --- Onboarding gate ---
@@ -149,19 +162,19 @@ export async function middleware(req: NextRequest) {
   // page path, which is already allowed).
   const isOnboardingRoute = pathname.startsWith("/onboarding");
   if (!token.onboarded && !isOnboardingRoute) {
-    const res = NextResponse.redirect(new URL("/onboarding", req.url));
-    res.headers.set("Content-Security-Policy", csp);
-    return res;
+    return applySecurityHeaders(
+      NextResponse.redirect(new URL("/onboarding", req.url)),
+      csp,
+    );
   }
   if (token.onboarded && isOnboardingRoute) {
-    const res = NextResponse.redirect(new URL("/", req.url));
-    res.headers.set("Content-Security-Policy", csp);
-    return res;
+    return applySecurityHeaders(
+      NextResponse.redirect(new URL("/", req.url)),
+      csp,
+    );
   }
 
-  const res = NextResponse.next();
-  res.headers.set("Content-Security-Policy", csp);
-  return res;
+  return applySecurityHeaders(NextResponse.next(), csp);
 }
 
 export const config = {
