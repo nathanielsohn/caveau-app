@@ -1,3 +1,5 @@
+// Pure validation for recordLiveAlert input — extracted so it can be unit
+// tested without standing up the sensor pipeline.
 import type { AlertType, Severity } from "@prisma/client";
 
 const ALERT_TYPES = new Set<AlertType>([

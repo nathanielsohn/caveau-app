@@ -130,6 +130,16 @@ export default function LockerGrid({
     setAddImageKey("");
   }
 
+  // Single close path so the scanned imageKey + controlled fields can't leak
+  // from one open of the picker into the next.
+  function closePicker() {
+    setPickerSlot(null);
+    setShowAddForm(false);
+    setActionError(null);
+    addFormRef.current?.reset();
+    resetAddFormState();
+  }
+
   const [occupancyFilter, setOccupancyFilter] = useState<OccupancyFilter>("all");
   const [regionFilter, setRegionFilter] = useState("");
   const [varietalFilter, setVarietalFilter] = useState("");
@@ -582,7 +592,7 @@ export default function LockerGrid({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/60 z-40"
-              onClick={() => { setPickerSlot(null); setActionError(null); }}
+              onClick={closePicker}
             />
 
             {/* Modal — wrapper handles centering so framer-motion's animated
@@ -602,7 +612,12 @@ export default function LockerGrid({
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => { setShowAddForm(false); setActionError(null); }}
+                          onClick={() => {
+                            setShowAddForm(false);
+                            setActionError(null);
+                            addFormRef.current?.reset();
+                            resetAddFormState();
+                          }}
                           aria-label="Back to wine list"
                           className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
                         >
@@ -617,7 +632,7 @@ export default function LockerGrid({
                       </div>
                       <button
                         type="button"
-                        onClick={() => { setPickerSlot(null); setShowAddForm(false); setActionError(null); }}
+                        onClick={closePicker}
                         aria-label="Close"
                         className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
                       >
@@ -699,7 +714,7 @@ export default function LockerGrid({
                         </p>
                       </div>
                       <button
-                        onClick={() => { setPickerSlot(null); setActionError(null); }}
+                        onClick={closePicker}
                         aria-label="Close wine picker"
                         className="w-9 h-9 rounded-lg bg-[#1C1C20] flex items-center justify-center text-muted hover:text-primary transition-colors"
                       >

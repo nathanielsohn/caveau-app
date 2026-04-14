@@ -81,19 +81,21 @@ export async function POST(request: NextRequest) {
   const parsed = parseOr400(CreateWineBodySchema, body);
   if (!parsed.ok) return parsed.response;
 
-  const { name, vintage, region, varietal, producer, purchasePrice } = parsed.data;
+  const { imageKey, ...wineData } = parsed.data;
+  // Defense-in-depth: only accept image keys under the caller's own member
+  // prefix. Mirrors the same check in the collection page server action.
+  const safeImageKey =
+    imageKey && imageKey.startsWith(`wines/${session.user.id}/`)
+      ? imageKey
+      : null;
 
   try {
     const wine = await prisma.wine.create({
       data: {
-        name,
-        vintage,
-        region,
-        varietal,
-        producer,
-        purchasePrice,
-        currentValue: purchasePrice,
+        ...wineData,
+        currentValue: wineData.purchasePrice,
         memberId: session.user.id,
+        ...(safeImageKey ? { imageKey: safeImageKey } : {}),
       },
     });
 

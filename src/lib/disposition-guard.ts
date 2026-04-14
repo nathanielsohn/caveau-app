@@ -8,12 +8,7 @@ export class DispositionGuardError extends Error {
   }
 }
 
-/**
- * Throws if the wine cannot be disposed: missing (or not owned, since the
- * caller must scope the lookup by member) or already in a non-cellar state.
- * The string messages match the legacy thrown errors so existing callers
- * keep their public behavior.
- */
+// Messages match the legacy inline throws so callers keep their public behavior.
 export function assertCanDispose(wine: DispositionWine): asserts wine is {
   id: string;
   status: string;
