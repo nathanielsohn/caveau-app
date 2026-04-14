@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Prisma } from "@prisma/client";
 import {
   toNumber,
   formatCurrency,
@@ -246,5 +247,31 @@ describe("percentChange", () => {
 
   it("handles string inputs", () => {
     expect(percentChange("100", "200")).toBe(100);
+  });
+
+  // Regression guard for the documented Decimal footgun: every wine row
+  // surfaces purchasePrice/currentValue as Prisma.Decimal, and historically
+  // a missed `.toNumber()` rendered as "[object Object]". This test
+  // exercises the real Decimal constructor (not a duck-typed stub) so any
+  // future refactor that drops `toNumber()` will fail loudly here instead
+  // of silently in the dashboard.
+  it("handles real Prisma.Decimal instances on both sides", () => {
+    const from = new Prisma.Decimal("100.00");
+    const to = new Prisma.Decimal("125.50");
+    expect(percentChange(from, to)).toBeCloseTo(25.5);
+  });
+});
+
+describe("Prisma.Decimal interop", () => {
+  it("formatCurrency renders a real Decimal as USD", () => {
+    expect(formatCurrency(new Prisma.Decimal("1250.50"))).toBe("$1,250.50");
+  });
+
+  it("formatNumber renders a real Decimal with commas", () => {
+    expect(formatNumber(new Prisma.Decimal("48000"))).toBe("48,000");
+  });
+
+  it("toNumber returns the underlying value for a real Decimal", () => {
+    expect(toNumber(new Prisma.Decimal("123.45"))).toBeCloseTo(123.45);
   });
 });

@@ -44,8 +44,11 @@ export const CollectionValueChart = memo(function CollectionValueChart({ data }:
       </h3>
       <div className="h-64" role="img" aria-label="Collection value trend chart">
         {data.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted text-sm">
-            No valuation data available
+          <div className="flex flex-col items-center justify-center h-full text-muted text-sm text-center px-6">
+            <p>No valuations yet.</p>
+            <p className="mt-1 text-xs">
+              Add bottles to your collection to see value trends here.
+            </p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -115,6 +118,22 @@ export const StorageUtilizationChart = memo(function StorageUtilizationChart({
   ];
 
   const COLORS = ["#FFD166", "#2A2A30"];
+
+  if (total === 0) {
+    return (
+      <div className="glass-card p-5">
+        <h3 className="text-sm font-medium text-secondary mb-4">
+          Storage Utilization
+        </h3>
+        <div className="h-64 flex flex-col items-center justify-center text-center px-6">
+          <p className="text-sm text-muted">No lockers reserved yet.</p>
+          <p className="mt-1 text-xs text-muted">
+            Reserve a locker during onboarding to start storing bottles.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-card p-5">

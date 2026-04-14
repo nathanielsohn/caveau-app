@@ -227,6 +227,11 @@ export const VibrationGauge = memo(function VibrationGauge({ value }: { value: n
 
 /* ── Access Log ────────────────────────────────────── */
 
+// DEMO: hardcoded access events for the Sentinel demo. There is no real
+// access-control feed wired up yet (roadmap #25 — staff check-in/out
+// workflow). When that ships, replace this with a query against the
+// alerts/access table scoped to the current locker. Until then, treat the
+// data below as illustrative seed content.
 function getAccessEvents(memberName: string) {
   return [
     { time: "2h ago", person: memberName, type: "Member badge", zone: "Zone A" },

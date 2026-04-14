@@ -42,7 +42,11 @@ function WinePlaceholder({ wine }: { wine: WineCardData }) {
   const accent = getWineAccent(wine.varietal, wine.region);
 
   return (
-    <div className="aspect-[3/4] w-full rounded-xl bg-[#0C0C0E] relative overflow-hidden flex items-center justify-center">
+    <div
+      className="aspect-[3/4] w-full rounded-xl bg-[#0C0C0E] relative overflow-hidden flex items-center justify-center"
+      role="img"
+      aria-label={`${wine.producer} ${wine.name} ${wine.vintage} placeholder label`}
+    >
       {/* Radial glow */}
       <div
         className="absolute inset-0"
@@ -50,11 +54,12 @@ function WinePlaceholder({ wine }: { wine: WineCardData }) {
           background: `radial-gradient(ellipse at 50% 25%, ${accent}30, transparent 70%)`,
         }}
       />
-      {/* Bottle silhouette */}
+      {/* Bottle silhouette — decorative; the wrapper carries the alt text. */}
       <svg
         className="absolute h-[60%] opacity-[0.07]"
         viewBox="0 0 50 160"
         fill={accent}
+        aria-hidden="true"
       >
         <path d="M22 6h6v2h1v22c6 4 9 12 9 22v84c0 7-4 12-11 12H23c-7 0-11-5-11-12V52c0-10 3-18 9-22V8h1V6z" />
       </svg>

@@ -107,13 +107,22 @@ const fetchSentinelDataForLocker = unstable_cache(
  * Fetch sensor readings + alerts for the member's locker in a single round trip.
  * Looks up the locker once, then queries readings (with downsampling) and alerts in parallel.
  * Returns data with Prisma Decimals converted to plain numbers.
+ *
+ * `hasLocker` lets the client distinguish "no locker at this facility" from
+ * "locker has no readings in this range" so it can show a directive empty
+ * state instead of blank charts.
  */
 export async function fetchSentinelData(
   hoursBack: number
-): Promise<{ readings: DbSensorReading[]; alerts: DbAlert[] }> {
+): Promise<{
+  readings: DbSensorReading[];
+  alerts: DbAlert[];
+  hasLocker: boolean;
+}> {
   const ctx = await getMemberLockerContext();
-  if (!ctx) return { readings: [], alerts: [] };
-  return fetchSentinelDataForLocker(ctx.lockerId, hoursBack);
+  if (!ctx) return { readings: [], alerts: [], hasLocker: false };
+  const data = await fetchSentinelDataForLocker(ctx.lockerId, hoursBack);
+  return { ...data, hasLocker: true };
 }
 
 /**

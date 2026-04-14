@@ -384,32 +384,37 @@ export default function CollectionClient({
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Vintage</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  value={vintageMin}
-                  onChange={(e) => setVintageMin(e.target.value ? parseInt(e.target.value, 10) : "")}
-                  placeholder={String(vintageRange[0])}
-                  aria-label="Minimum vintage"
-                  className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
-                />
-                <span className="text-xs text-muted">to</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  value={vintageMax}
-                  onChange={(e) => setVintageMax(e.target.value ? parseInt(e.target.value, 10) : "")}
-                  placeholder={String(vintageRange[1])}
-                  aria-label="Maximum vintage"
-                  className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
-                />
-              </div>
+              {/* Vintage range — only useful once at least one wine exists,
+                  otherwise the placeholder shows a meaningless [2000-2025]
+                  default and the filter does nothing. */}
+              {wines.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted">Vintage</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    value={vintageMin}
+                    onChange={(e) => setVintageMin(e.target.value ? parseInt(e.target.value, 10) : "")}
+                    placeholder={String(vintageRange[0])}
+                    aria-label="Minimum vintage"
+                    className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                  />
+                  <span className="text-xs text-muted">to</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    value={vintageMax}
+                    onChange={(e) => setVintageMax(e.target.value ? parseInt(e.target.value, 10) : "")}
+                    placeholder={String(vintageRange[1])}
+                    aria-label="Maximum vintage"
+                    className="w-20 bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted">Price</span>

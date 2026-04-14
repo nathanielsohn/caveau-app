@@ -213,13 +213,18 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </div>
             </div>
 
-            {/* Drink window */}
+            {/* Drink window — only render if at least one bound is set, and
+                use directional copy when only one side is known so we never
+                show a literal "? – 2030" or "2025 – ?". */}
             {(wine.drinkWindowStart || wine.drinkWindowEnd) && (
               <p className="text-sm text-muted">
                 Drink window:{" "}
                 <span className="text-secondary">
-                  {wine.drinkWindowStart ?? "?"} &ndash;{" "}
-                  {wine.drinkWindowEnd ?? "?"}
+                  {wine.drinkWindowStart && wine.drinkWindowEnd
+                    ? `${wine.drinkWindowStart} – ${wine.drinkWindowEnd}`
+                    : wine.drinkWindowStart
+                      ? `from ${wine.drinkWindowStart}`
+                      : `through ${wine.drinkWindowEnd}`}
                 </span>
               </p>
             )}

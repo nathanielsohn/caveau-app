@@ -16,8 +16,16 @@ export default async function OnboardingPage() {
       name: true,
       tier: true,
       lockers: {
-        select: { lockerNumber: true, zone: true },
+        select: {
+          lockerNumber: true,
+          zone: true,
+          facility: { select: { name: true } },
+        },
         orderBy: { lockerNumber: "asc" },
+        take: 1,
+      },
+      facilities: {
+        select: { facility: { select: { name: true } } },
         take: 1,
       },
     },
@@ -25,7 +33,22 @@ export default async function OnboardingPage() {
 
   if (!member) redirect("/auth/login");
 
-  const reservedLocker = member.lockers[0] ?? null;
+  const reservedLockerRow = member.lockers[0] ?? null;
+  const reservedLocker = reservedLockerRow
+    ? {
+        lockerNumber: reservedLockerRow.lockerNumber,
+        zone: reservedLockerRow.zone,
+      }
+    : null;
+
+  // Facility name resolution: prefer the locker's facility once reserved,
+  // otherwise fall back to the member's primary facility membership. The
+  // signup flow attaches new members to the oldest facility, so this is the
+  // same facility the wizard's reserveOnboardingLocker action will pull from.
+  const facilityName =
+    reservedLockerRow?.facility.name ??
+    member.facilities[0]?.facility.name ??
+    "your Caveau facility";
 
   // Resume mid-wizard: if a previous attempt already reserved a locker,
   // skip past tier + reservation and land on the first-bottle step.
@@ -37,6 +60,7 @@ export default async function OnboardingPage() {
       initialTier={member.tier}
       initialStep={initialStep}
       reservedLocker={reservedLocker}
+      facilityName={facilityName}
     />
   );
 }

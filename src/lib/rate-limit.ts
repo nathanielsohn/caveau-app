@@ -56,6 +56,21 @@ function evictOldest(): void {
   const entries = Array.from(memStore.entries());
   entries.sort((a, b) => a[1].start - b[1].start);
   const toEvict = entries.length - Math.floor(MEM_CAP * 0.9);
+  // Cap breaches are operationally interesting (botnet rotating IPs, or
+  // Upstash falling back to memory under load), so we log every time. Use
+  // console.warn directly — this module is reachable from middleware which
+  // runs in the Edge runtime, and the structured logger pulls in Sentry's
+  // dynamic import which Edge forbids. A flat console line is enough for
+  // Vercel's log drains to pick up.
+  console.warn(
+    JSON.stringify({
+      level: "warn",
+      msg: "Rate limiter memory cap breached — evicting oldest entries",
+      entries: memStore.size,
+      evicting: toEvict,
+      cap: MEM_CAP,
+    }),
+  );
   for (let i = 0; i < toEvict; i++) {
     memStore.delete(entries[i][0]);
   }

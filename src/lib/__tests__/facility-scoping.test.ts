@@ -122,7 +122,9 @@ describe("sentinel actions facility scoping", () => {
   it("fetchSentinelData returns empty data without querying when no facility locker is found", async () => {
     (prisma.locker.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     const result = await fetchSentinelData(24);
-    expect(result).toEqual({ readings: [], alerts: [] });
+    // hasLocker=false lets the Sentinel page render a directive empty state
+    // instead of pretending the live charts are real data.
+    expect(result).toEqual({ readings: [], alerts: [], hasLocker: false });
     expect(prisma.sensorReading.findMany).not.toHaveBeenCalled();
   });
 });

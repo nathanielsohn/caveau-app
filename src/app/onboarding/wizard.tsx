@@ -20,6 +20,7 @@ interface Props {
   initialTier: Tier;
   initialStep: 1 | 3;
   reservedLocker: ReservedLocker;
+  facilityName: string;
 }
 
 const TIER_OPTIONS: Array<{
@@ -53,6 +54,7 @@ export default function OnboardingWizard({
   initialTier,
   initialStep,
   reservedLocker: initialReservedLocker,
+  facilityName,
 }: Props) {
   const { update } = useSession();
   const prefersReducedMotion = useReducedMotion();
@@ -282,7 +284,7 @@ export default function OnboardingWizard({
                     Your private storage
                   </h2>
                   <p className="text-secondary text-sm mt-1">
-                    We&rsquo;ll set aside a 32-bottle locker at Caveau Naples.
+                    We&rsquo;ll set aside a 32-bottle locker at {facilityName}.
                     Climate-controlled, monitored 24/7 by our Sentinel system.
                   </p>
                 </header>
@@ -296,7 +298,7 @@ export default function OnboardingWizard({
                       Reserving
                     </div>
                     <div className="font-serif text-lg text-primary">
-                      Locker — Caveau Naples
+                      Locker — {facilityName}
                     </div>
                     <div className="text-secondary text-sm">
                       32 climate-controlled slots
@@ -329,17 +331,35 @@ export default function OnboardingWizard({
             {step === 3 && (
               <motion.section key="step-3" {...motionProps}>
                 <header className="mb-6">
-                  <div className="inline-flex items-center gap-2 text-gold text-xs uppercase tracking-wider mb-2">
-                    <Wine size={14} /> Step 3 — Your first bottle
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="inline-flex items-center gap-2 text-gold text-xs uppercase tracking-wider mb-2">
+                        <Wine size={14} /> Step 3 — Your first bottle
+                      </div>
+                      <h2 className="font-serif text-xl md:text-2xl text-primary">
+                        Add a wine to your cellar
+                      </h2>
+                      <p className="text-secondary text-sm mt-1">
+                        {reservedLocker
+                          ? `Locker #${reservedLocker.lockerNumber}, Zone ${reservedLocker.zone} is ready. Your first bottle takes slot 1.`
+                          : "Your locker is ready. Your first bottle takes slot 1."}
+                      </p>
+                    </div>
+                    {/* Lets the user revisit tier selection without having to
+                        restart. The reserved locker stays in place — only
+                        tier is mutable from this back-link. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setStep(1);
+                      }}
+                      disabled={isPending || submitted}
+                      className="shrink-0 text-xs text-secondary hover:text-gold transition-colors disabled:opacity-50"
+                    >
+                      Change tier
+                    </button>
                   </div>
-                  <h2 className="font-serif text-xl md:text-2xl text-primary">
-                    Add a wine to your cellar
-                  </h2>
-                  <p className="text-secondary text-sm mt-1">
-                    {reservedLocker
-                      ? `Locker #${reservedLocker.lockerNumber}, Zone ${reservedLocker.zone} is ready. Your first bottle takes slot 1.`
-                      : "Your locker is ready. Your first bottle takes slot 1."}
-                  </p>
                 </header>
 
                 <form action={handleAddWine} className="grid gap-4">

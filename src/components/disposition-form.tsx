@@ -156,11 +156,12 @@ export default function DispositionForm({
                 Sale Price
               </label>
               <input
-                type="text"
+                type="number"
                 inputMode="decimal"
                 name="salePrice"
-                pattern="[0-9]*\.?[0-9]*"
-                maxLength={12}
+                step="0.01"
+                min="0"
+                max="99999999.99"
                 placeholder="0.00"
                 className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
               />

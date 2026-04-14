@@ -126,6 +126,7 @@ export default function SentinelPage() {
   const [dbAlerts, setDbAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLocker, setHasLocker] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Client-side dedupe for persisted live alerts: keeps the last time we
   // sent a given alert type up to the server. Prevents every 5-second tick
@@ -146,9 +147,11 @@ export default function SentinelPage() {
     setLoading(true);
     setError(null);
     try {
-      const { readings, alerts } = await fetchSentinelData(TIME_RANGE_HOURS[selectedRange]);
+      const { readings, alerts, hasLocker: lockerPresent } =
+        await fetchSentinelData(TIME_RANGE_HOURS[selectedRange]);
       setDbReadings(readings);
       setDbAlerts(alerts.map((a) => ({ ...a, isNew: false })));
+      setHasLocker(lockerPresent);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load sensor data");
     } finally {
@@ -372,6 +375,18 @@ export default function SentinelPage() {
           );
         })}
       </div>
+
+      {/* No-locker state — facility has no locker assigned to this member */}
+      {!hasLocker && !loading && !error && (
+        <div className="glass-card p-6 mb-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-center border-warn/30">
+          <Shield className="w-5 h-5 text-warn" />
+          <span className="text-sm text-secondary">
+            No locker reserved at this facility yet. The live charts below are a
+            simulation only — switch facilities or reserve a locker to see real
+            sensor history.
+          </span>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
