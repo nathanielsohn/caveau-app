@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
-import { getCurrentFacility } from "@/lib/current-facility";
 import { logger } from "@/lib/logger";
 import {
   formatCurrency,
   formatCurrencyCompact,
-  formatTemp,
-  formatHumidity,
   toNumber,
 } from "@/lib/utils";
 import DashboardClient from "./dashboard-client";
@@ -34,18 +31,17 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/auth/login");
 
   const memberId = session.user.id;
-  const facility = await getCurrentFacility(memberId);
-  const facilityId = facility?.id;
 
   try {
-    // Wines stay member-scoped (a member's collection spans facilities),
-    // but locker-derived metrics filter to the active facility so the
-    // dashboard reflects the location the user is currently viewing.
+    // Dashboard is a portfolio-wide summary — every query aggregates across
+    // every facility the member belongs to. Per-facility breakdowns live on
+    // /collection, /locker, /sentinel, which use the facility switcher.
     const [
       wines,
       memberLockerIds,
       bottlesStored,
       totalSlots,
+      facilityCount,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -60,25 +56,17 @@ export default async function DashboardPage() {
           purchasePrice: true,
         },
       }),
-      facilityId
-        ? prisma.locker.findMany({
-            where: { memberId, facilityId },
-            select: { id: true },
-          })
-        : [],
-      facilityId
-        ? prisma.lockerSlot.count({
-            where: {
-              wineId: { not: null },
-              locker: { memberId, facilityId },
-            },
-          })
-        : 0,
-      facilityId
-        ? prisma.lockerSlot.count({
-            where: { locker: { memberId, facilityId } },
-          })
-        : 0,
+      prisma.locker.findMany({
+        where: { memberId },
+        select: { id: true },
+      }),
+      prisma.lockerSlot.count({
+        where: { wineId: { not: null }, locker: { memberId } },
+      }),
+      prisma.lockerSlot.count({
+        where: { locker: { memberId } },
+      }),
+      prisma.facilityMember.count({ where: { memberId } }),
     ]);
 
     const lockerIds = memberLockerIds.map((l) => l.id);
@@ -87,18 +75,17 @@ export default async function DashboardPage() {
     // dashboard, and cap each query at 2.5s so a slow aggregation can't hold
     // the whole page hostage.
     const SECONDARY_TIMEOUT = 2500;
-    const [readingResult, alertsResult, valuationResult, alertFreqResult] =
+    const [activeAlertResult, alertsResult, valuationResult, alertFreqResult] =
       await Promise.allSettled([
         lockerIds.length > 0
           ? withTimeout(
-              prisma.sensorReading.findFirst({
-                where: { lockerId: { in: lockerIds } },
-                orderBy: { timestamp: "desc" },
+              prisma.alert.count({
+                where: { lockerId: { in: lockerIds }, resolved: false },
               }),
               SECONDARY_TIMEOUT,
-              "latest-reading",
+              "active-alerts",
             )
-          : null,
+          : Promise.resolve(0),
         withTimeout(
           prisma.alert.findMany({
             where: { lockerId: { in: lockerIds } },
@@ -111,7 +98,12 @@ export default async function DashboardPage() {
               message: true,
               timestamp: true,
               resolved: true,
-              locker: { select: { lockerNumber: true } },
+              locker: {
+                select: {
+                  lockerNumber: true,
+                  facility: { select: { name: true } },
+                },
+              },
             },
           }),
           SECONDARY_TIMEOUT,
@@ -150,7 +142,8 @@ export default async function DashboardPage() {
           : [],
       ]);
 
-    const latestReading = readingResult.status === "fulfilled" ? readingResult.value : null;
+    const activeAlertCount =
+      activeAlertResult.status === "fulfilled" ? activeAlertResult.value ?? 0 : 0;
     const recentAlerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
     const valuationRows = valuationResult.status === "fulfilled" ? valuationResult.value : [];
     const alertFrequencyRows = alertFreqResult.status === "fulfilled" ? alertFreqResult.value : [];
@@ -177,12 +170,8 @@ export default async function DashboardPage() {
       valueTrend: Math.round(valueTrend * 10) / 10,
       bottleCount: bottlesStored,
       totalSlots,
-      temperature: latestReading
-        ? formatTemp(latestReading.temperature)
-        : "—",
-      humidity: latestReading
-        ? formatHumidity(latestReading.humidity)
-        : "—",
+      activeAlertCount,
+      facilityCount,
     };
 
     // Calculate per-wine appreciation for sorting
@@ -239,6 +228,7 @@ export default async function DashboardPage() {
       timestamp: a.timestamp.toISOString(),
       resolved: a.resolved,
       lockerNumber: a.locker?.lockerNumber ?? 0,
+      facilityName: a.locker?.facility?.name ?? "",
     }));
 
     // Format valuation trend for charts

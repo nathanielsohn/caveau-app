@@ -4,7 +4,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import MetricCard from "@/components/metric-card";
-import { FacilityPill } from "@/components/facility-context";
 
 // Recharts is ~80KB gzipped — defer it so the dashboard's LCP doesn't
 // pay for the chart bundle, and show a placeholder block in its place.
@@ -30,8 +29,7 @@ const AlertFrequencyChart = dynamic(
 import {
   DollarSign,
   Wine,
-  Thermometer,
-  Droplets,
+  Building2,
   AlertTriangle,
   TrendingUp,
   Clock,
@@ -43,8 +41,8 @@ interface MetricsData {
   valueTrend: number;
   bottleCount: number;
   totalSlots: number;
-  temperature: string;
-  humidity: string;
+  activeAlertCount: number;
+  facilityCount: number;
 }
 
 interface TopWine {
@@ -65,6 +63,7 @@ interface AlertItem {
   timestamp: string;
   resolved: boolean;
   lockerNumber: number;
+  facilityName: string;
 }
 
 interface ValuationPoint {
@@ -123,16 +122,13 @@ export default function DashboardClient({
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-3xl md:text-4xl text-primary">
-            Dashboard
-          </h1>
-          <p className="text-secondary text-sm mt-1">
-            Welcome back, {firstName}
-          </p>
-        </div>
-        <FacilityPill />
+      <div>
+        <h1 className="font-serif text-3xl md:text-4xl text-primary">
+          Dashboard
+        </h1>
+        <p className="text-secondary text-sm mt-1">
+          Welcome back, {firstName}
+        </p>
       </div>
 
       {/* Metric Cards Grid */}
@@ -152,14 +148,14 @@ export default function DashboardClient({
           label="Bottles Stored"
         />
         <MetricCard
-          icon={Thermometer}
-          value={metrics.temperature}
-          label="Cellar Temperature"
+          icon={AlertTriangle}
+          value={`${metrics.activeAlertCount}`}
+          label="Active Alerts"
         />
         <MetricCard
-          icon={Droplets}
-          value={metrics.humidity}
-          label="Humidity"
+          icon={Building2}
+          value={`${metrics.facilityCount}`}
+          label={metrics.facilityCount === 1 ? "Facility" : "Facilities"}
         />
       </div>
 
@@ -308,9 +304,10 @@ export default function DashboardClient({
                     </p>
                     <div className="flex items-center gap-1 mt-1 text-xs text-muted">
                       <Clock size={10} />
-                      <span>
+                      <span className="truncate">
                         {formatRelativeTime(alert.timestamp)} &middot; Locker #
                         {alert.lockerNumber}
+                        {alert.facilityName && ` · ${alert.facilityName}`}
                       </span>
                     </div>
                   </div>

@@ -64,6 +64,13 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     ? session.user.tier.charAt(0).toUpperCase() + session.user.tier.slice(1) + " Tier"
     : "";
 
+  // Facility switcher only makes sense on pages whose data is facility-scoped.
+  // Dashboard aggregates across all facilities; settings is account-wide.
+  const showFacilitySwitcher =
+    pathname.startsWith("/collection") ||
+    pathname.startsWith("/locker") ||
+    pathname.startsWith("/sentinel");
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -79,7 +86,7 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
         </div>
 
         {/* Facility switcher — only if the member belongs to more than one */}
-        {facilities.length > 1 && (
+        {facilities.length > 1 && showFacilitySwitcher && (
           <div className="px-4 mb-3">
             <label
               htmlFor="facility-switcher"
