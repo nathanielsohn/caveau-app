@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import ScanLabelButton from "@/components/scan-label-button";
+import { showToast } from "@/components/toast";
 import type {
   ScanUploadUrlResult,
   ScanWineLabelResult,
@@ -60,12 +61,14 @@ export default function AddWineForm({
   function handleSubmit(formData: FormData) {
     setError(null);
     if (imageKey) formData.set("imageKey", imageKey);
+    const wineName = (formData.get("name") as string | null)?.trim() || "Bottle";
     startTransition(async () => {
       try {
         await addWineAction(formData);
         formRef.current?.reset();
         resetState();
         onClose();
+        showToast(`${wineName} added to collection`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to add wine");
       }

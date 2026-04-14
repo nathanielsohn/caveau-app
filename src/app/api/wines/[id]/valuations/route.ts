@@ -19,6 +19,15 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ip = clientIp(headers());
+  const limit = await checkRateLimit(
+    `valuation-read:${session.user.id}:${ip}`,
+    { limit: 60, windowMs: 60_000 },
+  );
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { id: rawId } = await params;
   const idResult = parsePathParamOr404(UuidSchema, rawId);
   if (!idResult.ok) return idResult.response;

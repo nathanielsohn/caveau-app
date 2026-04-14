@@ -6,6 +6,7 @@ import { Wine, X, Calendar, MapPin, DollarSign, Search, Plus, Minus, Loader2, Ar
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
 import { assignWineToSlot, removeWineFromSlot, addWineAndAssignToSlot } from "@/app/locker/actions";
+import { showToast } from "@/components/toast";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import ScanLabelButton from "@/components/scan-label-button";
 import type {
@@ -254,6 +255,7 @@ export default function LockerGrid({
 
   function handleAssignWine(wineId: string) {
     if (!pickerSlot) return;
+    const slotNumber = pickerSlot.slotPosition;
     setActionError(null);
     startTransition(async () => {
       const result = await assignWineToSlot(pickerSlot.id, wineId);
@@ -261,6 +263,7 @@ export default function LockerGrid({
         setActionError(result.error);
       } else {
         setPickerSlot(null);
+        showToast(`Bottle assigned to slot ${slotNumber}`);
       }
     });
   }
@@ -268,6 +271,7 @@ export default function LockerGrid({
   function handleAddWineToSlot(formData: FormData) {
     if (!pickerSlot) return;
     if (addImageKey) formData.set("imageKey", addImageKey);
+    const slotNumber = pickerSlot.slotPosition;
     setActionError(null);
     startTransition(async () => {
       const result = await addWineAndAssignToSlot(pickerSlot.id, formData);
@@ -278,12 +282,14 @@ export default function LockerGrid({
         resetAddFormState();
         setPickerSlot(null);
         setShowAddForm(false);
+        showToast(`Bottle added to slot ${slotNumber}`);
       }
     });
   }
 
   function handleRemoveWine() {
     if (!selectedSlot) return;
+    const slotNumber = selectedSlot.slotPosition;
     setActionError(null);
     startTransition(async () => {
       const result = await removeWineFromSlot(selectedSlot.id);
@@ -291,6 +297,7 @@ export default function LockerGrid({
         setActionError(result.error);
       } else {
         setSelectedSlot(null);
+        showToast(`Bottle removed from slot ${slotNumber}`);
       }
     });
   }

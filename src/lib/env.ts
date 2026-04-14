@@ -21,7 +21,9 @@ type OptionalKey =
   | "AWS_SES_FROM_EMAIL"
   | "AWS_S3_BUCKET"
   | "AWS_CLOUDFRONT_DOMAIN"
-  | "GOOGLE_CLOUD_VISION_API_KEY";
+  | "GOOGLE_CLOUD_VISION_API_KEY"
+  | "CERTIFICATE_HMAC_SECRET"
+  | "FACILITY_COOKIE_SECRET";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -73,5 +75,21 @@ export const env = {
   AWS_S3_BUCKET: read("AWS_S3_BUCKET"),
   AWS_CLOUDFRONT_DOMAIN: read("AWS_CLOUDFRONT_DOMAIN"),
   GOOGLE_CLOUD_VISION_API_KEY: read("GOOGLE_CLOUD_VISION_API_KEY"),
+  // Dedicated HMAC secrets for non-session uses. Falling back to
+  // NEXTAUTH_SECRET keeps existing dev/seed setups working, but production
+  // should set these to independent random strings so a leak of one secret
+  // doesn't compromise the others. The double fallback (`required ?? read`)
+  // keeps the test setup happy when SKIP_ENV_VALIDATION is on and
+  // `required` is the empty stub.
+  CERTIFICATE_HMAC_SECRET:
+    read("CERTIFICATE_HMAC_SECRET") ??
+    required.NEXTAUTH_SECRET ??
+    read("NEXTAUTH_SECRET") ??
+    "",
+  FACILITY_COOKIE_SECRET:
+    read("FACILITY_COOKIE_SECRET") ??
+    required.NEXTAUTH_SECRET ??
+    read("NEXTAUTH_SECRET") ??
+    "",
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

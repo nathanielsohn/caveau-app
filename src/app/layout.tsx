@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import Nav from "@/components/nav";
 import Providers from "@/components/providers";
+import { Toaster } from "@/components/toast";
 import { FacilityProvider } from "@/components/facility-context";
 import { getServerAuth } from "@/lib/auth";
 import {
@@ -84,6 +85,7 @@ export default async function RootLayout({
             <main className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen">
               {children}
             </main>
+            <Toaster />
           </FacilityProvider>
         </Providers>
       </body>

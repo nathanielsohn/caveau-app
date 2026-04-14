@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { X, DollarSign, User, FileText, Calendar, ChevronDown } from "lucide-react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { showToast } from "@/components/toast";
 
 const DISPOSITION_TYPES = [
   { value: "sold", label: "Sold", description: "Sold to a buyer" },
@@ -55,10 +56,14 @@ export default function DispositionForm({
       setError("Please select a disposition type");
       return;
     }
+    const dispositionLabel =
+      DISPOSITION_TYPES.find((t) => t.value === formData.get("type"))?.label ??
+      "Disposition";
     startTransition(async () => {
       try {
         await recordDispositionAction(formData);
         onClose();
+        showToast(`${dispositionLabel} recorded for ${wineName}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong");
       }

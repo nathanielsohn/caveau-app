@@ -15,7 +15,9 @@ const SECRET_B = "test-secret-bravo-different==";
 
 async function importWithSecret(secret: string) {
   vi.resetModules();
-  vi.doMock("../env", () => ({ env: { NEXTAUTH_SECRET: secret } }));
+  vi.doMock("../env", () => ({
+    env: { NEXTAUTH_SECRET: secret, FACILITY_COOKIE_SECRET: secret },
+  }));
   return import("../current-facility");
 }
 

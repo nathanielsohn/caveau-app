@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createHash, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
-import { Role, Tier } from "@prisma/client";
+import { Prisma, Role, Tier } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
@@ -63,16 +63,12 @@ export async function POST(req: Request) {
 
     const { name, email, password } = parsed.data;
 
-    const existing = await prisma.member.findUnique({ where: { email } });
-    if (existing) {
-      // Burn an equivalent amount of CPU on the duplicate path so the
-      // response time is indistinguishable from the real signup path.
-      // Without this, ~250ms of bcrypt cost would be observable as a clean
-      // side-channel for email enumeration.
-      await bcrypt.hash(password, 13);
-      return NextResponse.json({ success: true }, { status: 201 });
-    }
-
+    // Always hash. We attempt the insert unconditionally and let the unique
+    // constraint on `email` decide whether this is a real signup or a
+    // duplicate. A find-then-create has a race window where two simultaneous
+    // signups for the same email both pass the find and only one of them
+    // succeeds — the loser then surfaces as a 500 to the client and bypasses
+    // the deliberate 201-for-everyone enumeration defense below.
     const passwordHash = await bcrypt.hash(password, 13);
 
     // New members are attached to the oldest facility so the locker page,
@@ -83,20 +79,33 @@ export async function POST(req: Request) {
       select: { id: true },
     });
 
-    await prisma.member.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        tier: Tier.gold,
-        role: Role.member,
-        ...(defaultFacility && {
-          facilities: {
-            create: { facilityId: defaultFacility.id },
-          },
-        }),
-      },
-    });
+    try {
+      await prisma.member.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          tier: Tier.gold,
+          role: Role.member,
+          ...(defaultFacility && {
+            facilities: {
+              create: { facilityId: defaultFacility.id },
+            },
+          }),
+        },
+      });
+    } catch (e) {
+      // Duplicate email — fall through to the same 201 the new-user path
+      // returns. We've already burned the bcrypt CPU above so the response
+      // time is indistinguishable.
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        return NextResponse.json({ success: true }, { status: 201 });
+      }
+      throw e;
+    }
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
