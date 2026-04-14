@@ -162,6 +162,37 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
         </div>
       </aside>
 
+      {/* Mobile facility switcher — sits in flow above page content on facility-scoped routes. */}
+      {facilities.length > 1 && showFacilitySwitcher && (
+        <div className="md:hidden px-4 pt-3 pb-1">
+          <label
+            htmlFor="facility-switcher-mobile"
+            className="text-[10px] uppercase tracking-wider text-muted flex items-center gap-1.5 mb-1.5"
+          >
+            <Building2 size={11} strokeWidth={2} />
+            Facility
+          </label>
+          <div className="relative">
+            <select
+              id="facility-switcher-mobile"
+              value={currentFacilityId ?? ""}
+              onChange={(e) => handleFacilityChange(e.target.value)}
+              disabled={isPending}
+              className="w-full appearance-none bg-[#1C1C20]/80 border border-[#2A2A30]/60 rounded-lg px-3 py-2 pr-8 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-gold/40 disabled:opacity-50 cursor-pointer"
+            >
+              {facilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted text-xs">
+              ▾
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Mobile bottom tab bar — pads for the iPhone home indicator via safe-area-inset. */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 border-t border-[#2A2A30]/50 bg-caveau-charcoal/90 backdrop-blur-xl z-40"
