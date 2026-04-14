@@ -68,9 +68,18 @@ const required = SKIP ? ({} as Record<RequiredKey, string>) : assertRequired();
 
 // In production both HMAC secrets must be set independently — the dev
 // fallback to NEXTAUTH_SECRET means a single leak compromises three systems
-// at once (sessions, certificate hashes, facility cookies). Demoting that to
-// a hard boot error keeps a future deploy from silently regressing.
-if (!SKIP && process.env.NODE_ENV === "production") {
+// at once (sessions, certificate hashes, facility cookies). We want this to
+// fail loud at boot in the Node serverless runtime (certificate routes,
+// server actions), but NOT in Edge middleware — middleware never reads
+// CERTIFICATE_HMAC_SECRET or FACILITY_COOKIE_SECRET, so throwing there just
+// turns every request into a 500 with no operational benefit.
+//
+// `EdgeRuntime` is a global string set only in the Edge runtime; in Node
+// (and in Vitest) it's undefined.
+const IS_EDGE_RUNTIME =
+  typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined";
+
+if (!SKIP && !IS_EDGE_RUNTIME && process.env.NODE_ENV === "production") {
   const missingHmac: string[] = [];
   if (!process.env.CERTIFICATE_HMAC_SECRET) missingHmac.push("CERTIFICATE_HMAC_SECRET");
   if (!process.env.FACILITY_COOKIE_SECRET) missingHmac.push("FACILITY_COOKIE_SECRET");
