@@ -19,7 +19,7 @@ const config: Config = {
         slate: "#2A2A30",
         // Text
         primary: "#E8E6E1",
-        secondary: "#9B9A97",
+        secondary: "#ADABA6",
         muted: "#8B8B96",
         // Accents
         gold: {

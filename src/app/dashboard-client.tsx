@@ -132,7 +132,7 @@ export default function DashboardClient({
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={DollarSign}
           value={metrics.totalValue}
@@ -204,15 +204,15 @@ export default function DashboardClient({
                       key={wine.id}
                       className="border-b border-[#2A2A30]/30 last:border-0 hover:bg-caveau-graphite/30 transition-colors"
                     >
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 max-w-0">
                         <Link
                           href={`/wine/${wine.id}`}
-                          className="hover:text-gold transition-colors"
+                          className="block hover:text-gold transition-colors"
                         >
-                          <p className="font-serif text-primary">
+                          <p className="font-serif text-primary truncate">
                             {wine.name}
                           </p>
-                          <p className="text-xs text-muted mt-0.5">
+                          <p className="text-xs text-muted mt-0.5 truncate">
                             {wine.vintage} &middot; {wine.region}
                           </p>
                         </Link>

@@ -174,12 +174,12 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 min-w-[44px] min-h-[44px] px-3 py-1.5 transition-colors duration-200 ${
+                className={`flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] px-2 py-1.5 transition-colors duration-200 ${
                   isActive ? "text-gold" : "text-muted"
                 }`}
               >
                 <item.icon size={20} strokeWidth={1.8} />
-                <span className="text-[11px] font-medium">{item.label}</span>
+                <span className="text-[10px] sm:text-xs font-medium tracking-wide">{item.label}</span>
               </Link>
             );
           })}

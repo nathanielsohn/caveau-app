@@ -111,7 +111,7 @@ export default function WineImageUpload({
 
   return (
     <div className="w-full md:w-48 flex-shrink-0">
-      <div className="relative w-full h-56 md:h-64 rounded-xl bg-caveau-graphite border border-[#2A2A30]/50 overflow-hidden group">
+      <div className="relative w-full max-w-[180px] md:max-w-none mx-auto h-48 md:h-64 rounded-xl bg-caveau-graphite border border-[#2A2A30]/80 overflow-hidden group">
         {displayUrl ? (
           <Image
             src={displayUrl}

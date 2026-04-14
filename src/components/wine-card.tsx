@@ -103,7 +103,7 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
 
   return (
     <Link href={`/wine/${wine.id}`} className="block group">
-      <div className={`glass-card p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5 ${isDisposed ? "opacity-70" : ""}`}>
+      <div className={`glass-card p-3 sm:p-4 h-full flex flex-col gap-3 transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5 ${isDisposed ? "opacity-70" : ""}`}>
         {/* Wine label — uploaded photo if present, otherwise the placeholder */}
         {wine.photoUrl ? (
           <div className="aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#0C0C0E] relative border border-transparent group-hover:border-gold/40 transition-colors duration-200">

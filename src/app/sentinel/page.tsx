@@ -347,20 +347,20 @@ export default function SentinelPage() {
       </div>
 
       {/* Condition cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-live="polite" aria-atomic="true">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6" aria-live="polite" aria-atomic="true">
         {conditions.map((c) => {
           const status = getConditionStatus(c.type, c.raw);
           return (
-            <div key={c.type} className="glass-card p-4">
-              <div className="flex items-center justify-between mb-3">
+            <div key={c.type} className="glass-card p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-3 gap-2">
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: status.bgColor }}
                 >
                   <c.icon size={18} style={{ color: status.color }} />
                 </div>
                 <span
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-full truncate"
                   style={{
                     color: status.color,
                     backgroundColor: status.bgColor,
@@ -369,7 +369,7 @@ export default function SentinelPage() {
                   {status.label}
                 </span>
               </div>
-              <p className="text-xl font-semibold text-primary">{c.value}</p>
+              <p className="text-lg sm:text-xl font-semibold text-primary tabular-nums">{c.value}</p>
               <p className="text-xs text-muted mt-0.5">{c.label}</p>
             </div>
           );

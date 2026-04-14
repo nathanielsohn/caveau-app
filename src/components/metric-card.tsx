@@ -100,10 +100,10 @@ export default function MetricCard({ icon: Icon, value, label, trend, index = 0 
       }}
       whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
       whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
-      className="glass-card p-5 flex flex-col gap-3 cursor-default"
+      className="glass-card p-4 md:p-5 flex flex-col gap-3 cursor-default"
     >
       <div className="flex items-center justify-between">
-        <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-gold/20 border border-gold/20 flex items-center justify-center">
           <Icon className="w-5 h-5 text-gold" />
         </div>
         {trend && (
@@ -119,10 +119,10 @@ export default function MetricCard({ icon: Icon, value, label, trend, index = 0 
         )}
       </div>
       <div>
-        <p className="text-2xl font-semibold text-primary tracking-tight">
+        <p className="text-xl md:text-2xl font-semibold text-primary tracking-tight tabular-nums break-words">
           {displayValue}
         </p>
-        <p className="text-sm text-secondary mt-0.5">{label}</p>
+        <p className="text-xs md:text-sm text-secondary mt-0.5">{label}</p>
       </div>
       {trend?.label && (
         <p className="text-xs text-muted">{trend.label}</p>

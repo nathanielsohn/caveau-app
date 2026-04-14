@@ -55,7 +55,7 @@ a,
 @layer components {
   /* Glassmorphism card — the core Caveau card style */
   .glass-card {
-    @apply bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 rounded-2xl;
+    @apply bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/80 rounded-2xl;
   }
 
   /* Gold accent button */

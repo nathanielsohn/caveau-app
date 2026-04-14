@@ -225,14 +225,14 @@ export default function CollectionClient({
             />
           </div>
 
-          {/* Primary row: region, varietal, sort, more, view toggle */}
-          <div className="flex flex-wrap gap-3 items-center">
+          {/* Filter row — dropdowns (region/varietal/locker) */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 sm:items-center">
             <div className="relative">
               <select
                 value={regionFilter}
                 onChange={(e) => setRegionFilter(e.target.value)}
                 aria-label="Filter by region"
-                className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                className="w-full appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">All Regions</option>
                 {regions.map((r) => (
@@ -247,7 +247,7 @@ export default function CollectionClient({
                 value={varietalFilter}
                 onChange={(e) => setVarietalFilter(e.target.value)}
                 aria-label="Filter by varietal"
-                className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                className="w-full appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
                 <option value="">All Varietals</option>
                 {varietals.map((v) => (
@@ -258,12 +258,12 @@ export default function CollectionClient({
             </div>
 
             {lockerOptions.length > 0 && (
-              <div className="relative">
+              <div className="relative col-span-2 sm:col-span-1">
                 <select
                   value={lockerFilter}
                   onChange={(e) => setLockerFilter(e.target.value)}
                   aria-label="Filter by locker"
-                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
+                  className="w-full appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-3 pr-8 py-2 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
                 >
                   <option value="">All Lockers</option>
                   {lockerOptions.map((l) => (
@@ -274,48 +274,49 @@ export default function CollectionClient({
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
             )}
+          </div>
 
+          {/* Control row — sort / more / view toggle */}
+          <div className="flex items-center gap-2">
             {/* Sort dropdown + direction toggle */}
-            <div className="flex items-center gap-1">
-              <div className="relative">
-                <select
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  aria-label="Sort wines by"
-                  className="appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-8 pr-8 py-2 text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
-                >
-                  <option value="added">Recently added</option>
-                  <option value="value">Value</option>
-                  <option value="vintage">Vintage</option>
-                  <option value="name">Name</option>
-                  <option value="drinkWindow">Drink window</option>
-                </select>
-                <ArrowUpDown size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
-              <button
-                onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
-                aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}`}
-                title={sortDir === "asc" ? "Ascending" : "Descending"}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center px-3 rounded-xl bg-caveau-graphite border border-[#2A2A30] text-secondary hover:text-primary hover:border-gold/30 transition-colors text-xs font-medium"
+            <div className="relative flex-1 sm:flex-none">
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                aria-label="Sort wines by"
+                className="w-full appearance-none bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-8 pr-8 py-2 min-h-[44px] text-sm text-primary focus:outline-none focus:border-gold/50 transition-colors cursor-pointer"
               >
-                {sortDir === "asc" ? "↑" : "↓"}
-              </button>
+                <option value="added">Recently added</option>
+                <option value="value">Value</option>
+                <option value="vintage">Vintage</option>
+                <option value="name">Name</option>
+                <option value="drinkWindow">Drink window</option>
+              </select>
+              <ArrowUpDown size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
             </div>
+            <button
+              onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+              aria-label={`Sort direction: ${sortDir === "asc" ? "ascending" : "descending"}`}
+              title={sortDir === "asc" ? "Ascending" : "Descending"}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center px-3 rounded-xl bg-caveau-graphite border border-[#2A2A30] text-secondary hover:text-primary hover:border-gold/30 transition-colors text-sm font-medium flex-shrink-0"
+            >
+              {sortDir === "asc" ? "↑" : "↓"}
+            </button>
 
             {/* More filters toggle */}
             <button
               onClick={() => setShowMoreFilters(!showMoreFilters)}
               aria-expanded={showMoreFilters}
               aria-label="Toggle additional filters"
-              className={`flex items-center gap-2 px-3 py-2 min-h-[44px] rounded-xl text-sm border transition-colors ${
+              className={`flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl text-sm border transition-colors flex-shrink-0 ${
                 showMoreFilters || activeFilterCount > 2
                   ? "bg-gold/10 text-gold border-gold/30"
                   : "bg-caveau-graphite text-secondary border-[#2A2A30] hover:border-gold/30 hover:text-primary"
               }`}
             >
               <SlidersHorizontal size={14} />
-              More
+              <span className="hidden sm:inline">More</span>
               {activeFilterCount > 0 && (
                 <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-gold/20 text-gold text-[10px] font-semibold">
                   {activeFilterCount}
@@ -324,10 +325,10 @@ export default function CollectionClient({
             </button>
 
             {/* View toggle — pushed to end */}
-            <div className="ml-auto flex items-center gap-1 bg-caveau-graphite rounded-xl p-1 border border-[#2A2A30]">
+            <div className="ml-auto flex items-center gap-1 bg-caveau-graphite rounded-xl p-1 border border-[#2A2A30] flex-shrink-0">
               <button
                 onClick={() => setView("grid")}
-                className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
+                className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors ${
                   view === "grid"
                     ? "bg-gold/10 text-gold"
                     : "text-muted hover:text-primary"
@@ -338,7 +339,7 @@ export default function CollectionClient({
               </button>
               <button
                 onClick={() => setView("list")}
-                className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
+                className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors ${
                   view === "list"
                     ? "bg-gold/10 text-gold"
                     : "text-muted hover:text-primary"
@@ -469,7 +470,7 @@ export default function CollectionClient({
           </button>
         </div>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
           {filtered.map((wine) => (
             <WineCard key={wine.id} wine={wine} />
           ))}
