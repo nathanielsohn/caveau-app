@@ -1,8 +1,53 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getServerAuth } from "./auth";
+import { env } from "./env";
 
 const FACILITY_COOKIE = "caveau_facility";
+
+/**
+ * Sign a cookie value with HMAC-SHA256 keyed on NEXTAUTH_SECRET. The
+ * returned string is `${value}.${sig}` — compact, URL-safe, and small
+ * enough to fit comfortably alongside other cookies.
+ *
+ * Even though `getCurrentFacility` below still validates that the
+ * facility id maps to a real membership, signing the cookie prevents
+ * an attacker with cookie-write (e.g. via a subdomain XSS) from pinning
+ * a victim to a different facility within their own set of memberships.
+ * It also means any hand-crafted cookie is rejected outright instead of
+ * silently passing the membership check on one of the victim's rows.
+ */
+export function signValue(value: string): string {
+  const sig = createHmac("sha256", env.NEXTAUTH_SECRET)
+    .update(value)
+    .digest("base64url");
+  return `${value}.${sig}`;
+}
+
+/**
+ * Verify a signed cookie. Returns the original value on success or null
+ * on any failure (missing signature, wrong length, tampered payload,
+ * different signing key). Uses `timingSafeEqual` to avoid leaking byte
+ * positions via comparison time.
+ */
+export function verifySigned(signed: string): string | null {
+  const dot = signed.lastIndexOf(".");
+  if (dot <= 0 || dot === signed.length - 1) return null;
+
+  const value = signed.slice(0, dot);
+  const provided = signed.slice(dot + 1);
+  const expected = createHmac("sha256", env.NEXTAUTH_SECRET)
+    .update(value)
+    .digest("base64url");
+
+  if (provided.length !== expected.length) return null;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return null;
+  return timingSafeEqual(a, b) ? value : null;
+}
 
 export interface FacilityOption {
   id: string;
@@ -40,7 +85,8 @@ export async function getCurrentFacility(
   const facilities = await getMemberFacilities(memberId);
   if (facilities.length === 0) return null;
 
-  const cookieId = cookies().get(FACILITY_COOKIE)?.value;
+  const raw = cookies().get(FACILITY_COOKIE)?.value;
+  const cookieId = raw ? verifySigned(raw) : null;
   if (cookieId) {
     const match = facilities.find((f) => f.id === cookieId);
     if (match) return match;

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
-import { FACILITY_COOKIE } from "@/lib/current-facility";
+import { FACILITY_COOKIE, signValue } from "@/lib/current-facility";
 
 /**
  * Switch the active facility for the current member. Verifies the
@@ -30,7 +30,7 @@ export async function setCurrentFacility(
   // cookie outlives the session and leaves a stale facility preference
   // active after logout — we'd rather the nav default to the first
   // membership than a cookie the user can't see.
-  cookies().set(FACILITY_COOKIE, facilityId, {
+  cookies().set(FACILITY_COOKIE, signValue(facilityId), {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
