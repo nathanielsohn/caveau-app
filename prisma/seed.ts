@@ -1,4 +1,13 @@
-import { PrismaClient, Role, Tier, AlertType, Severity, FacilityEventType } from '@prisma/client';
+import {
+  PrismaClient,
+  Role,
+  Tier,
+  AlertType,
+  Severity,
+  FacilityEventType,
+  DispositionType,
+  WineStatus,
+} from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
 
@@ -210,9 +219,40 @@ async function main() {
         endedAt: new Date(Date.now() - 42 * 86400000 + 3 * 3600000),
         notes: 'Semi-annual fire suppression inspection — FM-200 system recertified, no deficiencies noted.',
       },
+      // Miami event log — a recent tropical depression (keeps the env
+      // report inside the 30-day sensor seed window), a quarterly load
+      // test, and the semi-annual inspection that matches
+      // lastInspectionAt above.
+      {
+        facilityId: miami.id,
+        type: FacilityEventType.weather,
+        severity: Severity.warning,
+        startedAt: new Date(Date.now() - 9 * 86400000),
+        endedAt: new Date(Date.now() - 8 * 86400000),
+        notes:
+          'Tropical depression passed 40 miles offshore. Facility on grid throughout; Sentinel recorded a 0.4°F upward drift during peak humidity but stayed in spec. Zero water intrusion.',
+      },
+      {
+        facilityId: miami.id,
+        type: FacilityEventType.generator_test,
+        severity: Severity.info,
+        startedAt: new Date(Date.now() - 21 * 86400000),
+        endedAt: new Date(Date.now() - 21 * 86400000 + 40 * 60000),
+        notes:
+          'Quarterly 40-minute load test on the Kohler 150 kW standby. Automatic transfer switch engaged cleanly; temperature drift negligible.',
+      },
+      {
+        facilityId: miami.id,
+        type: FacilityEventType.inspection,
+        severity: Severity.info,
+        startedAt: new Date(Date.now() - 67 * 86400000),
+        endedAt: new Date(Date.now() - 67 * 86400000 + 2.5 * 3600000),
+        notes:
+          'Semi-annual fire suppression inspection — FM-200 system recertified, all sensors within tolerance, no deficiencies noted.',
+      },
     ],
   });
-  console.log('  ✓ Facility events: 3 (Helene + generator test + inspection)');
+  console.log('  ✓ Facility events: 6 (Naples: 3, Miami: 3)');
 
   // 2. Member (password: demo1234)
   const passwordHash = await bcrypt.hash('demo1234', 10);
@@ -398,6 +438,180 @@ async function main() {
     }
   }
   console.log(`  ✓ Wine valuations: ${valCount} (across ${createdWines.length} wines)`);
+
+  // 9. Last valuation sync timestamp — pretend the Liv-ex cron (#39) ran
+  // recently so the wine detail page shows "synced X ago" instead of
+  // falling back to the most recent WineValuation.date.
+  await prisma.wine.updateMany({
+    data: { lastValuationSyncAt: new Date(Date.now() - 6 * 3600000) },
+  });
+  console.log('  ✓ Last-synced timestamps applied to all wines');
+
+  // 10. Historical dispositions — wines that left the collection.
+  // These aren't placed in any locker slot (the positions arrays above
+  // allocate exactly 66 slots for the first 66 wines, so anything we
+  // create here is automatically unplaced). Each gets a status that
+  // mirrors the DispositionType so the collection "history" tab picks
+  // them up and the provenance timeline on the wine detail page shows
+  // the full chain of custody.
+  const historicalWines = [
+    {
+      name: 'Château Latour',
+      vintage: 2010,
+      region: 'Bordeaux',
+      varietal: 'Cabernet Sauvignon',
+      producer: 'Château Latour',
+      purchasePrice: 950,
+      currentValue: 1850,
+      tastingNotes:
+        'Legendary Pauillac power — dense cassis, graphite, and cigar box with decades of cellar life ahead. Sold at auction to fund a 2024 Burgundy allocation.',
+      drinkWindowStart: 2025,
+      drinkWindowEnd: 2060,
+      disposition: {
+        type: DispositionType.sold,
+        daysAgo: 92,
+        salePrice: 2100,
+        recipient: 'Sotheby\'s Wine — New York auction',
+        notes: 'Sold at Sotheby\'s Finest & Rarest Wines, Nov 2025. Premium over current value reflected tight supply of library-aged Latour.',
+      },
+    },
+    {
+      name: 'Dom Pérignon P2',
+      vintage: 2002,
+      region: 'Champagne',
+      varietal: 'Chardonnay',
+      producer: 'Moët & Chandon',
+      purchasePrice: 420,
+      currentValue: 480,
+      tastingNotes:
+        'Second plenitude release — toasted brioche, marzipan, and a mineral-driven finish that only extended lees aging can produce. Opened to celebrate daughter\'s graduation.',
+      drinkWindowStart: 2020,
+      drinkWindowEnd: 2035,
+      disposition: {
+        type: DispositionType.consumed,
+        daysAgo: 45,
+        salePrice: null,
+        recipient: null,
+        notes: 'Opened at Le Bernardin to celebrate Isabella\'s Yale Law graduation. Paired with Michelin-tasting menu.',
+      },
+    },
+    {
+      name: 'Caymus Cabernet Sauvignon',
+      vintage: 2016,
+      region: 'Napa Valley',
+      varietal: 'Cabernet Sauvignon',
+      producer: 'Caymus Vineyards',
+      purchasePrice: 95,
+      currentValue: 125,
+      tastingNotes:
+        'Ripe, approachable Napa cab with soft tannins and generous dark fruit. Gifted to celebrate a business partner\'s anniversary.',
+      drinkWindowStart: 2020,
+      drinkWindowEnd: 2030,
+      disposition: {
+        type: DispositionType.gifted,
+        daysAgo: 128,
+        salePrice: null,
+        recipient: 'Marcus Whitfield (10-year partnership anniversary)',
+        notes: 'Hand-delivered with a personal note. Confirmed receipt; stored at recipient\'s climate-controlled cellar.',
+      },
+    },
+    {
+      name: 'Silver Oak Napa Valley',
+      vintage: 2015,
+      region: 'Napa Valley',
+      varietal: 'Cabernet Sauvignon',
+      producer: 'Silver Oak',
+      purchasePrice: 120,
+      currentValue: 145,
+      tastingNotes:
+        'Classic American oak signature — vanilla, coconut, and ripe blackberry. Transferred to personal residence cellar in Naples after downsizing locker holdings.',
+      drinkWindowStart: 2020,
+      drinkWindowEnd: 2032,
+      disposition: {
+        type: DispositionType.transferred,
+        daysAgo: 215,
+        salePrice: null,
+        recipient: 'Private residence cellar — Port Royal, Naples FL',
+        notes: 'Chain of custody maintained via Caveau white-glove delivery; recipient cellar verified at 55°F / 68% RH before handoff.',
+      },
+    },
+    {
+      name: 'Jordan Cabernet Sauvignon',
+      vintage: 2017,
+      region: 'Alexander Valley',
+      varietal: 'Cabernet Sauvignon',
+      producer: 'Jordan Vineyard & Winery',
+      purchasePrice: 58,
+      currentValue: 68,
+      tastingNotes:
+        'Bordeaux-inspired elegance from Alexander Valley. Removed from cellar after cork failure detected during routine inspection — insurance claim filed.',
+      drinkWindowStart: 2022,
+      drinkWindowEnd: 2028,
+      disposition: {
+        type: DispositionType.removed,
+        daysAgo: 310,
+        salePrice: null,
+        recipient: null,
+        notes: 'Cork seepage identified during quarterly inspection. Bottle removed and filed under insurance claim #CAV-2025-0042. Environmental record clean — suspected manufacturer defect.',
+      },
+    },
+  ];
+
+  let dispositionCount = 0;
+  for (const hw of historicalWines) {
+    const wine = await prisma.wine.create({
+      data: {
+        name: hw.name,
+        vintage: hw.vintage,
+        region: hw.region,
+        varietal: hw.varietal,
+        producer: hw.producer,
+        purchasePrice: hw.purchasePrice,
+        currentValue: hw.currentValue,
+        tastingNotes: hw.tastingNotes,
+        drinkWindowStart: hw.drinkWindowStart,
+        drinkWindowEnd: hw.drinkWindowEnd,
+        memberId: member.id,
+        // Wine.status mirrors DispositionType exactly — both enums share
+        // the same string values, so the cast is a direct remap, not a
+        // lossy conversion. This matches what recordDisposition() does
+        // at runtime in src/app/wine/[id]/actions.ts.
+        status: hw.disposition.type as unknown as WineStatus,
+      },
+    });
+
+    const dispositionDate = new Date(Date.now() - hw.disposition.daysAgo * 86400000);
+    await prisma.wineDisposition.create({
+      data: {
+        wineId: wine.id,
+        memberId: member.id,
+        type: hw.disposition.type,
+        date: dispositionDate,
+        salePrice: hw.disposition.salePrice,
+        recipient: hw.disposition.recipient,
+        notes: hw.disposition.notes,
+      },
+    });
+
+    // Give historical wines a short valuation history too so the
+    // detail page still renders a chart instead of an empty state.
+    const basePrice = Number(hw.purchasePrice);
+    for (let j = 0; j < 3; j++) {
+      const monthsAgo = 12 - j * 4;
+      const d = new Date();
+      d.setMonth(d.getMonth() - monthsAgo);
+      await prisma.wineValuation.create({
+        data: {
+          wineId: wine.id,
+          source: ['manual', 'liv-ex', 'wine-searcher'][j],
+          price: Math.round(basePrice * (0.95 + j * 0.05) * 100) / 100,
+          date: d,
+        },
+      });
+    }
+    dispositionCount++;
+  }
+  console.log(`  ✓ Historical dispositions: ${dispositionCount}`);
 
   console.log('\n✅ Seed complete!');
 }

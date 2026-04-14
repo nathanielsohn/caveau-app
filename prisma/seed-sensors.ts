@@ -31,13 +31,19 @@ function simulateReading(date: Date) {
 
 // ── Main ───────────────────────────────────────────────────────────────
 
-const DAYS = 30;
+// 90 days keeps every currently-seeded facility event inside the sensor
+// window so the /facility/events/[id] report has real temp/humidity data
+// to aggregate: Miami weather (9d), generator tests (14d/21d), Naples
+// inspection (42d), Miami inspection (67d). The Helene 2024 entry is
+// still outside the window and will render as a historical record with
+// no recorded readings, which is the correct pre-Sentinel framing.
+const DAYS = 90;
 const INTERVAL_MINUTES = 5;
 const READINGS_PER_DAY = (24 * 60) / INTERVAL_MINUTES; // 288
 const CHUNK_SIZE = 5000;
 
 async function main() {
-  console.log('📡 Seeding sensor readings (30 days)...');
+  console.log(`📡 Seeding sensor readings (${DAYS} days)...`);
 
   // Clear existing readings
   await prisma.sensorReading.deleteMany();
