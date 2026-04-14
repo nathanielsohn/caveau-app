@@ -32,13 +32,14 @@ const SEVERITY_STYLES: Record<Severity, string> = {
 export default async function FacilityEventReportPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const ctx = await requireMemberFacility();
   if (!ctx) redirect("/auth/login");
 
+  const { id } = await params;
   const event = await prisma.facilityEvent.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { facility: true },
   });
   if (!event) notFound();

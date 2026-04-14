@@ -55,9 +55,11 @@ function unauthorized(): NextResponse {
 function authorized(req: NextRequest): boolean {
   const expected = env.CRON_SECRET;
   if (!expected) {
-    // In dev nobody sets CRON_SECRET and we don't want to brick local
-    // testing — allow the call through. In production we require it.
-    return env.NODE_ENV !== "production";
+    // Whitelist the environments where it's safe to skip the secret.
+    // Anything else (staging, preview, an unrecognized NODE_ENV) MUST set
+    // CRON_SECRET — we never want a misconfigured staging env to expose the
+    // sync route just because NODE_ENV happens to not be "production".
+    return env.NODE_ENV === "development" || env.NODE_ENV === "test";
   }
   const header = req.headers.get("authorization") ?? "";
   return header === `Bearer ${expected}`;

@@ -90,19 +90,19 @@ export default async function VerifyPage({
               <div className="grid grid-cols-2 gap-3">
                 <EnvStat
                   label="Avg Temp"
-                  value={formatTemp(certificate.tempMean)}
+                  value={certificate.tempMean != null ? formatTemp(certificate.tempMean) : "—"}
                 />
                 <EnvStat
                   label="Min Temp"
-                  value={formatTemp(certificate.tempMin)}
+                  value={certificate.tempMin != null ? formatTemp(certificate.tempMin) : "—"}
                 />
                 <EnvStat
                   label="Max Temp"
-                  value={formatTemp(certificate.tempMax)}
+                  value={certificate.tempMax != null ? formatTemp(certificate.tempMax) : "—"}
                 />
                 <EnvStat
                   label="Avg Humidity"
-                  value={formatHumidity(certificate.humidityMean)}
+                  value={certificate.humidityMean != null ? formatHumidity(certificate.humidityMean) : "—"}
                 />
               </div>
             </div>

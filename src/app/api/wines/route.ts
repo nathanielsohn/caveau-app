@@ -12,10 +12,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Cap each filter at 200 chars so a 1MB ?search=… string can't be turned
+  // into an expensive Postgres ILIKE scan.
   const { searchParams } = request.nextUrl;
-  const search = searchParams.get("search")?.trim();
-  const region = searchParams.get("region")?.trim();
-  const varietal = searchParams.get("varietal")?.trim();
+  const search = searchParams.get("search")?.trim().slice(0, 200);
+  const region = searchParams.get("region")?.trim().slice(0, 200);
+  const varietal = searchParams.get("varietal")?.trim().slice(0, 200);
 
   const where: Record<string, unknown> = { memberId: session.user.id };
 

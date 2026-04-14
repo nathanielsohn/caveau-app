@@ -21,6 +21,7 @@ type OptionalKey =
   | "AWS_SES_FROM_EMAIL"
   | "AWS_S3_BUCKET"
   | "AWS_CLOUDFRONT_DOMAIN"
+  | "S3_UPLOAD_URL_TTL_SECONDS"
   | "GOOGLE_CLOUD_VISION_API_KEY"
   | "CERTIFICATE_HMAC_SECRET"
   | "FACILITY_COOKIE_SECRET"
@@ -65,6 +66,23 @@ function assertRequired(): Record<RequiredKey, string> {
 const SKIP = process.env.SKIP_ENV_VALIDATION === "true";
 const required = SKIP ? ({} as Record<RequiredKey, string>) : assertRequired();
 
+// In production both HMAC secrets must be set independently — the dev
+// fallback to NEXTAUTH_SECRET means a single leak compromises three systems
+// at once (sessions, certificate hashes, facility cookies). Demoting that to
+// a hard boot error keeps a future deploy from silently regressing.
+if (!SKIP && process.env.NODE_ENV === "production") {
+  const missingHmac: string[] = [];
+  if (!process.env.CERTIFICATE_HMAC_SECRET) missingHmac.push("CERTIFICATE_HMAC_SECRET");
+  if (!process.env.FACILITY_COOKIE_SECRET) missingHmac.push("FACILITY_COOKIE_SECRET");
+  if (missingHmac.length > 0) {
+    throw new Error(
+      `[env] In production, ${missingHmac.join(" and ")} must be set to ` +
+        `independent random strings. Falling back to NEXTAUTH_SECRET means a ` +
+        `single secret leak compromises every HMAC-protected system.`,
+    );
+  }
+}
+
 export const env = {
   DATABASE_URL: required.DATABASE_URL ?? "",
   NEXTAUTH_SECRET: required.NEXTAUTH_SECRET ?? "",
@@ -77,6 +95,16 @@ export const env = {
   AWS_SES_FROM_EMAIL: read("AWS_SES_FROM_EMAIL"),
   AWS_S3_BUCKET: read("AWS_S3_BUCKET"),
   AWS_CLOUDFRONT_DOMAIN: read("AWS_CLOUDFRONT_DOMAIN"),
+  // Presigned upload URL TTL in seconds. Defaults to 5 minutes; bump it if
+  // collectors on slow phones see frequent "uploaded too late" failures.
+  // Clamped to [60, 900] so a typo can't yield a 1-second or all-day URL.
+  S3_UPLOAD_URL_TTL_SECONDS: (() => {
+    const raw = read("S3_UPLOAD_URL_TTL_SECONDS");
+    if (!raw) return 300;
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return 300;
+    return Math.min(900, Math.max(60, n));
+  })(),
   GOOGLE_CLOUD_VISION_API_KEY: read("GOOGLE_CLOUD_VISION_API_KEY"),
   // Dedicated HMAC secrets for non-session uses. Falling back to
   // NEXTAUTH_SECRET keeps existing dev/seed setups working, but production

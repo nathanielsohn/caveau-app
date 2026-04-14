@@ -57,8 +57,28 @@ function shouldRedact(key: string): boolean {
   return REDACT_KEY_PATTERNS.some((p) => k.includes(p));
 }
 
+// Value-side scrubber: catches secrets that leak through error messages
+// where they're embedded in a string rather than nested under a sensitive
+// key. We scrub three high-value patterns: emails, JWTs, and Bearer tokens.
+// Anything matched is replaced with a coarse placeholder — losing the value
+// is fine because the surrounding context is what makes the log useful.
+const VALUE_PATTERNS: Array<{ re: RegExp; replacement: string }> = [
+  { re: /[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, replacement: "[REDACTED_EMAIL]" },
+  { re: /eyJ[\w-]+\.[\w-]+\.[\w-]+/g, replacement: "[REDACTED_JWT]" },
+  { re: /Bearer\s+[A-Za-z0-9\-._~+/=]+/g, replacement: "Bearer [REDACTED]" },
+];
+
+function scrubString(value: string): string {
+  let out = value;
+  for (const { re, replacement } of VALUE_PATTERNS) {
+    out = out.replace(re, replacement);
+  }
+  return out;
+}
+
 function redact(input: unknown, depth = 0): unknown {
-  if (depth > 4 || input == null) return input;
+  if (depth > 6 || input == null) return input;
+  if (typeof input === "string") return scrubString(input);
   if (Array.isArray(input)) return input.map((v) => redact(v, depth + 1));
   if (typeof input !== "object") return input;
   const out: Record<string, unknown> = {};

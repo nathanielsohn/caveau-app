@@ -19,26 +19,34 @@ import {
 
 const VALID_TYPES = ["sold", "transferred", "consumed", "gifted", "removed"] as const;
 
-const DispositionFormSchema = z.object({
-  wineId: UuidSchema,
-  type: z.enum(VALID_TYPES),
-  date: z
-    .string()
-    .optional()
-    .transform((v) => (v ? new Date(v) : new Date()))
-    .refine((d) => !isNaN(d.getTime()), "Invalid date"),
-  salePrice: z
-    .preprocess(
+const DispositionFormSchema = z
+  .object({
+    wineId: UuidSchema,
+    type: z.enum(VALID_TYPES),
+    date: z
+      .string()
+      .optional()
+      .transform((v) => (v ? new Date(v) : new Date()))
+      .refine((d) => !isNaN(d.getTime()), "Invalid date"),
+    salePrice: z.preprocess(
       (v) => (v === null || v === "" || v === undefined ? undefined : v),
       z.coerce.number().pipe(PriceSchema).optional(),
     ),
-  recipient: z
-    .preprocess((v) => (typeof v === "string" ? v.trim() || null : null),
-      z.string().max(200).nullable()),
-  notes: z
-    .preprocess((v) => (typeof v === "string" ? v.trim() || null : null),
-      z.string().max(2000).nullable()),
-});
+    recipient: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() || null : null),
+      z.string().max(200).nullable(),
+    ),
+    notes: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() || null : null),
+      z.string().max(2000).nullable(),
+    ),
+  })
+  // A "sold" disposition without a sale price is almost always a form
+  // mistake — the audit trail for valuations downstream depends on it.
+  .refine((d) => d.type !== "sold" || d.salePrice != null, {
+    message: "Sale price is required when marking a wine as sold",
+    path: ["salePrice"],
+  });
 
 /* ------------------------------------------------------------------ */
 /*  Image upload (feature #18)                                         */
@@ -61,6 +69,16 @@ export async function requestWineUploadUrl(
 ): Promise<UploadUrlResult> {
   const session = await getServerAuth();
   if (!session?.user?.id) throw new Error("Not authenticated");
+
+  // Cap presigned-URL signing so a misbehaving client (or attacker) can't
+  // burn AWS API quota or make the bucket fanout expensive. Mirrors the
+  // limit on `requestScanUploadUrl` in label-scan-actions.ts.
+  const ip = clientIp(headers());
+  const limit = await checkRateLimit(
+    `wine-upload:${session.user.id}:${ip}`,
+    { limit: 10, windowMs: 60_000 },
+  );
+  if (!limit.allowed) throw new Error("Too many upload requests — try again in a minute");
 
   if (typeof wineId !== "string" || wineId.length === 0) {
     throw new Error("Wine ID is required");

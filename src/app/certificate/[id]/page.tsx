@@ -43,6 +43,24 @@ export default async function CertificatePage({
     notFound();
   }
 
+  // Prisma Decimals are class instances and cannot cross the server/client
+  // boundary in Next 14 — serialize to plain numbers (or null) before passing
+  // to <CertificateDoc>.
+  const certificateProps = {
+    id: certificate.id,
+    certificateNumber: certificate.certificateNumber,
+    monitoringStart: certificate.monitoringStart,
+    monitoringEnd: certificate.monitoringEnd,
+    tempMean: certificate.tempMean != null ? Number(certificate.tempMean) : null,
+    tempMin: certificate.tempMin != null ? Number(certificate.tempMin) : null,
+    tempMax: certificate.tempMax != null ? Number(certificate.tempMax) : null,
+    humidityMean:
+      certificate.humidityMean != null ? Number(certificate.humidityMean) : null,
+    dataIntegrityHash: certificate.dataIntegrityHash,
+    wine: certificate.wine,
+    locker: certificate.locker,
+  };
+
   const provenance = await buildProvenanceBundle(certificate.id, session.user.id);
 
   return (
@@ -96,7 +114,7 @@ export default async function CertificatePage({
 
       {/* Certificate */}
       <div className="px-4 py-8 sm:py-12">
-        <CertificateDoc certificate={certificate} />
+        <CertificateDoc certificate={certificateProps} />
         {provenance ? (
           <div className="no-print">
             <ProvenanceTimeline bundle={provenance} />

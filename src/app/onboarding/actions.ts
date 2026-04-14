@@ -112,14 +112,17 @@ export async function reserveOnboardingLocker(): Promise<
     return { ok: false, error: "No facility configured" };
   }
 
+  // Locker numbers are unique PER facility (migration 0008). Read MAX once
+  // and increment locally on retry — the previous loop re-queried on every
+  // attempt, which under concurrent signups would have been quadratic.
+  const max = await prisma.locker.aggregate({
+    where: { facilityId },
+    _max: { lockerNumber: true },
+  });
+  const baseLockerNumber = (max._max.lockerNumber ?? 0) + 1;
+
   for (let attempt = 0; attempt < 3; attempt++) {
-    // Locker numbers are unique PER facility (migration 0008), so the max
-    // we care about is scoped to the facility we're about to insert into.
-    const max = await prisma.locker.aggregate({
-      where: { facilityId },
-      _max: { lockerNumber: true },
-    });
-    const lockerNumber = (max._max.lockerNumber ?? 0) + 1 + attempt;
+    const lockerNumber = baseLockerNumber + attempt;
     const zone = String.fromCharCode(
       65 + (Math.floor((lockerNumber - 1) / 8) % 26),
     );

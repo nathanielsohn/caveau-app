@@ -38,8 +38,9 @@ export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /** Presigned URL TTL — long enough for a slow phone upload, short enough
- *  that a leaked URL goes stale before it can be abused. */
-const UPLOAD_URL_TTL_SECONDS = 5 * 60;
+ *  that a leaked URL goes stale before it can be abused. Operator-tunable
+ *  via S3_UPLOAD_URL_TTL_SECONDS (clamped to [60, 900] in env.ts). */
+const UPLOAD_URL_TTL_SECONDS = env.S3_UPLOAD_URL_TTL_SECONDS;
 
 let cachedClient: S3Client | null = null;
 function getClient(): S3Client {

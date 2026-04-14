@@ -8,17 +8,18 @@ const QRCodeSVG = dynamic(
   () => import("qrcode.react").then((mod) => mod.QRCodeSVG),
   { ssr: false, loading: () => <div className="w-[80px] h-[80px] bg-[#2A2A30] rounded-lg animate-pulse" /> }
 );
-import type { Decimal } from "@prisma/client/runtime/library";
 
 interface CertificateData {
   id: string;
   certificateNumber: string;
   monitoringStart: Date;
   monitoringEnd: Date;
-  tempMean: Decimal | number | null;
-  tempMin: Decimal | number | null;
-  tempMax: Decimal | number | null;
-  humidityMean: Decimal | number | null;
+  // Numbers (not Prisma Decimals) — the server component serializes these
+  // before passing them across the client boundary.
+  tempMean: number | null;
+  tempMin: number | null;
+  tempMax: number | null;
+  humidityMean: number | null;
   dataIntegrityHash: string;
   wine: {
     name: string;
@@ -31,6 +32,8 @@ interface CertificateData {
     zone: string;
   };
 }
+
+const NA = "—";
 
 export default function CertificateDoc({
   certificate,
@@ -113,19 +116,19 @@ export default function CertificateDoc({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <EnvironmentalStat
                 label="Avg Temp"
-                value={formatTemp(certificate.tempMean)}
+                value={certificate.tempMean != null ? formatTemp(certificate.tempMean) : NA}
               />
               <EnvironmentalStat
                 label="Min Temp"
-                value={formatTemp(certificate.tempMin)}
+                value={certificate.tempMin != null ? formatTemp(certificate.tempMin) : NA}
               />
               <EnvironmentalStat
                 label="Max Temp"
-                value={formatTemp(certificate.tempMax)}
+                value={certificate.tempMax != null ? formatTemp(certificate.tempMax) : NA}
               />
               <EnvironmentalStat
                 label="Avg Humidity"
-                value={formatHumidity(certificate.humidityMean)}
+                value={certificate.humidityMean != null ? formatHumidity(certificate.humidityMean) : NA}
               />
             </div>
             {/* Optimal range note */}
