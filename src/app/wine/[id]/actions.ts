@@ -8,6 +8,7 @@ import { getServerAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { UuidSchema, PriceSchema, parseOr400 } from "@/lib/schemas";
+import { assertCanDispose } from "@/lib/disposition-guard";
 import {
   deleteObject,
   extensionForType,
@@ -179,8 +180,7 @@ export async function recordDisposition(formData: FormData) {
       where: { id: wineId, memberId: session.user.id },
       select: { id: true, status: true, imageKey: true },
     });
-    if (!wine) throw new Error("Not found");
-    if (wine.status !== "in_cellar") throw new Error("Wine already disposed");
+    assertCanDispose(wine);
     imageKeyToDelete = wine.imageKey;
 
     await tx.wineDisposition.create({
