@@ -34,7 +34,22 @@ DATABASE_URL=postgresql://<user>:<password>@<rds-host>:5432/caveau
 # connection budget on a traffic spike. Migrate to RDS Proxy once
 # steady-state traffic justifies it.
 NEXTAUTH_SECRET=<random-base64-string>
+
+# Optional — NextAuth falls back to the request host / VERCEL_URL when
+# unset. Set it explicitly for local dev or when attaching a custom domain.
 NEXTAUTH_URL=http://localhost:3000
+
+# Optional — when "true", the login page renders the demo credentials
+# block (`robert@caveau.com` / `demo1234`). Leave unset in production.
+NEXT_PUBLIC_SHOW_DEMO_CREDS=true
+
+# Optional — dedicated HMAC keys for provenance certificate hashes
+# (src/lib/certificate-hash.ts) and the signed facility-switcher cookie
+# (src/lib/current-facility.ts). Both fall back to NEXTAUTH_SECRET when
+# unset, which is fine for dev/demo; set independent random values in
+# production so a leak of one secret doesn't compromise the others.
+CERTIFICATE_HMAC_SECRET=
+FACILITY_COOKIE_SECRET=
 
 # Optional — enables distributed rate limiting via Upstash Redis. If
 # either var is unset, src/lib/rate-limit.ts falls back to the per-Lambda
@@ -148,9 +163,11 @@ src/
 ├── components/
 │   ├── providers.tsx           # SessionProvider wrapper
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile) — shows session user
+│   ├── facility-context.tsx    # Client context for nav facility switcher (#16)
 │   ├── metric-card.tsx         # Animated stat card (icon + value + label)
 │   ├── wine-card.tsx           # Wine card with drink window badges
 │   ├── wine-image-upload.tsx   # Presigned S3 upload UI (#18) — no-ops when bucket unset
+│   ├── scan-label-button.tsx   # Wine label OCR button (#24) — disabled when Vision key unset
 │   ├── locker-grid.tsx         # 4×8 slot grid + slot detail panel + filter bar (#38)
 │   ├── sensor-charts.tsx       # Recharts (temp, humidity, vibration, access log)
 │   ├── dashboard-charts.tsx    # Analytics (value trend, utilization, alert freq)
@@ -159,6 +176,7 @@ src/
 │   ├── add-wine-form.tsx       # Add wine modal/form
 │   ├── disposition-form.tsx    # Wine disposition modal (<dialog>)
 │   ├── valuation-chart.tsx     # Wine valuation price history chart
+│   ├── toast.tsx               # Global toast system (showToast + <Toaster />)
 │   └── skeleton.tsx            # Loading skeleton primitives
 └── lib/
     ├── auth.ts                 # NextAuth config + getServerAuth() helper

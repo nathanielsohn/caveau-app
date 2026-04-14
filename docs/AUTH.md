@@ -195,13 +195,13 @@ Limits are tracked in process memory (`src/lib/rate-limit.ts`). They reset on de
 
 ## Demo credentials
 
-In development the login page surfaces:
+When enabled, the login page surfaces:
 
 ```
 robert@caveau.com / demo1234
 ```
 
-This block is gated by `process.env.NODE_ENV === "development"` and never renders in production builds.
+This block is gated by `process.env.NEXT_PUBLIC_SHOW_DEMO_CREDS === "true"`, which is bundled at build time so the check strips to a constant in production bundles when the flag is unset. Leave the env var unset in production deployments; set it to `"true"` in dev or staging builds where demo credentials should be visible.
 
 ## Known gaps
 

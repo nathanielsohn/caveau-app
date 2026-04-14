@@ -4,7 +4,7 @@
 
 ## Overview
 
-Caveau uses 14 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses 17 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
 
 ## Components
 
@@ -27,6 +27,39 @@ The app shell navigation. Two layouts:
 - **Mobile (<768px):** Fixed bottom tab bar with 4 icons
 
 **Used in:** `layout.tsx` (wraps all pages)
+
+---
+
+### facility-context.tsx
+**Status:** Complete (Feature #16 — multi-facility support)
+
+Client-side React context that powers the nav's facility switcher. `FacilityProvider` is mounted inside `nav.tsx` with the current member's facilities and the active facility id; consumers call `useFacility()` to read the list and call `switchFacility(id)` to change it. The switcher calls the `setCurrentFacility` server action (writes the signed facility cookie), then hard-navigates the current path so client-side filter/sort state resets and server components re-query against the new facility scope.
+
+**Props (`FacilityProvider`):** `facilities`, `currentFacilityId`, `children`
+
+**Used in:** `nav.tsx` (provider) and the dropdown rendered inside the nav (consumer)
+
+---
+
+### scan-label-button.tsx
+**Status:** Complete (Feature #24 — wine label OCR)
+
+Reusable client button for scanning a wine label via Google Cloud Vision. Owns its own file input, upload state, scan state, and error state so it can be dropped into both the standalone `AddWineForm` and the inline locker-slot add-wine form. Flow: validate file (jpeg/png/webp, ≤5MB) → presign + PUT to S3 → call OCR server action → emit `onParsed` with parsed fields + S3 image key. When `GOOGLE_CLOUD_VISION_API_KEY` is unset the button renders disabled with a tooltip; parents hide it entirely when S3 is also unconfigured. Status region announces progress and errors via `aria-live`.
+
+**Props:** `visionConfigured`, `getUploadUrl`, `scanAction`, `onParsed`, plus optional styling overrides
+
+**Used in:** `add-wine-form.tsx`, locker-grid inline add-wine form
+
+---
+
+### toast.tsx
+**Status:** Complete
+
+Self-contained toast system — no library, no context, no prop drilling. Any client component calls `showToast(message, kind)` and the global `<Toaster />` mounted in the root layout picks it up via a window `CustomEvent`. Two kinds: `"success"` (gold check) and `"error"` (danger X). Auto-dismiss after 3.5s with manual dismiss via the X button; stacks up to 4 toasts and drops the oldest.
+
+**Exports:** `Toaster` (mount in layout), `showToast(message, kind)` helper, `ToastKind` type
+
+**Used in:** `app/layout.tsx` (mounts `Toaster`); any client component that needs to signal success/error feedback
 
 ---
 
@@ -175,7 +208,7 @@ Loading skeleton primitives used by route-level `loading.tsx` files. Exports a b
 NextAuth v4 configuration: Credentials provider (email + bcrypt), JWT strategy, 4-hour session, role/tier copied into the token. Exports `getServerAuth()` for Server Components and Server Actions.
 
 ### env.ts
-Boot-time environment validation. Throws if `DATABASE_URL`, `NEXTAUTH_SECRET`, or `NEXTAUTH_URL` are missing or malformed — fail fast at startup, not on the first request.
+Boot-time environment validation. Throws if `DATABASE_URL` or `NEXTAUTH_SECRET` is missing — fail fast at startup, not on the first request. All other vars (`NEXTAUTH_URL`, AWS/Google/Upstash keys, `CERTIFICATE_HMAC_SECRET`, `FACILITY_COOKIE_SECRET`, `NEXT_PUBLIC_SHOW_DEMO_CREDS`) are optional and surface as `string | undefined` so call sites have to handle the missing case explicitly.
 
 ### rate-limit.ts
 In-memory per-IP token bucket. Used by `middleware.ts` for auth and verify endpoints. Resets on deploy and does not persist across serverless instances — adequate for the demo, replace with Upstash/KV for production hardening.

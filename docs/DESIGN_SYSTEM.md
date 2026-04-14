@@ -1,6 +1,6 @@
 # Design System
 
-> Last updated: 2026-04-11 | All 14 core features complete
+> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
 
 ## Brand
 

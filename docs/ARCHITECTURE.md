@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 14 of 24 roadmap features done
+> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
 
 ## Overview
 
@@ -67,9 +67,11 @@ caveau-app/
 │   ├── components/             # Shared UI components
 │   │   ├── providers.tsx       # SessionProvider wrapper
 │   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile) + facility switcher
+│   │   ├── facility-context.tsx # Client context powering the facility switcher (#16)
 │   │   ├── metric-card.tsx     # Stat card (icon + value + label)
 │   │   ├── wine-card.tsx       # Wine card for grid/list views
 │   │   ├── wine-image-upload.tsx # Presigned S3 upload UI (#18) — no-ops when bucket unset
+│   │   ├── scan-label-button.tsx # Wine label OCR button (#24) — disabled when Vision key unset
 │   │   ├── locker-grid.tsx     # 4×8 slot grid + detail panel + filter bar (#38)
 │   │   ├── sensor-charts.tsx   # Temp/humidity/vibration charts + access log
 │   │   ├── dashboard-charts.tsx # Analytics (value trend, utilization, alerts)
@@ -78,6 +80,7 @@ caveau-app/
 │   │   ├── add-wine-form.tsx   # Add wine modal
 │   │   ├── disposition-form.tsx # Wine disposition dialog
 │   │   ├── valuation-chart.tsx # Wine price history chart
+│   │   ├── toast.tsx           # Global toast system (showToast + <Toaster />)
 │   │   └── skeleton.tsx        # Loading skeleton primitives
 │   └── lib/                    # Shared utilities
 │       ├── auth.ts             # NextAuth config + getServerAuth() helper

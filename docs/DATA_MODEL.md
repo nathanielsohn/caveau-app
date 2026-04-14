@@ -1,6 +1,6 @@
 # Data Model
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 14 of 24 roadmap features done
+> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
 
 ## Entity Relationship Diagram
 
