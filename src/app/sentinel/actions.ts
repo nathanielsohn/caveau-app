@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireMemberFacility } from "@/lib/current-facility";
 import { notifyAlert } from "@/lib/notify-alert";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
-import type { AlertType, Severity } from "@prisma/client";
+import { validateLiveAlert } from "@/lib/validate-live-alert";
 
 export interface DbSensorReading {
   temperature: number;
@@ -116,16 +116,6 @@ export async function fetchSentinelData(
   return fetchSentinelDataForLocker(ctx.lockerId, hoursBack);
 }
 
-const ALERT_TYPES = new Set<AlertType>([
-  "temperature",
-  "humidity",
-  "vibration",
-  "light",
-  "door",
-  "access",
-]);
-const SEVERITIES = new Set<Severity>(["info", "warning", "critical"]);
-
 /**
  * Persist a live (client-simulated) threshold breach as a real Alert row and
  * trigger email notification via SES. Scoped to the current member's locker.
@@ -157,12 +147,9 @@ export async function recordLiveAlert(input: {
   // Validate the discriminated-union inputs. Unknown values are rejected
   // silently rather than throwing — the client is a live simulation and we
   // don't want a bad tick to spam error toasts.
-  const type = input.type as AlertType;
-  const severity = input.severity as Severity;
-  if (!ALERT_TYPES.has(type)) return null;
-  if (!SEVERITIES.has(severity)) return null;
-  if (typeof input.message !== "string" || input.message.length === 0) return null;
-  const message = input.message.slice(0, 500);
+  const validation = validateLiveAlert(input);
+  if (!validation.ok) return null;
+  const { type, severity, message } = validation.data;
 
   const alert = await prisma.alert.create({
     data: { lockerId, type, severity, message },
