@@ -296,11 +296,16 @@ gantt
     Admin panel               :p3b, after p3a, 7d
     Mobile app                :p3c, after p3a, 14d
     Certificate PDF + verify  :done, p3d, after p3b, 5d
-    Insurance integration     :p3e, after p3d, 5d
+    Insurance partner program :p3e, after p3d, 7d
     Multi-location mgmt       :p3f, after p3e, 5d
-    Wine marketplace          :p3g, after p3f, 7d
-    Wine disposition          :done, p3h, after p3g, 3d
+    Wine disposition          :done, p3h, after p3f, 3d
     Locker self-service       :done, p3i, after p3h, 3d
+
+    section Phase 4 — Vault Business
+    Liv-ex live pricing       :p4a, 2026-07-01, 7d
+    Provenance timeline       :p4b, after p4a, 7d
+    Auction handoff package   :p4c, after p4b, 5d
+    Facility resilience       :p4d, after p4c, 5d
 ```
 
 ### Phase 1 — Foundation (weeks 1–3 post-demo)
@@ -339,9 +344,9 @@ Turn it into a business.
 | 28 | Admin panel | Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. |
 | 29 | Mobile app | React Native (Expo). Push notifications for alerts. Collection browsing, locker check-in via camera, certificate sharing. |
 | 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
-| 31 | Insurance integration | Export standardized condition reports (PDF) for wine insurance carriers. Continuous monitoring proof for premium reduction claims. |
+| 31 | Insurance partner program | Two-sided: member-facing enrollment flow that applies carrier discounts on collection coverage for wines stored in an approved Caveau facility, plus a carrier-facing proof-of-storage API and standardized condition report exports. Expanded from the original PDF-export scope after the April 2026 investor review. |
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
-| 33 | Wine marketplace | Member-to-member trading within the platform. Listing, offers, provenance transfer on sale. Commission model. |
+| 33 | ~~Wine marketplace~~ | ~~Member-to-member trading within the platform.~~ **Deprioritized 2026-04-14** — dilutes the vault-custodian positioning that came out of the investor review. Revisit post-pilot. |
 | 34 | ~~Wine disposition tracking~~ | ~~WineStatus enum, WineDisposition model, history toggle on collection page, dashboard metrics scoped to active wines. Done.~~ |
 | 35 | ~~Locker self-service (member)~~ | ~~Assign/remove wines from locker slots via modal picker. Done.~~ |
 | 36 | ~~Add wine from locker slot~~ | ~~Inline add-wine form in slot picker modal, single-transaction create + assign. Done.~~ |
@@ -354,7 +359,9 @@ Framing comes from the April 2026 investor review (Robert Saenz): the locker pro
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 39 | ~~Liv-ex live pricing integration~~ | ~~Real Liv-ex API client in `src/lib/livex.ts` with graceful fallback, daily sync via Vercel cron at `/api/cron/livex-sync`, per-wine `lastValuationSyncAt` timestamp, "Last updated" surface on dashboard collection-value card and wine detail valuation chart. LIVEX_API_KEY unset → sync no-ops and seeded data renders unchanged. Done.~~ |
+| 39 | Liv-ex live pricing integration | Replace seeded `WineValuation` data with a real Liv-ex API client. Daily price sync job, per-wine "last updated" timestamps, graceful fallback to last known price on API failure. Unlocks real-time collection valuation on the dashboard and wine detail page — the thing a member checks before deciding to hold or sell. |
+| 40 | ~~Provenance chain-of-custody timeline~~ | ~~Per-bottle timeline rendering the unbroken Sentinel history from intake to today: temperature/humidity envelope, access events, facility moves, disposition. Signed JSON + PDF export attached to the existing certificate. Done.~~ |
+| 41 | Auction / broker handoff package | One-click bundle for Christie's / Sotheby's / Acker / private brokers: provenance certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." |
 | 42 | ~~Facility resilience & hurricane reporting~~ | ~~Facility-level dashboard for elevation, generator uptime, fire suppression status, and logged weather/hurricane events. Auto-generated post-event member reports ("your cellar was safe during Hurricane X — here's the environmental record"). Naples-specific differentiator vs. Carl's Wine Vault and the reason a collector picks an above-sea-level monitored facility over a home cellar. Done.~~ |
 
 ### Code Audit — Technical Debt Backlog (April 2026)

@@ -36,3 +36,46 @@ export function certificateIntegrityHash(input: {
     .update(`${input.wineId}|${input.lockerId}|${start}|${end}`)
     .digest("hex");
 }
+
+/**
+ * Sign a provenance bundle (feature #40 export). Uses the same
+ * CERTIFICATE_HMAC_SECRET key as `certificateIntegrityHash` — a verifier
+ * already trusts that key for the public certificate, so reusing it for the
+ * exported bundle keeps the trust model unchanged.
+ *
+ * The signature is computed over a canonical JSON serialization with sorted
+ * object keys so re-serializing the same bundle yields the same signature
+ * regardless of property ordering. The signature itself is excluded from the
+ * input (you can't sign your own signature).
+ */
+export function provenanceBundleHash(bundle: unknown): string {
+  const key = env.CERTIFICATE_HMAC_SECRET;
+  if (!key) {
+    throw new Error(
+      "CERTIFICATE_HMAC_SECRET (or NEXTAUTH_SECRET fallback) is required to sign provenance bundles",
+    );
+  }
+  return createHmac("sha256", key)
+    .update(canonicalJson(bundle))
+    .digest("hex");
+}
+
+/**
+ * Stable, key-sorted JSON serialization. Two objects with the same content
+ * but different key insertion order serialize identically — required for
+ * deterministic HMAC signing.
+ */
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  const parts = keys.map(
+    (k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`,
+  );
+  return `{${parts.join(",")}}`;
+}

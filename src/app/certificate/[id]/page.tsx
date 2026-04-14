@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import CertificateDoc, { PrintButton } from "@/components/certificate-doc";
+import ProvenanceTimeline from "@/components/provenance-timeline";
+import { buildProvenanceBundle } from "@/lib/provenance";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,8 @@ export default async function CertificatePage({
   if (!certificate) {
     notFound();
   }
+
+  const provenance = await buildProvenanceBundle(certificate.id, session.user.id);
 
   return (
     <>
@@ -93,6 +97,11 @@ export default async function CertificatePage({
       {/* Certificate */}
       <div className="px-4 py-8 sm:py-12">
         <CertificateDoc certificate={certificate} />
+        {provenance ? (
+          <div className="no-print">
+            <ProvenanceTimeline bundle={provenance} />
+          </div>
+        ) : null}
       </div>
     </>
   );
