@@ -132,7 +132,7 @@ export async function middleware(req: NextRequest) {
 
   // --- Public paths — no auth required ---
   // /verify/[hash] is intentionally public (third-party provenance check).
-  // /certificate/[id] is auth-protected; the page enforces ownership.
+  // /report/[id] (and legacy /certificate/[id]) is auth-protected; the page enforces ownership.
   const isPublic =
     pathname.startsWith("/auth") ||
     pathname.startsWith("/verify") ||

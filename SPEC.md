@@ -46,10 +46,10 @@ Visual 4×8 grid of locker slots. Empty vs occupied. Click slot → slide-out pa
 IoT dashboard: 4 condition cards (temp, humidity, vibration, light), temperature area chart, humidity line chart, vibration gauge, alert history. Time range toggle (1H/6H/24H/7D/30D). Live-updating simulated data.
 
 ### 5. Wine Detail (`/wine/[id]`)
-Full bottle profile: image, producer, region, vintage, tasting notes, purchase price vs current value, storage location, link to provenance certificate.
+Full bottle profile: image, producer, region, vintage, tasting notes, purchase price vs current value, storage location, link to custody & condition report.
 
-### 6. Provenance Certificate (`/certificate/[id]`)
-Standalone printable page: wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number. No sidebar.
+### 6. Custody & Condition Report (`/report/[id]`)
+Standalone printable page: wine info, monitoring period, environmental summary, SHA-256 integrity badge, report number, chain-of-custody timeline. No sidebar. Legacy `/certificate/[id]` redirects here.
 
 ---
 

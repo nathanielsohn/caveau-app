@@ -33,7 +33,7 @@ const TIER_OPTIONS: Array<{
     tier: Tier.gold,
     label: "Gold",
     description: "For the discerning collector building a personal cellar.",
-    perks: ["Up to 32 bottles", "Climate monitoring", "Provenance certificates"],
+    perks: ["Up to 32 bottles", "Climate monitoring", "Custody & condition reports"],
   },
   {
     tier: Tier.platinum,

@@ -47,7 +47,7 @@ export async function GET(
     // Both "no such certificate" and "not your certificate" return 404 to
     // prevent enumeration of certificate IDs.
     return NextResponse.json(
-      { error: "Certificate not found" },
+      { error: "Report not found" },
       { status: 404 }
     );
   }

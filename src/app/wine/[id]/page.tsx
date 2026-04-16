@@ -379,7 +379,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         )}
       </div>
 
-      {/* Provenance Certificate link */}
+      {/* Custody & Condition Report link */}
       {certificate && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -389,7 +389,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </div>
               <div>
                 <h2 className="font-serif text-lg text-primary">
-                  Provenance Certificate
+                  Custody & Condition Report
                 </h2>
                 <p className="text-xs text-muted">
                   {certificate.certificateNumber}
@@ -397,10 +397,10 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </div>
             </div>
             <Link
-              href={`/certificate/${certificate.id}`}
+              href={`/report/${certificate.id}`}
               className="btn-gold text-sm"
             >
-              View Certificate
+              View Report
             </Link>
           </div>
         </div>

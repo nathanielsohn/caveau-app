@@ -187,7 +187,7 @@ export async function buildProvenanceBundle(
   events.push({
     kind: "certificate",
     date: cert.createdAt.toISOString(),
-    title: "Provenance certificate issued",
+    title: "Custody & condition report issued",
     detail: cert.certificateNumber,
   });
 

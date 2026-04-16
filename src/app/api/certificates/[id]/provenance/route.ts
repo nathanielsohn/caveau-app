@@ -37,7 +37,7 @@ export async function GET(
   const bundle = await buildProvenanceBundle(idResult.data, session.user.id);
   if (!bundle) {
     return NextResponse.json(
-      { error: "Certificate not found" },
+      { error: "Report not found" },
       { status: 404 },
     );
   }

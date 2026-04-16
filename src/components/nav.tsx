@@ -54,8 +54,9 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     });
   };
 
-  // Hide nav on certificate, verify, and auth pages
+  // Hide nav on report, certificate (legacy redirect), verify, and auth pages
   if (
+    pathname.startsWith("/report") ||
     pathname.startsWith("/certificate") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/auth")

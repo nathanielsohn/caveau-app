@@ -1,5 +1,5 @@
 import { CertificateSkeleton } from "@/components/skeleton";
 
-export default function CertificateLoading() {
+export default function ReportLoading() {
   return <CertificateSkeleton />;
 }

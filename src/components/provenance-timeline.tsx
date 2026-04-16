@@ -39,7 +39,7 @@ export default function ProvenanceTimeline({
             id="provenance-heading"
             className="font-serif text-2xl text-primary"
           >
-            Provenance Timeline
+            Custody & Condition Timeline
           </h2>
           <p className="text-xs text-muted mt-2">
             {formatDate(envelope.start)} &mdash; {formatDate(envelope.end)}

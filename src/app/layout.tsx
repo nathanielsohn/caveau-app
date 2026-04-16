@@ -27,7 +27,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Caveau — Wine Cellar Management",
   description:
-    "Luxury wine cellar management with IoT monitoring and provenance certificates",
+    "Luxury wine cellar management with IoT monitoring and custody & condition reports",
   applicationName: "Caveau",
   appleWebApp: {
     capable: true,
