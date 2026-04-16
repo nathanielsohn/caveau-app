@@ -284,3 +284,27 @@ model WineDisposition {
   @@index([memberId])
   @@map("wine_dispositions")
 }
+
+// Pre-launch founding-member waitlist (feature #49). Public signups land
+// here; staff/admins review them from /admin/waitlist. `email` is unique
+// so a duplicate submit idempotently returns the existing row rather than
+// creating dupes. `source` captures how the lead arrived (e.g. "naples-wine-festival"),
+// `loiSigned` tracks whether they've countersigned a letter of intent,
+// `referredBy` is free-form so ops can record a member name / code without
+// forcing a self-FK at this stage.
+model Waitlist {
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  phone       String?
+  source      String?
+  notes       String?
+  loiSigned   Boolean   @default(false) @map("loi_signed")
+  loiSignedAt DateTime? @map("loi_signed_at")
+  referredBy  String?   @map("referred_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([loiSigned])
+  @@map("waitlist_entries")
+}

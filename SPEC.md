@@ -380,7 +380,7 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 | 46 | Hurricane Emergency Collection Protection | Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. |
 | 47 | Exit facilitation workflow | Commission tracking (10–12% on sales), auction house handoff (extends #41), acquisition sourcing margin tracking (8–12%). Member-facing "ready to sell" flow: select bottles → generate handoff package → choose channel (auction, broker, private sale) → track proceeds. |
 | 48 | Home Cellar Program (Year 2) | New location type: "home cellar" alongside "vault." Sentinel sensor at member's home feeds the same dashboard. Certified installer network tracking. Phase 1: white-label SensorPush hardware with Caveau-branded enclosure. Phase 2: custom enclosure with bottle probe + LTE-M cellular fallback. Phase 3: fully proprietary Caveau Sentinel at scale. |
-| 49 | Founding member waitlist | Pre-launch waitlist and LOI tracking. Naples Winter Wine Festival activation (Jan 30–Feb 1, 2027). Founding member discount tiers. Converts to full membership at Q3 2027 soft launch. |
+| 49 | ~~Founding member waitlist~~ | ~~Pre-launch waitlist and LOI tracking. Naples Winter Wine Festival activation (Jan 30–Feb 1, 2027). Founding member discount tiers. Converts to full membership at Q3 2027 soft launch. Done.~~ |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 

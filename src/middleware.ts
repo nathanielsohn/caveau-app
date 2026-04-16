@@ -47,6 +47,15 @@ const POLICIES: Array<{
       req.nextUrl.pathname === "/api/sensors/history",
     policy: { limit: 30, windowMs: 60_000 },
   },
+  {
+    bucket: "waitlist-submit",
+    // Public waitlist POSTs (feature #49). Server actions from the /waitlist
+    // marketing page arrive here as POSTs to the page path itself. Tight cap
+    // to prevent dupe-spamming / enumeration; legitimate users submit once.
+    match: (req) =>
+      req.method === "POST" && req.nextUrl.pathname === "/waitlist",
+    policy: { limit: 5, windowMs: 60_000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -138,6 +147,9 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/verify") ||
     pathname.startsWith("/api/auth") ||
     pathname === "/api/health" ||
+    // Pre-launch founding-member waitlist landing page (feature #49). The
+    // page + its server action POST are both unauthenticated by design.
+    pathname === "/waitlist" ||
     // Cron endpoints are auth'd via shared-secret Bearer token (CRON_SECRET),
     // not session cookies. Let them through the auth gate; the route handler
     // rejects unauthenticated invocations itself.
