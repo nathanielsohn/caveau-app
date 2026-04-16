@@ -93,39 +93,57 @@ export async function advanceStage(formData: FormData): Promise<void> {
   };
   const fieldEntry = stageTimestamps[targetStage];
 
-  const protocol = await prisma.hurricaneProtocol.findUnique({
-    where: { id: protocolId },
-    select: { id: true, facilityId: true, stormName: true, watchIssuedAt: true, facilityEventId: true },
-  });
-  if (!protocol) throw new Error("Protocol not found");
-
-  // When we flip to all_clear, auto-create a FacilityEvent so the existing
-  // #42 post-event report picks up the hurricane window. Idempotent — if
-  // the protocol already has a linked event, we don't create a second one.
-  let facilityEventIdToLink: string | null = protocol.facilityEventId;
-  if (targetStage === "all_clear" && !protocol.facilityEventId) {
-    const facilityEvent = await prisma.facilityEvent.create({
-      data: {
-        facilityId: protocol.facilityId,
-        type: FacilityEventType.hurricane,
-        severity: Severity.critical,
-        startedAt: protocol.watchIssuedAt,
-        endedAt: now,
-        notes: `Hurricane ${protocol.stormName} — members enrolled in the Emergency Collection Protection protocol were sheltered inland for the duration of the event. Environmental envelope preserved via continuous cold-chain transport.`,
+  // Wrap the find + (conditional) event create + stage update in a single
+  // transaction so two staff racing "Advance to All-Clear" can't both
+  // insert a FacilityEvent and orphan one in the audit trail. The
+  // updateMany with a facilityEventId=null predicate is the atomic claim —
+  // whichever racer gets there second finds count===0 and we rollback the
+  // duplicate FacilityEvent we just created.
+  await prisma.$transaction(async (tx) => {
+    const protocol = await tx.hurricaneProtocol.findUnique({
+      where: { id: protocolId },
+      select: {
+        id: true,
+        facilityId: true,
+        stormName: true,
+        watchIssuedAt: true,
+        facilityEventId: true,
       },
     });
-    facilityEventIdToLink = facilityEvent.id;
-  }
+    if (!protocol) throw new Error("Protocol not found");
 
-  await prisma.hurricaneProtocol.update({
-    where: { id: protocolId },
-    data: {
-      stage: targetStage,
-      ...(fieldEntry ? { [fieldEntry.field]: now } : {}),
-      ...(facilityEventIdToLink !== protocol.facilityEventId
-        ? { facilityEventId: facilityEventIdToLink }
-        : {}),
-    },
+    if (targetStage === "all_clear" && !protocol.facilityEventId) {
+      const facilityEvent = await tx.facilityEvent.create({
+        data: {
+          facilityId: protocol.facilityId,
+          type: FacilityEventType.hurricane,
+          severity: Severity.critical,
+          startedAt: protocol.watchIssuedAt,
+          endedAt: now,
+          notes: `Hurricane ${protocol.stormName} — members enrolled in the Emergency Collection Protection protocol were sheltered inland for the duration of the event. Environmental envelope preserved via continuous cold-chain transport.`,
+        },
+      });
+
+      const linked = await tx.hurricaneProtocol.updateMany({
+        where: { id: protocolId, facilityEventId: null },
+        data: {
+          stage: targetStage,
+          ...(fieldEntry ? { [fieldEntry.field]: now } : {}),
+          facilityEventId: facilityEvent.id,
+        },
+      });
+      if (linked.count === 0) {
+        throw new Error("Protocol already advanced by another operator");
+      }
+    } else {
+      await tx.hurricaneProtocol.update({
+        where: { id: protocolId },
+        data: {
+          stage: targetStage,
+          ...(fieldEntry ? { [fieldEntry.field]: now } : {}),
+        },
+      });
+    }
   });
 
   revalidatePath("/admin/hurricane");
