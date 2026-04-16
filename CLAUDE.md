@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → custody & condition reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 19 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42, 45). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 20 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 45). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -274,7 +274,6 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - Auction / broker handoff package (#41)
 
 **Phase 5 — Investor-Ready (from Rob's April 2026 business docs):**
-- NFC bottle tracking + tap-to-verify (#43)
 - Membership tier pricing (#44)
 - Hurricane Emergency Collection Protection protocol (#46)
 - Exit facilitation workflow (#47)

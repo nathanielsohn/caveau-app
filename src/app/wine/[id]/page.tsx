@@ -33,8 +33,15 @@ import {
 import ValuationChart from "@/components/valuation-chart";
 import DispositionButton from "./disposition-button";
 import WineImageUpload from "@/components/wine-image-upload";
-import { getPublicUrl } from "@/lib/s3";
+import { getPublicUrl, isS3Configured } from "@/lib/s3";
 import { recordDisposition, requestWineUploadUrl, setWineImage } from "./actions";
+import NfcTagCard from "./nfc-tag-card";
+import {
+  assignNfcTag,
+  removeNfcTag,
+  requestTagUploadUrl,
+} from "./nfc-actions";
+import { headers } from "next/headers";
 
 interface WineDetailPageProps {
   params: Promise<{ id: string }>;
@@ -80,12 +87,35 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         orderBy: { date: "desc" },
         select: { id: true, source: true, price: true, date: true },
       },
+      nfcTags: {
+        select: {
+          id: true,
+          tagId: true,
+          tier: true,
+          intakeImageKey: true,
+          activatedAt: true,
+          _count: { select: { scans: true } },
+        },
+      },
     },
   });
 
   if (!wine) {
     notFound();
   }
+
+  // Build the absolute /bottle/[tagId] URL so the member can hand the link
+  // to an auction house or paste it into an email. Origin comes from the
+  // request headers so dev, staging, and prod each resolve to their own
+  // host without an extra env var.
+  const nfcTag = wine.nfcTags[0] ?? null;
+  const reqHeaders = headers();
+  const forwardedProto = reqHeaders.get("x-forwarded-proto");
+  const host = reqHeaders.get("host") ?? "localhost:3000";
+  const proto = forwardedProto ?? (host.startsWith("localhost") ? "http" : "https");
+  const bottleUrl = nfcTag
+    ? `${proto}://${host}/bottle/${nfcTag.tagId}`
+    : "";
 
   const purchasePrice = toNumber(wine.purchasePrice);
   const currentValue = toNumber(wine.currentValue);
@@ -269,6 +299,28 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           </div>
         </div>
       </div>
+
+      {/* NFC Tag card (feature #43) */}
+      <NfcTagCard
+        wineId={wine.id}
+        wineName={wine.name}
+        tag={
+          nfcTag
+            ? {
+                tagId: nfcTag.tagId,
+                tier: nfcTag.tier,
+                intakeImageUrl: getPublicUrl(nfcTag.intakeImageKey),
+                activatedAt: nfcTag.activatedAt?.toISOString() ?? null,
+                scanCount: nfcTag._count.scans,
+              }
+            : null
+        }
+        bottleUrl={bottleUrl}
+        s3Configured={isS3Configured()}
+        assignAction={assignNfcTag}
+        removeAction={removeNfcTag}
+        requestUploadUrlAction={requestTagUploadUrl}
+      />
 
       {/* Valuation + Storage cards row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

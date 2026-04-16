@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { MapPin, Nfc } from "lucide-react";
 import { formatCurrency, percentChange } from "@/lib/utils";
 
 export interface WineCardData {
@@ -20,6 +20,10 @@ export interface WineCardData {
   createdAt?: string;
   lockerId?: string | null;
   lockerNumber?: number | null;
+  /** True when the bottle carries an active NFC tag (feature #43). */
+  nfcTagged?: boolean;
+  /** "capsule" (trophy) | "collar" (standard cellar) — drives badge color. */
+  nfcTagTier?: "capsule" | "collar" | null;
 }
 
 function getDrinkStatus(start?: number | null, end?: number | null): { label: string; className: string } | null {
@@ -138,6 +142,19 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
                 {drinkStatus.label}
               </span>
             ) : null}
+            {wine.nfcTagged && (
+              <span
+                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                  wine.nfcTagTier === "capsule"
+                    ? "bg-gold/10 text-gold border-gold/20"
+                    : "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20"
+                }`}
+                title={`NFC ${wine.nfcTagTier ?? "tag"} active`}
+              >
+                <Nfc size={8} />
+                NFC
+              </span>
+            )}
           </div>
         </div>
 

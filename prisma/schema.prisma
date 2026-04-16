@@ -67,6 +67,11 @@ enum HandoffChannel {
   private
 }
 
+enum NfcTagTier {
+  capsule
+  collar
+}
+
 model Facility {
   id                    String    @id @default(uuid())
   name                  String
@@ -164,6 +169,7 @@ model Wine {
   valuations       WineValuation[]
   dispositions     WineDisposition[]
   handoffPackages  HandoffPackage[]
+  nfcTags          NfcTag[]
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
@@ -322,6 +328,56 @@ model HandoffAccess {
 
   @@index([packageId, accessedAt(sort: Desc)])
   @@map("handoff_accesses")
+}
+
+// NFC bottle tracking + tap-to-verify (feature #43). At intake, staff assign
+// a tag to a wine: a `capsule` tag for trophy bottles ($1,000+, applied
+// invisibly under the foil) or a branded `collar` for standard bottles.
+// Both tiers surface the same public `/bottle/[tagId]` landing page when a
+// phone taps the chip. `tagId` is the URL path segment — staff scan or enter
+// it at intake, and it's used as the primary key so the scan log and
+// lookup both work off the same short string without an extra join.
+//
+// `intakeImageKey` is a separate photo taken at the moment of tagging (bottle
+// + tag in-frame) so there's a tamper-evidence record. It's distinct from
+// `wine.imageKey`, which is the marketing/reference photo for the member's
+// collection view.
+//
+// `activatedAt` is null between "tag ordered / serial written" and "tag
+// applied to a bottle"; once a bottle is assigned the record is considered
+// live. We keep the shell row so duplicate-write attempts hit the unique
+// constraint rather than silently creating a second record.
+model NfcTag {
+  id             String     @id @default(uuid())
+  tagId          String     @unique @map("tag_id")
+  wineId         String     @map("wine_id")
+  tier           NfcTagTier
+  intakeImageKey String?    @map("intake_image_key")
+  issuedAt       DateTime   @default(now()) @map("issued_at")
+  activatedAt    DateTime?  @map("activated_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  wine           Wine       @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  scans          NfcScan[]
+
+  @@index([wineId])
+  @@map("nfc_tags")
+}
+
+// One row per phone tap on a tagged bottle. The public /bottle/[tagId] page
+// writes here on every successful lookup so Rob can show "this bottle has
+// been verified N times" at the member's review. userAgent is truncated to
+// 255 chars to bound row size; ipHash is SHA-256(ip + secret) so we can
+// distinguish unique viewers without storing raw IPs.
+model NfcScan {
+  id         String   @id @default(uuid())
+  nfcTagId   String   @map("nfc_tag_id")
+  ipHash     String   @map("ip_hash")
+  userAgent  String?  @map("user_agent")
+  scannedAt  DateTime @default(now()) @map("scanned_at")
+  tag        NfcTag   @relation(fields: [nfcTagId], references: [id], onDelete: Cascade)
+
+  @@index([nfcTagId, scannedAt(sort: Desc)])
+  @@map("nfc_scans")
 }
 
 // Pre-launch founding-member waitlist (feature #49). Public signups land

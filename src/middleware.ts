@@ -57,6 +57,16 @@ const POLICIES: Array<{
     policy: { limit: 30, windowMs: 60_000 },
   },
   {
+    bucket: "bottle-tap",
+    // Public NFC tap-to-verify landing page (feature #43). Same enumeration
+    // concern as /verify and /handoff — tag serials are unguessable but we
+    // still cap per-IP so a scanner can't hammer the DB lookup. 30/min is
+    // generous enough for an auction house doing a bulk check-in but tight
+    // enough to starve a brute-force attempt.
+    match: (req) => req.nextUrl.pathname.startsWith("/bottle/"),
+    policy: { limit: 30, windowMs: 60_000 },
+  },
+  {
     bucket: "waitlist-submit",
     // Public waitlist POSTs (feature #49). Server actions from the /waitlist
     // marketing page arrive here as POSTs to the page path itself. Tight cap
@@ -160,6 +170,10 @@ export async function middleware(req: NextRequest) {
     // so auction houses and brokers can view without a login; the member's
     // list page at `/handoff` (no trailing slash) stays authenticated.
     pathname.startsWith("/handoff/") ||
+    // Public NFC tap-to-verify landing page (feature #43). Tag serials are
+    // unguessable; the page enforces its own rate limit (see POLICIES above)
+    // and logs every successful lookup.
+    pathname.startsWith("/bottle/") ||
     // Pre-launch founding-member waitlist landing page (feature #49). The
     // page + its server action POST are both unauthenticated by design.
     pathname === "/waitlist" ||

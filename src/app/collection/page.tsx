@@ -91,6 +91,10 @@ export default async function CollectionPage() {
         },
       },
     },
+    nfcTags: {
+      take: 1,
+      select: { tier: true },
+    },
   } as const;
 
   // Scope wines to the active facility. We split the OR query that used to
@@ -155,6 +159,8 @@ export default async function CollectionPage() {
       createdAt: w.createdAt.toISOString(),
       lockerId: slot?.locker.id ?? null,
       lockerNumber: slot?.locker.lockerNumber ?? null,
+      nfcTagged: w.nfcTags.length > 0,
+      nfcTagTier: w.nfcTags[0]?.tier ?? null,
     };
   });
 
