@@ -75,6 +75,7 @@ interface LockerGridProps {
   visionConfigured: boolean;
   requestScanUploadUrlAction: (
     contentType: string,
+    contentLength: number,
   ) => Promise<ScanUploadUrlResult>;
   scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
@@ -114,6 +115,13 @@ export default function LockerGrid({
   const pickerDialogRef = useRef<HTMLDialogElement>(null);
   const pickerSearchRef = useRef<HTMLInputElement>(null);
   const addFormNameRef = useRef<HTMLInputElement>(null);
+  // Mirror of pickerSlot for in-flight transitions. If the user opens a
+  // different slot while a server action is resolving, the success path
+  // must not overwrite the newly-opened slot's state.
+  const pickerSlotRef = useRef<SlotData | null>(null);
+  useEffect(() => {
+    pickerSlotRef.current = pickerSlot;
+  }, [pickerSlot]);
 
   // Scanned-field state for the inline add-wine form. Controlled inputs so a
   // successful scan can pre-fill them. imageKey gets threaded through the
@@ -283,14 +291,20 @@ export default function LockerGrid({
 
   function handleAssignWine(wineId: string) {
     if (!pickerSlot) return;
-    const slotNumber = pickerSlot.slotPosition;
+    // Capture the slot the action was started against. If the user manages
+    // to open a different slot before the transition resolves, the success
+    // path below must not clobber that newer open.
+    const originalPickerSlot = pickerSlot;
+    const slotNumber = originalPickerSlot.slotPosition;
     setActionError(null);
     startTransition(async () => {
-      const result = await assignWineToSlot(pickerSlot.id, wineId);
+      const result = await assignWineToSlot(originalPickerSlot.id, wineId);
       if (result.error) {
         setActionError(result.error);
       } else {
-        setPickerSlot(null);
+        if (pickerSlotRef.current?.id === originalPickerSlot.id) {
+          setPickerSlot(null);
+        }
         showToast(`Bottle assigned to slot ${slotNumber}`);
       }
     });
@@ -299,17 +313,20 @@ export default function LockerGrid({
   function handleAddWineToSlot(formData: FormData) {
     if (!pickerSlot) return;
     if (addImageKey) formData.set("imageKey", addImageKey);
-    const slotNumber = pickerSlot.slotPosition;
+    const originalPickerSlot = pickerSlot;
+    const slotNumber = originalPickerSlot.slotPosition;
     setActionError(null);
     startTransition(async () => {
-      const result = await addWineAndAssignToSlot(pickerSlot.id, formData);
+      const result = await addWineAndAssignToSlot(originalPickerSlot.id, formData);
       if (result.error) {
         setActionError(result.error);
       } else {
-        addFormRef.current?.reset();
-        resetAddFormState();
-        setPickerSlot(null);
-        setShowAddForm(false);
+        if (pickerSlotRef.current?.id === originalPickerSlot.id) {
+          addFormRef.current?.reset();
+          resetAddFormState();
+          setPickerSlot(null);
+          setShowAddForm(false);
+        }
         showToast(`Bottle added to slot ${slotNumber}`);
       }
     });
@@ -456,7 +473,7 @@ export default function LockerGrid({
                   ? { borderColor: color, boxShadow: `0 0 12px ${hexToRgba(color!, 0.125)}` }
                   : undefined
               }
-              disabled={(!isOccupied && !isEmpty) || dimmed}
+              disabled={(!isOccupied && !isEmpty) || dimmed || isPending}
             >
               {isOccupied ? (
                 <>
