@@ -67,8 +67,10 @@ export function Toaster() {
     return () => window.removeEventListener(TOAST_EVENT, handle);
   }, []);
 
-  if (toasts.length === 0) return null;
-
+  // Always render the live region so assistive tech can observe updates
+  // to an already-mounted region. Screen readers frequently miss
+  // mount-with-content insertions, so the wrapper stays put and only the
+  // toast list is conditionally rendered.
   return (
     <div
       // Above the bottom tab bar on mobile (h-16 + safe area), centered.
