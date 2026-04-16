@@ -204,23 +204,23 @@ export async function checkRateLimit(
 /**
  * Resolve the client IP from request headers.
  *
- * Vercel (and most serverless platforms) overwrite x-forwarded-for at the
- * edge with the real client IP, but the header is still attacker-controllable
- * unless we trust the platform's signed alternative. We prefer x-real-ip when
- * present (set by the runtime, not the client) and fall back to the first
- * entry of x-forwarded-for. As a last resort we use a stable "unknown" bucket
- * which means everyone shares the same counter — strict but safe.
+ * We trust only `x-real-ip`. On Vercel that header is set by the edge
+ * runtime and is not attacker-controllable. `x-forwarded-for`, by
+ * contrast, is whatever the client sent if we aren't sitting behind a
+ * trusted proxy that overwrites it — which is not a guarantee we can
+ * make across deploy targets (Render, Railway, self-hosted Docker,
+ * future platform changes). Trusting it would turn every limiter into
+ * "attacker picks their own bucket per request" via header spoofing.
+ *
+ * When x-real-ip is absent we fall back to a shared "unknown" bucket
+ * rather than reading XFF. That's strict — everyone competes for the
+ * same counter — but safe: an attacker who removes x-real-ip lands in
+ * the same bucket as every other mystery-source client and can't fan
+ * out.
  */
 export function clientIp(headers: Headers): string {
   const real = headers.get("x-real-ip");
   if (real && real.length > 0) return real.trim();
-
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-
   return "unknown";
 }
 
