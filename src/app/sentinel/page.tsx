@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Thermometer,
   Droplets,
@@ -165,40 +165,48 @@ export default function SentinelPage() {
   }, [range, loadDbData]);
 
   /* ── Live simulation (runs always for current values) */
+  // The tick closure is held in a ref so the 5-second setInterval below
+  // always sees the latest state-setters without having to restart the
+  // timer on every render. Assigning the ref lives in a useLayoutEffect
+  // rather than in the render body — reassigning refs during render
+  // breaks under strict mode / concurrent rendering because the render
+  // runs twice and the second pass can overwrite the first.
   const tickRef = useRef(() => {});
-  tickRef.current = () => {
-    const reading = simulateReading();
-    setLiveReadings((prev) => {
-      const updated = [...prev, reading];
-      return updated.length > MAX_LIVE_READINGS
-        ? updated.slice(-MAX_LIVE_READINGS)
-        : updated;
-    });
+  useLayoutEffect(() => {
+    tickRef.current = () => {
+      const reading = simulateReading();
+      setLiveReadings((prev) => {
+        const updated = [...prev, reading];
+        return updated.length > MAX_LIVE_READINGS
+          ? updated.slice(-MAX_LIVE_READINGS)
+          : updated;
+      });
 
-    // Check for threshold breaches
-    const newAlerts = checkThresholds(reading);
-    if (newAlerts.length > 0) {
-      setLiveAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
+      // Check for threshold breaches
+      const newAlerts = checkThresholds(reading);
+      if (newAlerts.length > 0) {
+        setLiveAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
 
-      // Persist + notify: one server call per alert type per cooldown window.
-      const now = Date.now();
-      for (const a of newAlerts) {
-        const key = `${a.type}:${a.severity}`;
-        const last = lastPersistedRef.current.get(key) ?? 0;
-        if (now - last < PERSIST_COOLDOWN_MS) continue;
-        lastPersistedRef.current.set(key, now);
-        void recordLiveAlert({
-          type: a.type,
-          severity: a.severity,
-          message: a.message,
-        }).catch(() => {
-          // Non-fatal: the in-memory alert is still shown to the user. We
-          // deliberately swallow silently rather than surfacing a toast for
-          // every failed tick — the server will also enforce its own cooldown.
-        });
+        // Persist + notify: one server call per alert type per cooldown window.
+        const now = Date.now();
+        for (const a of newAlerts) {
+          const key = `${a.type}:${a.severity}`;
+          const last = lastPersistedRef.current.get(key) ?? 0;
+          if (now - last < PERSIST_COOLDOWN_MS) continue;
+          lastPersistedRef.current.set(key, now);
+          void recordLiveAlert({
+            type: a.type,
+            severity: a.severity,
+            message: a.message,
+          }).catch(() => {
+            // Non-fatal: the in-memory alert is still shown to the user. We
+            // deliberately swallow silently rather than surfacing a toast for
+            // every failed tick — the server will also enforce its own cooldown.
+          });
+        }
       }
-    }
-  };
+    };
+  });
 
   useEffect(() => {
     // Generate initial reading
