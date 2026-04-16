@@ -6,6 +6,7 @@ declare module "next-auth" {
     role: Role;
     tier: Tier;
     onboarded: boolean;
+    sessionVersion: number;
   }
   interface Session {
     user: {
@@ -23,5 +24,6 @@ declare module "next-auth/jwt" {
     role: Role;
     tier: Tier;
     onboarded: boolean;
+    sessionVersion: number;
   }
 }

@@ -148,6 +148,7 @@ model Member {
   hurricaneProtectionEnrolledAt  DateTime? @map("hurricane_protection_enrolled_at")
   hurricaneInsurancePartner      String?   @map("hurricane_insurance_partner")
   hurricaneInsuranceDiscountPct  Decimal?  @map("hurricane_insurance_discount_pct") @db.Decimal(5, 2)
+  sessionVersion        Int       @default(0) @map("session_version")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   wines                 Wine[]

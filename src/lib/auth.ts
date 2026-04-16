@@ -33,6 +33,7 @@ export const authOptions: NextAuthOptions = {
           role: member.role,
           tier: member.tier,
           onboarded: member.onboardedAt != null,
+          sessionVersion: member.sessionVersion,
         };
       },
     }),
@@ -51,20 +52,39 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.tier = user.tier;
         token.onboarded = user.onboarded;
+        token.sessionVersion = user.sessionVersion;
+        return token;
       }
-      // After the onboarding wizard completes, the client calls
-      // `useSession().update()` to force a JWT refresh. Re-read the latest
-      // tier + onboarded flag from the DB so middleware sees the new state.
-      if (trigger === "update" && token.id) {
+
+      // Server-driven session invalidation. Every subsequent JWT callback
+      // invocation re-reads `sessionVersion` from the DB; if the stored
+      // value is ahead of the token's copy, the token is stale (admin
+      // demoted, password reset, forced sign-out) and we kick the user to
+      // re-auth on the next request. next-auth v4 types the callback as
+      // `Awaitable<JWT>` but treats a null return as "no valid token",
+      // which is the behavior we want — hence the cast.
+      if (token.id) {
         const member = await prisma.member.findUnique({
           where: { id: token.id },
-          select: { tier: true, onboardedAt: true },
+          select: { role: true, tier: true, onboardedAt: true, sessionVersion: true },
         });
-        if (member) {
+        const storedVersion = member?.sessionVersion ?? 0;
+        const tokenVersion = token.sessionVersion ?? 0;
+        if (!member || storedVersion !== tokenVersion) {
+          return null as unknown as typeof token;
+        }
+
+        // After the onboarding wizard completes (or any other voluntary
+        // refresh) the client calls `useSession().update()` to force a JWT
+        // refresh. Pull the latest role, tier, and onboarded flag from the
+        // same DB row so middleware sees the new state without a relogin.
+        if (trigger === "update") {
+          token.role = member.role;
           token.tier = member.tier;
           token.onboarded = member.onboardedAt != null;
         }
       }
+
       return token;
     },
     async session({ session, token }) {
@@ -84,6 +104,21 @@ export const authOptions: NextAuthOptions = {
 
 export function getServerAuth() {
   return nextAuthGetServerSession(authOptions);
+}
+
+/**
+ * Invalidate every outstanding JWT for a member by bumping their
+ * `sessionVersion`. Call this from any action that should take effect
+ * immediately — role demotion, password reset, explicit sign-out-
+ * everywhere. The jwt callback above re-reads sessionVersion on every
+ * invocation and returns null once the DB value advances past the
+ * token's copy, forcing the user to re-authenticate.
+ */
+export async function bumpSessionVersion(memberId: string): Promise<void> {
+  await prisma.member.update({
+    where: { id: memberId },
+    data: { sessionVersion: { increment: 1 } },
+  });
 }
 
 /** Role hierarchy: admin > staff > member */
