@@ -10,6 +10,15 @@ import {
   percentChange,
 } from "@/lib/utils";
 import {
+  classifyInvestmentTier,
+  calculateCAGR,
+  projectValue,
+  tierLabel,
+  tierDescription,
+  tierBadgeClass,
+  formatPercent,
+} from "@/lib/investment";
+import {
   ArrowLeft,
   MapPin,
   Calendar,
@@ -19,6 +28,7 @@ import {
   Award,
   Grape,
   Building2,
+  LineChart,
 } from "lucide-react";
 import ValuationChart from "@/components/valuation-chart";
 import DispositionButton from "./disposition-button";
@@ -100,6 +110,23 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
     price: toNumber(v.price),
     date: v.date.toISOString(),
   }));
+
+  // Investment classification (feature #45). Uses the earliest valuation
+  // as the CAGR anchor — the `valuations` selection above is ordered
+  // desc, so the oldest entry is at the end of the array.
+  const investmentTier = classifyInvestmentTier({
+    producer: wine.producer,
+    name: wine.name,
+    vintage: wine.vintage,
+  });
+  const earliestValuation =
+    wine.valuations.length > 0 ? wine.valuations[wine.valuations.length - 1] : null;
+  const anchorPrice = earliestValuation
+    ? toNumber(earliestValuation.price)
+    : purchasePrice;
+  const anchorDate = earliestValuation?.date ?? wine.createdAt;
+  const cagr = calculateCAGR(anchorPrice, currentValue, anchorDate);
+  const projectedFive = cagr != null ? projectValue(currentValue, cagr, 5) : null;
 
   // Server action to add a valuation
   async function addValuation(formData: FormData) {
@@ -353,6 +380,83 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           )}
         </div>
       </div>
+
+      {/* Investment Classification (feature #45) — only renders for
+          bottles that classify into one of the six tiers. */}
+      {investmentTier && (
+        <div className="glass-card p-6 space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0">
+              <LineChart className="w-5 h-5 text-gold" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-serif text-xl text-primary">
+                  Investment Classification
+                </h2>
+                <Link
+                  href="/portfolio"
+                  className="text-xs text-gold hover:text-gold-text transition-colors"
+                >
+                  View portfolio →
+                </Link>
+              </div>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-medium ${tierBadgeClass(investmentTier)}`}
+                >
+                  {tierLabel(investmentTier)}
+                </span>
+                <span className="text-sm text-secondary">
+                  {tierDescription(investmentTier)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#2A2A30]/50">
+            <div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">
+                Anchor Price
+              </p>
+              <p className="text-lg font-semibold text-secondary tabular-nums mt-1">
+                {formatCurrency(anchorPrice)}
+              </p>
+              <p className="text-[11px] text-muted mt-0.5">
+                {formatDate(anchorDate)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">
+                CAGR
+              </p>
+              <p
+                className={`text-lg font-semibold tabular-nums mt-1 ${
+                  cagr == null
+                    ? "text-muted"
+                    : cagr >= 0
+                      ? "text-ok"
+                      : "text-danger"
+                }`}
+              >
+                {cagr != null ? formatPercent(cagr) : "—"}
+              </p>
+              <p className="text-[11px] text-muted mt-0.5">annualized</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">
+                5-Year Projection
+              </p>
+              <p className="text-lg font-semibold text-gold tabular-nums mt-1">
+                {projectedFive != null ? formatCurrency(projectedFive) : "—"}
+              </p>
+              <p className="text-[11px] text-muted mt-0.5">
+                at current CAGR
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Price History Chart */}
       <ValuationChart

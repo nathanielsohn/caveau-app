@@ -13,12 +13,14 @@ import {
   Settings as SettingsIcon,
   Building2,
   ShieldCheck,
+  LineChart,
 } from "lucide-react";
 import { setCurrentFacility } from "@/app/facility-actions";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/collection", label: "Collection", icon: Wine },
+  { href: "/portfolio", label: "Portfolio", icon: LineChart },
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
   { href: "/facility", label: "Facility", icon: ShieldCheck },
@@ -54,11 +56,14 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
     });
   };
 
-  // Hide nav on report, certificate (legacy redirect), verify, and auth pages
+  // Hide nav on report, certificate (legacy redirect), verify, public handoff
+  // bundles, and auth pages. Note: `/handoff` (no slash) is the member's
+  // authenticated list page and should keep the nav.
   if (
     pathname.startsWith("/report") ||
     pathname.startsWith("/certificate") ||
     pathname.startsWith("/verify") ||
+    pathname.startsWith("/handoff/") ||
     pathname.startsWith("/auth")
   )
     return null;

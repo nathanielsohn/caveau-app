@@ -33,8 +33,10 @@ import {
   AlertTriangle,
   TrendingUp,
   Clock,
+  LineChart,
 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
+import { formatPercent } from "@/lib/investment";
 
 interface MetricsData {
   totalValue: string;
@@ -86,6 +88,16 @@ interface AppreciationWine {
   currentValue: string;
 }
 
+interface PortfolioSnapshot {
+  bottleCount: number;
+  current: string;
+  cagr: number | null;
+  projectedFive: string | null;
+  sp500ProjectedFive: string;
+  /** Signed delta: portfolio 5yr projection minus S&P 5yr projection (USD). */
+  vsSp500: number | null;
+}
+
 interface DashboardClientProps {
   metrics: MetricsData;
   topWines: TopWine[];
@@ -94,6 +106,8 @@ interface DashboardClientProps {
   alertFrequency: AlertFrequencyPoint[];
   topGainers: AppreciationWine[];
   topLosers: AppreciationWine[];
+  /** Null when member has no investment-grade bottles. */
+  portfolio: PortfolioSnapshot | null;
 }
 
 function severityBadgeClass(severity: string): string {
@@ -117,6 +131,7 @@ export default function DashboardClient({
   alertFrequency,
   topGainers,
   topLosers,
+  portfolio,
 }: DashboardClientProps) {
   const { data: session } = useSession();
   const firstName = session?.user?.name?.split(" ")[0] ?? "Member";
@@ -324,6 +339,90 @@ export default function DashboardClient({
           )}
         </div>
       </div>
+
+      {/* Investment Portfolio (feature #45) — surfaces only when the
+          member holds bottles that classify into one of the six
+          investment tiers. Links through to the full breakdown. */}
+      {portfolio && (
+        <Link
+          href="/portfolio"
+          className="block glass-card p-5 md:p-6 hover:bg-caveau-graphite/30 transition-colors group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center flex-shrink-0">
+              <LineChart className="w-5 h-5 text-gold" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-serif text-lg text-primary group-hover:text-gold transition-colors">
+                  Investment Portfolio
+                </h2>
+                <span className="text-xs text-muted">
+                  {portfolio.bottleCount} investment-grade bottle
+                  {portfolio.bottleCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">
+                    Portfolio Value
+                  </p>
+                  <p className="text-xl md:text-2xl font-semibold text-primary tabular-nums mt-1">
+                    {portfolio.current}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">
+                    CAGR
+                  </p>
+                  <p
+                    className={`text-xl md:text-2xl font-semibold tabular-nums mt-1 ${
+                      portfolio.cagr == null
+                        ? "text-muted"
+                        : portfolio.cagr >= 0
+                          ? "text-ok"
+                          : "text-danger"
+                    }`}
+                  >
+                    {portfolio.cagr != null ? formatPercent(portfolio.cagr) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">
+                    5-Year Projection
+                  </p>
+                  <p className="text-xl md:text-2xl font-semibold text-gold tabular-nums mt-1">
+                    {portfolio.projectedFive ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted uppercase tracking-wider">
+                    vs S&amp;P 500
+                  </p>
+                  <p
+                    className={`text-xl md:text-2xl font-semibold tabular-nums mt-1 ${
+                      portfolio.vsSp500 == null
+                        ? "text-muted"
+                        : portfolio.vsSp500 >= 0
+                          ? "text-ok"
+                          : "text-danger"
+                    }`}
+                  >
+                    {portfolio.vsSp500 == null
+                      ? "—"
+                      : portfolio.vsSp500 >= 0
+                        ? "outperform"
+                        : "trail"}
+                  </p>
+                  <p className="text-[11px] text-muted mt-0.5">
+                    {portfolio.sp500ProjectedFive} at 10%/yr
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Portfolio Appreciation */}
       {(topGainers.length > 0 || topLosers.length > 0) && (

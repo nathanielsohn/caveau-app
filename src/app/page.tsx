@@ -7,6 +7,10 @@ import {
   formatCurrencyCompact,
   toNumber,
 } from "@/lib/utils";
+import {
+  computePortfolioSummary,
+  type PortfolioWineInput,
+} from "@/lib/investment";
 import DashboardClient from "./dashboard-client";
 
 // Force dynamic rendering — data comes from the database
@@ -51,10 +55,19 @@ export default async function DashboardPage() {
         select: {
           id: true,
           name: true,
+          producer: true,
           vintage: true,
           region: true,
           currentValue: true,
           purchasePrice: true,
+          createdAt: true,
+          // Earliest valuation is the CAGR anchor for the portfolio
+          // card (feature #45). One extra row per wine — cheap.
+          valuations: {
+            orderBy: { date: "asc" },
+            take: 1,
+            select: { price: true, date: true },
+          },
         },
       }),
       prisma.locker.findMany({
@@ -268,6 +281,41 @@ export default async function DashboardPage() {
       count: Number(row.count),
     }));
 
+    // Investment portfolio summary (feature #45) — only surfaces on the
+    // dashboard card when the member holds at least one classified bottle.
+    const portfolioInputs: PortfolioWineInput[] = wines.map((w) => ({
+      producer: w.producer,
+      name: w.name,
+      vintage: w.vintage,
+      purchasePrice: toNumber(w.purchasePrice),
+      currentValue: toNumber(w.currentValue),
+      createdAt: w.createdAt,
+      earliestValuation: w.valuations[0]
+        ? { price: toNumber(w.valuations[0].price), date: w.valuations[0].date }
+        : null,
+    }));
+    const portfolioSummary = computePortfolioSummary(portfolioInputs);
+    const portfolioData =
+      portfolioSummary.bottleCount > 0
+        ? {
+            bottleCount: portfolioSummary.bottleCount,
+            current: formatCurrencyCompact(portfolioSummary.current),
+            cagr: portfolioSummary.cagr,
+            projectedFive:
+              portfolioSummary.projectedFive != null
+                ? formatCurrencyCompact(portfolioSummary.projectedFive)
+                : null,
+            sp500ProjectedFive: formatCurrencyCompact(
+              portfolioSummary.sp500ProjectedFive,
+            ),
+            vsSp500:
+              portfolioSummary.projectedFive != null
+                ? portfolioSummary.projectedFive -
+                  portfolioSummary.sp500ProjectedFive
+                : null,
+          }
+        : null;
+
     return (
       <DashboardClient
         metrics={metricsData}
@@ -277,6 +325,7 @@ export default async function DashboardPage() {
         alertFrequency={alertFrequency}
         topGainers={topGainers}
         topLosers={topLosers}
+        portfolio={portfolioData}
       />
     );
   } catch (error) {
