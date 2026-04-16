@@ -123,12 +123,12 @@ const alertData: { type: AlertType; severity: Severity; message: string; timesta
   { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 54.5% (threshold 55%)', timestamp: daysAgo(5), resolved: true },
   { type: AlertType.vibration, severity: Severity.warning, message: 'Vibration spike: 0.72 mm/s — HVAC maintenance', timestamp: daysAgo(4), resolved: true },
   { type: AlertType.access, severity: Severity.info, message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(4), resolved: true },
-  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: false },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature low: 49.3°F (threshold 50°F)', timestamp: daysAgo(3), resolved: true },
   { type: AlertType.access, severity: Severity.info, message: 'Locker accessed: member badge scan — Robert Saenz', timestamp: daysAgo(2), resolved: true },
-  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: false },
+  { type: AlertType.humidity, severity: Severity.warning, message: 'Humidity low: 54.1% (threshold 55%)', timestamp: daysAgo(1), resolved: true },
   { type: AlertType.access, severity: Severity.info, message: 'Reserve room entry: staff badge — Samuel Jalloh', timestamp: daysAgo(1), resolved: true },
   { type: AlertType.access, severity: Severity.warning, message: 'After-hours access: member badge scan — Robert Saenz (11:42 PM)', timestamp: daysAgo(0), resolved: true },
-  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: false },
+  { type: AlertType.temperature, severity: Severity.warning, message: 'Temperature elevated: 59.6°F (threshold 59°F)', timestamp: daysAgo(0), resolved: true },
 ];
 
 // ── Slot layout ────────────────────────────────────────────────────────
