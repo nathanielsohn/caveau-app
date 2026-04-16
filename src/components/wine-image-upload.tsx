@@ -31,10 +31,13 @@ function isAllowed(type: string): type is AllowedType {
 export interface WineImageUploadProps {
   wineId: string;
   initialUrl: string | null;
-  /** Server action: returns a presigned PUT URL + the final object key. */
+  /** Server action: returns a presigned PUT URL + the final object key.
+   *  `contentLength` is signed into the policy, so the URL only accepts a
+   *  PUT of that exact size — pass `file.size` straight through. */
   requestUrlAction: (
     wineId: string,
     contentType: string,
+    contentLength: number,
   ) => Promise<{ uploadUrl: string; key: string; publicUrl: string }>;
   /** Server action: persist the key after a successful upload. */
   setImageAction: (
@@ -73,11 +76,18 @@ export default function WineImageUpload({
     setPending(true);
 
     try {
-      const { uploadUrl, key, publicUrl } = await requestUrlAction(wineId, file.type);
+      const { uploadUrl, key, publicUrl } = await requestUrlAction(
+        wineId,
+        file.type,
+        file.size,
+      );
 
       const putRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          "Content-Length": String(file.size),
+        },
         body: file,
       });
       if (!putRes.ok) {

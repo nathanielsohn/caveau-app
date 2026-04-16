@@ -53,6 +53,7 @@ export interface NfcTagCardProps {
   requestUploadUrlAction: (
     wineId: string,
     contentType: string,
+    contentLength: number,
   ) => Promise<TagUploadUrlResult>;
 }
 
@@ -267,6 +268,7 @@ interface NfcTagFormProps {
   requestUploadUrlAction: (
     wineId: string,
     contentType: string,
+    contentLength: number,
   ) => Promise<TagUploadUrlResult>;
 }
 
@@ -329,10 +331,13 @@ function NfcTagForm({
     setPreviewUrl(blobUrl);
     setUploading(true);
     try {
-      const res = await requestUploadUrlAction(wineId, file.type);
+      const res = await requestUploadUrlAction(wineId, file.type, file.size);
       const put = await fetch(res.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          "Content-Length": String(file.size),
+        },
         body: file,
       });
       if (!put.ok) throw new Error(`Upload failed (${put.status})`);

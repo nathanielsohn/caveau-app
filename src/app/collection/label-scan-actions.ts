@@ -26,6 +26,7 @@ import {
   getUploadUrl,
   isAllowedImageType,
   isS3Configured,
+  MAX_IMAGE_BYTES,
 } from "@/lib/s3";
 import { detectLabelText, isVisionConfigured } from "@/lib/vision";
 import { parseWineLabel, type ParsedWineLabel } from "@/lib/label-parser";
@@ -49,6 +50,7 @@ export type ScanWineLabelResult =
  */
 export async function requestScanUploadUrl(
   contentType: string,
+  contentLength: number,
 ): Promise<ScanUploadUrlResult> {
   const session = await getServerAuth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
@@ -58,6 +60,13 @@ export async function requestScanUploadUrl(
   }
   if (!isAllowedImageType(contentType)) {
     return { ok: false, error: "Unsupported image type. Use JPEG, PNG, or WebP." };
+  }
+  if (
+    !Number.isInteger(contentLength) ||
+    contentLength <= 0 ||
+    contentLength > MAX_IMAGE_BYTES
+  ) {
+    return { ok: false, error: "Image must be 5MB or smaller." };
   }
 
   const ip = clientIp(headers());
@@ -69,7 +78,7 @@ export async function requestScanUploadUrl(
 
   const ext = extensionForType(contentType);
   const key = `wines/${session.user.id}/scans/${randomUUID()}.${ext}`;
-  const uploadUrl = await getUploadUrl(key, contentType);
+  const uploadUrl = await getUploadUrl(key, contentType, contentLength);
   if (!uploadUrl) {
     return { ok: false, error: "Image upload is not configured on this server" };
   }

@@ -25,6 +25,7 @@ interface LockerSelectorProps {
   visionConfigured: boolean;
   requestScanUploadUrlAction: (
     contentType: string,
+    contentLength: number,
   ) => Promise<ScanUploadUrlResult>;
   scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }

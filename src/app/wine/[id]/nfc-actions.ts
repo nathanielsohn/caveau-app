@@ -14,6 +14,7 @@ import {
   getPublicUrl,
   getUploadUrl,
   isAllowedImageType,
+  MAX_IMAGE_BYTES,
 } from "@/lib/s3";
 
 /* ------------------------------------------------------------------ */
@@ -64,6 +65,7 @@ export interface TagUploadUrlResult {
 export async function requestTagUploadUrl(
   wineId: string,
   contentType: string,
+  contentLength: number,
 ): Promise<TagUploadUrlResult> {
   const session = await getServerAuth();
   if (!session?.user?.id) throw new Error("Not authenticated");
@@ -81,6 +83,13 @@ export async function requestTagUploadUrl(
   if (!isAllowedImageType(contentType)) {
     throw new Error("Unsupported image type. Use JPEG, PNG, or WebP.");
   }
+  if (
+    !Number.isInteger(contentLength) ||
+    contentLength <= 0 ||
+    contentLength > MAX_IMAGE_BYTES
+  ) {
+    throw new Error("Image must be 5MB or smaller.");
+  }
 
   const wine = await prisma.wine.findUnique({
     where: { id: wineId, memberId: session.user.id },
@@ -90,7 +99,7 @@ export async function requestTagUploadUrl(
 
   const ext = extensionForType(contentType);
   const key = `nfc-intake/${session.user.id}/${wineId}/${randomUUID()}.${ext}`;
-  const uploadUrl = await getUploadUrl(key, contentType);
+  const uploadUrl = await getUploadUrl(key, contentType, contentLength);
   if (!uploadUrl) {
     throw new Error(
       "Image upload is not configured on this server. Set AWS_S3_BUCKET to enable.",

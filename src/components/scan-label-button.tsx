@@ -38,7 +38,10 @@ function isAllowed(type: string): type is AllowedType {
 
 export interface ScanLabelButtonProps {
   visionConfigured: boolean;
-  requestUploadUrlAction: (contentType: string) => Promise<ScanUploadUrlResult>;
+  requestUploadUrlAction: (
+    contentType: string,
+    contentLength: number,
+  ) => Promise<ScanUploadUrlResult>;
   scanAction: (key: string) => Promise<ScanWineLabelResult>;
   onParsed: (result: {
     producer?: string;
@@ -86,7 +89,7 @@ export default function ScanLabelButton({
     setStatus("uploading");
 
     try {
-      const presign = await requestUploadUrlAction(file.type);
+      const presign = await requestUploadUrlAction(file.type, file.size);
       if (!presign.ok) {
         setError(presign.error);
         return;
@@ -94,7 +97,10 @@ export default function ScanLabelButton({
 
       const putRes = await fetch(presign.uploadUrl, {
         method: "PUT",
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          "Content-Length": String(file.size),
+        },
         body: file,
       });
       if (!putRes.ok) {

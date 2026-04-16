@@ -70,11 +70,22 @@ export function extensionForType(type: AllowedImageType): "jpg" | "png" | "webp"
 export async function getUploadUrl(
   key: string,
   contentType: AllowedImageType,
+  contentLength: number,
 ): Promise<string | null> {
   const bucket = env.AWS_S3_BUCKET;
   if (!bucket) {
     console.warn(
       `[s3] AWS_S3_BUCKET unset — skipping upload URL for key ${key}`,
+    );
+    return null;
+  }
+  if (
+    !Number.isInteger(contentLength) ||
+    contentLength <= 0 ||
+    contentLength > MAX_IMAGE_BYTES
+  ) {
+    console.warn(
+      `[s3] rejecting upload URL — invalid contentLength ${contentLength} for key ${key}`,
     );
     return null;
   }
@@ -85,6 +96,7 @@ export async function getUploadUrl(
       Bucket: bucket,
       Key: key,
       ContentType: contentType,
+      ContentLength: contentLength,
     });
     return await getSignedUrl(client, command, {
       expiresIn: UPLOAD_URL_TTL_SECONDS,
