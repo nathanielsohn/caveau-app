@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Tier } from "@prisma/client";
-import { Check, ChevronRight, Lock, Sparkles, Wine } from "lucide-react";
+import { Check, ChevronRight, Lock, ShieldCheck, Sparkles, Wine } from "lucide-react";
+import { SELF_SERVE_TIERS, TIERS } from "@/lib/tiers";
 import {
   setOnboardingTier,
   reserveOnboardingLocker,
@@ -23,31 +24,8 @@ interface Props {
   facilityName: string;
 }
 
-const TIER_OPTIONS: Array<{
-  tier: Tier;
-  label: string;
-  description: string;
-  perks: string[];
-}> = [
-  {
-    tier: Tier.gold,
-    label: "Gold",
-    description: "For the discerning collector building a personal cellar.",
-    perks: ["Up to 32 bottles", "Climate monitoring", "Custody & condition reports"],
-  },
-  {
-    tier: Tier.platinum,
-    label: "Platinum",
-    description: "For serious collectors with investment-grade holdings.",
-    perks: ["Up to 96 bottles", "Priority alerts", "Quarterly valuations"],
-  },
-  {
-    tier: Tier.black,
-    label: "Black",
-    description: "Private members club. White-glove concierge for every bottle.",
-    perks: ["Unlimited bottles", "Dedicated concierge", "Insurance-grade reports"],
-  },
-];
+// Reserve is sales-gated and rendered separately below the self-serve grid.
+const RESERVE_TIER = TIERS.find((t) => t.slug === "reserve")!;
 
 export default function OnboardingWizard({
   memberName,
@@ -213,13 +191,13 @@ export default function OnboardingWizard({
                 </header>
 
                 <div className="grid gap-3 md:gap-4">
-                  {TIER_OPTIONS.map((opt) => {
-                    const selected = tier === opt.tier;
+                  {SELF_SERVE_TIERS.map((opt) => {
+                    const selected = tier === opt.dbTier;
                     return (
                       <button
                         type="button"
-                        key={opt.tier}
-                        onClick={() => setTier(opt.tier)}
+                        key={opt.slug}
+                        onClick={() => opt.dbTier && setTier(opt.dbTier)}
                         aria-pressed={selected}
                         className={[
                           "text-left rounded-xl border p-4 md:p-5 transition-colors",
@@ -228,13 +206,18 @@ export default function OnboardingWizard({
                             : "border-[#2A2A30] hover:border-[#3A3A44]",
                         ].join(" ")}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-serif text-lg text-primary">
-                            {opt.label}
-                          </span>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <span className="font-serif text-lg text-primary block">
+                              {opt.name}
+                            </span>
+                            <span className="text-gold text-sm">
+                              {opt.priceDisplay}
+                            </span>
+                          </div>
                           <span
                             className={[
-                              "w-5 h-5 rounded-full border flex items-center justify-center",
+                              "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-1",
                               selected
                                 ? "border-gold bg-gold text-caveau-black"
                                 : "border-[#3A3A44]",
@@ -246,19 +229,65 @@ export default function OnboardingWizard({
                         <p className="text-secondary text-sm">
                           {opt.description}
                         </p>
-                        <ul className="mt-3 flex flex-wrap gap-2">
-                          {opt.perks.map((p) => (
+                        <ul className="mt-3 space-y-1.5">
+                          {opt.includedServices.map((s) => (
                             <li
-                              key={p}
-                              className="text-xs text-muted bg-[#1C1C20] border border-[#2A2A30] rounded-full px-2.5 py-1"
+                              key={s}
+                              className="flex items-start gap-2 text-xs text-secondary"
                             >
-                              {p}
+                              <Check
+                                size={12}
+                                className="text-gold shrink-0 mt-0.5"
+                              />
+                              <span>{s}</span>
                             </li>
                           ))}
                         </ul>
+                        {opt.hurricaneProtection === "included" && (
+                          <div className="mt-3 inline-flex items-center gap-1.5 text-[11px] text-gold bg-gold/10 border border-gold/20 rounded-full px-2.5 py-1">
+                            <ShieldCheck size={11} />
+                            Hurricane Protection included
+                          </div>
+                        )}
                       </button>
                     );
                   })}
+
+                  {/* Reserve — sales-gated. Not selectable; prompts a contact
+                      rather than self-serve enrollment because pricing is
+                      quoted per collection size. */}
+                  <div className="rounded-xl border border-dashed border-[#2A2A30] p-4 md:p-5 bg-[#1C1C20]/40">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <span className="font-serif text-lg text-primary block">
+                          {RESERVE_TIER.name}
+                        </span>
+                        <span className="text-secondary text-sm">
+                          {RESERVE_TIER.priceDisplay}
+                        </span>
+                      </div>
+                      <span className="text-[11px] uppercase tracking-wider text-muted shrink-0 mt-1">
+                        By invitation
+                      </span>
+                    </div>
+                    <p className="text-secondary text-sm">
+                      {RESERVE_TIER.description}
+                    </p>
+                    <ul className="mt-3 space-y-1.5">
+                      {RESERVE_TIER.includedServices.map((s) => (
+                        <li
+                          key={s}
+                          className="flex items-start gap-2 text-xs text-secondary"
+                        >
+                          <Check
+                            size={12}
+                            className="text-muted shrink-0 mt-0.5"
+                          />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
 
                 <div className="mt-8 flex justify-end">

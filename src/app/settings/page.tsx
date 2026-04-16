@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, Mail, ShieldCheck, ChevronRight } from "lucide-react";
+import { Bell, Check, Crown, Mail, ShieldCheck, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { tierSpecForDbTier } from "@/lib/tiers";
 import PreferencesForm from "./preferences-form";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export default async function SettingsPage() {
     select: {
       name: true,
       email: true,
+      tier: true,
       emailAlertsEnabled: true,
       emailAlertSeverity: true,
       emailAlertCooldownMin: true,
@@ -26,6 +28,7 @@ export default async function SettingsPage() {
   if (!member) redirect("/auth/login");
 
   const sesConfigured = Boolean(env.AWS_SES_FROM_EMAIL);
+  const tierSpec = tierSpecForDbTier(member.tier);
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
@@ -38,6 +41,32 @@ export default async function SettingsPage() {
           <h1 className="font-serif text-2xl text-primary">Settings</h1>
           <p className="text-sm text-muted">Manage your notification preferences</p>
         </div>
+      </div>
+
+      {/* Membership tier card (#44) — read-only summary, no billing. */}
+      <div className="glass-card p-6 md:p-8 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <Crown className="w-4 h-4 text-gold" />
+            <h2 className="font-serif text-lg text-primary">Membership</h2>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="font-serif text-xl text-primary">{tierSpec.name}</div>
+            <div className="text-sm text-gold">{tierSpec.priceDisplay}</div>
+          </div>
+        </div>
+        <p className="text-sm text-secondary mb-4">{tierSpec.description}</p>
+        <div className="text-xs uppercase tracking-wider text-muted mb-3">
+          Included services
+        </div>
+        <ul className="space-y-2">
+          {tierSpec.includedServices.map((s) => (
+            <li key={s} className="flex items-start gap-2 text-sm text-secondary">
+              <Check className="w-3.5 h-3.5 text-gold shrink-0 mt-1" />
+              <span>{s}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Alert email preferences card */}
