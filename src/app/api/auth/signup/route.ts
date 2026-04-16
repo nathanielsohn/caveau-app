@@ -31,10 +31,16 @@ export async function POST(req: Request) {
 
     // CSRF double-submit cookie verification — must run before schema parsing
     // so that an unauthenticated probe can't even get past the gate.
+    //
+    // Prefer the `__Host-` variant. In production next-auth issues the
+    // Secure-prefixed cookie, and its `__Host-` guarantees (Secure + path=/
+    // + no Domain attribute) mean a subdomain or sibling origin can't
+    // plant a matching cookie on the parent. Falling back to the bare
+    // name keeps local dev (http://) working where the prefix is absent.
     const cookieStore = cookies();
     const csrfCookie =
-      cookieStore.get("next-auth.csrf-token")?.value ||
-      cookieStore.get("__Host-next-auth.csrf-token")?.value;
+      cookieStore.get("__Host-next-auth.csrf-token")?.value ||
+      cookieStore.get("next-auth.csrf-token")?.value;
 
     const submittedCsrf =
       typeof (body as { csrfToken?: unknown }).csrfToken === "string"
