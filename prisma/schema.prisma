@@ -297,6 +297,7 @@ model ProvenanceCertificate {
   humidityMean      Decimal? @map("humidity_mean") @db.Decimal(5, 2)
   dataIntegrityHash String   @map("data_integrity_hash")
   certificateNumber String   @unique @map("certificate_number")
+  revokedAt         DateTime? @map("revoked_at")
   createdAt         DateTime @default(now()) @map("created_at")
   wine              Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
   locker            Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)

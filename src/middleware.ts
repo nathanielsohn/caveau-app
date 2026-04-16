@@ -116,13 +116,24 @@ function buildCsp(): string {
  * (removal takes months) and we're not ready to opt in. Gated on prod
  * so localhost dev over `http://` still works unhindered.
  */
-function applySecurityHeaders(res: NextResponse, csp: string): NextResponse {
+function applySecurityHeaders(
+  res: NextResponse,
+  csp: string,
+  pathname: string,
+): NextResponse {
   res.headers.set("Content-Security-Policy", csp);
   if (process.env.NODE_ENV === "production") {
     res.headers.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains",
     );
+  }
+  // Keep the certificate hash / report id out of outbound Referer
+  // headers. Without this, clicking any off-site link on a viewed
+  // report leaks a bearer-equivalent token to the destination origin
+  // (and its log drains / analytics / CDN access logs).
+  if (pathname.startsWith("/verify/") || pathname.startsWith("/report/")) {
+    res.headers.set("Referrer-Policy", "no-referrer");
   }
   return res;
 }
@@ -186,7 +197,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/ingest/");
 
   if (isPublic) {
-    return applySecurityHeaders(NextResponse.next(), csp);
+    return applySecurityHeaders(NextResponse.next(), csp, pathname);
   }
 
   // --- Protected paths — require auth ---
@@ -196,7 +207,7 @@ export async function middleware(req: NextRequest) {
     const loginUrl = new URL("/auth/login", req.url);
     const validated = safeCallback(pathname);
     if (validated) loginUrl.searchParams.set("callbackUrl", validated);
-    return applySecurityHeaders(NextResponse.redirect(loginUrl), csp);
+    return applySecurityHeaders(NextResponse.redirect(loginUrl), csp, pathname);
   }
 
   // --- Onboarding gate ---
@@ -211,12 +222,14 @@ export async function middleware(req: NextRequest) {
     return applySecurityHeaders(
       NextResponse.redirect(new URL("/onboarding", req.url)),
       csp,
+      pathname,
     );
   }
   if (token.onboarded && isOnboardingRoute) {
     return applySecurityHeaders(
       NextResponse.redirect(new URL("/", req.url)),
       csp,
+      pathname,
     );
   }
 
@@ -227,10 +240,11 @@ export async function middleware(req: NextRequest) {
     return applySecurityHeaders(
       NextResponse.redirect(new URL("/", req.url)),
       csp,
+      pathname,
     );
   }
 
-  return applySecurityHeaders(NextResponse.next(), csp);
+  return applySecurityHeaders(NextResponse.next(), csp, pathname);
 }
 
 export const config = {

@@ -9,6 +9,15 @@ import { buildProvenanceBundle } from "@/lib/provenance";
 
 export const dynamic = "force-dynamic";
 
+// Belt-and-braces with the Referrer-Policy response header set for
+// this route in src/middleware.ts. The report URL is auth-gated, but
+// the certificate's integrity hash on the page can still leak via
+// outbound Referer when a user clicks a link off-site — this keeps it
+// contained.
+export const metadata = {
+  referrer: "no-referrer",
+} as const;
+
 export default async function ReportPage({
   params,
 }: {

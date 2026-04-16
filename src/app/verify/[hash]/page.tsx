@@ -4,6 +4,18 @@ import { formatDate, formatTemp, formatHumidity } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+// A certificate hash is a 64-char lowercase hex string (SHA-256). Anything
+// outside that shape can't possibly match a real row, so short-circuit
+// before the DB hit to starve scanners that brute-force the endpoint.
+const HASH_SHAPE = /^[a-f0-9]{64}$/;
+
+// Belt-and-braces with the Referrer-Policy response header set for this
+// route in src/middleware.ts. The <meta> tag below covers renderers
+// that honor it; the HTTP header covers everything else.
+export const metadata = {
+  referrer: "no-referrer",
+} as const;
+
 export default async function VerifyPage({
   params,
 }: {
@@ -11,24 +23,26 @@ export default async function VerifyPage({
 }) {
   const { hash } = await params;
 
-  const certificate = await prisma.provenanceCertificate.findFirst({
-    where: { dataIntegrityHash: hash },
-    include: {
-      wine: {
-        select: {
-          name: true,
-          vintage: true,
-          producer: true,
+  const certificate = HASH_SHAPE.test(hash)
+    ? await prisma.provenanceCertificate.findFirst({
+        where: { dataIntegrityHash: hash, revokedAt: null },
+        include: {
+          wine: {
+            select: {
+              name: true,
+              vintage: true,
+              producer: true,
+            },
+          },
+          locker: {
+            select: {
+              lockerNumber: true,
+              zone: true,
+            },
+          },
         },
-      },
-      locker: {
-        select: {
-          lockerNumber: true,
-          zone: true,
-        },
-      },
-    },
-  });
+      })
+    : null;
 
   const truncatedHash = hash.length > 16 ? `${hash.slice(0, 16)}...` : hash;
 
