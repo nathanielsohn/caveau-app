@@ -57,14 +57,16 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
   };
 
   // Hide nav on report, certificate (legacy redirect), verify, public handoff
-  // bundles, and auth pages. Note: `/handoff` (no slash) is the member's
-  // authenticated list page and should keep the nav.
+  // bundles, auth pages, and the admin panel (which has its own admin-nav).
+  // Note: `/handoff` (no slash) is the member's authenticated list page and
+  // should keep the nav.
   if (
     pathname.startsWith("/report") ||
     pathname.startsWith("/certificate") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/handoff/") ||
-    pathname.startsWith("/auth")
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/admin")
   )
     return null;
 

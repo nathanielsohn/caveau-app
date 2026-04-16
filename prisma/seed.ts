@@ -282,6 +282,28 @@ async function main() {
   });
   console.log('  ✓ Facility memberships: Naples + Miami');
 
+  // 2c. Admin user — staff-facing /admin panel (feature #28). Seeded
+  // alongside Robert so the panel has someone to log in as during demos;
+  // onboardedAt is pre-filled so the wizard doesn't intercept.
+  const adminPasswordHash = await bcrypt.hash('admin1234', 10);
+  const admin = await prisma.member.create({
+    data: {
+      name: 'Samuel Koch',
+      email: 'samuel@caveau.com',
+      tier: Tier.black,
+      role: Role.admin,
+      passwordHash: adminPasswordHash,
+      onboardedAt: new Date(),
+    },
+  });
+  await prisma.facilityMember.createMany({
+    data: [
+      { memberId: admin.id, facilityId: naples.id },
+      { memberId: admin.id, facilityId: miami.id },
+    ],
+  });
+  console.log(`  ✓ Admin: ${admin.name} (role: admin)`);
+
   // 3. Wines
   const createdWines = [];
   for (const w of wines) {

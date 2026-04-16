@@ -220,6 +220,16 @@ export async function middleware(req: NextRequest) {
     );
   }
 
+  // --- Admin gate (feature #28) ---
+  // The /admin panel is staff-only. Non-admins bounce to the dashboard
+  // rather than 403 — keeps the surface undiscoverable to members.
+  if (pathname.startsWith("/admin") && token.role !== "admin") {
+    return applySecurityHeaders(
+      NextResponse.redirect(new URL("/", req.url)),
+      csp,
+    );
+  }
+
   return applySecurityHeaders(NextResponse.next(), csp);
 }
 

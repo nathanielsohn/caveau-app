@@ -345,7 +345,7 @@ Turn it into a business.
 | # | Feature | Description |
 |---|---------|-------------|
 | 27 | Membership + payments | Stripe integration. Tier-based monthly subscriptions. Storage fees per locker slot. Billing portal. |
-| 28 | Admin panel | Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. |
+| 28 | ~~Admin panel~~ | ~~Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. Done.~~ |
 | 29 | Mobile app | React Native (Expo). Push notifications for alerts. Collection browsing, locker check-in via camera, certificate sharing. |
 | 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
 | 31 | Insurance partner program | Two-sided: member-facing enrollment flow that applies carrier discounts on collection coverage for wines stored in an approved Caveau facility, plus a carrier-facing proof-of-storage API and standardized condition report exports. Expanded from the original PDF-export scope after the April 2026 investor review. |
