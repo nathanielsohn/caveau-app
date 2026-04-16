@@ -67,27 +67,38 @@ function assertRequired(): Record<RequiredKey, string> {
 const SKIP = process.env.SKIP_ENV_VALIDATION === "true";
 const required = SKIP ? ({} as Record<RequiredKey, string>) : assertRequired();
 
-// In production both HMAC secrets must be set independently — the dev
-// fallback to NEXTAUTH_SECRET means a single leak compromises three systems
-// at once (sessions, certificate hashes, facility cookies). We want this to
-// fail loud at boot in the Node serverless runtime (certificate routes,
-// server actions), but NOT in Edge middleware — middleware never reads
-// CERTIFICATE_HMAC_SECRET or FACILITY_COOKIE_SECRET, so throwing there just
-// turns every request into a 500 with no operational benefit.
+// In any non-dev/test environment both HMAC secrets must be set
+// independently — the dev fallback to NEXTAUTH_SECRET means a single
+// leak compromises three systems at once (sessions, certificate hashes,
+// facility cookies). The gate is an allowlist rather than an equality
+// check against "production" so that staging, preview, or any custom
+// NODE_ENV value on a non-Vercel deploy doesn't silently skip the
+// assertion. Mirrors the pattern used by the cron/ingest `authorized()`
+// helpers.
 //
-// `EdgeRuntime` is a global string set only in the Edge runtime; in Node
-// (and in Vitest) it's undefined.
+// We want this to fail loud at boot in the Node serverless runtime
+// (certificate routes, server actions), but NOT in Edge middleware —
+// middleware never reads CERTIFICATE_HMAC_SECRET or FACILITY_COOKIE_SECRET,
+// so throwing there just turns every request into a 500 with no
+// operational benefit. `EdgeRuntime` is a global string set only in the
+// Edge runtime; in Node (and in Vitest) it's undefined.
 const IS_EDGE_RUNTIME =
   typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined";
 
-if (!SKIP && !IS_EDGE_RUNTIME && process.env.NODE_ENV === "production") {
+const NODE_ENV = process.env.NODE_ENV;
+if (
+  !SKIP &&
+  !IS_EDGE_RUNTIME &&
+  NODE_ENV !== "development" &&
+  NODE_ENV !== "test"
+) {
   const missingHmac: string[] = [];
   if (!process.env.CERTIFICATE_HMAC_SECRET) missingHmac.push("CERTIFICATE_HMAC_SECRET");
   if (!process.env.FACILITY_COOKIE_SECRET) missingHmac.push("FACILITY_COOKIE_SECRET");
   if (missingHmac.length > 0) {
     throw new Error(
-      `[env] In production, ${missingHmac.join(" and ")} must be set to ` +
-        `independent random strings. Falling back to NEXTAUTH_SECRET means a ` +
+      `[env] Outside development/test, ${missingHmac.join(" and ")} must be set ` +
+        `to independent random strings. Falling back to NEXTAUTH_SECRET means a ` +
         `single secret leak compromises every HMAC-protected system.`,
     );
   }
