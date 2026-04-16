@@ -276,7 +276,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Not Yet Implemented (on roadmap)
 
 **Phase 2–3 (remaining):**
-- Real IoT sensor data pipeline — partitioning, rollups, retention (#22)
+- Real IoT sensor data pipeline — partitioning, rollups, retention (#22). Interim mitigation: `/api/cron/sensor-retention` runs nightly at 03:00 UTC and deletes raw `SensorReading` rows older than 90 days. Partitioning + downsampled rollups still need to land before steady-state ingest scales past one or two facilities.
 - Locker check-in/out staff workflow (#25)
 - Payments / membership (#27)
 - Mobile app (#29)

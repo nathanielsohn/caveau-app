@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/livex-sync",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/sensor-retention",
+      "schedule": "0 3 * * *"
     }
   ]
 }
