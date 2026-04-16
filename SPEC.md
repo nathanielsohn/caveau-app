@@ -98,15 +98,17 @@ All cards use: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 roun
 - **WineDisposition** — `id`, `wineId` (`Restrict`), `memberId` (`Cascade`), `type: DispositionType`, `date`, `salePrice?: Decimal(14,2)`, `recipient?`, `notes?`, `createdAt`. Unique `(wineId, type, date)` to prevent duplicates; indexes on `wineId` and `memberId`.
 
 ### Seed Data
-- 1 facility: "Caveau Naples", location "Naples, FL"
-- 1 member: "Robert Saenz", tier "black", role "member"
-- 4 lockers: #7 (Zone A), #12 (Zone B), #19 (Zone C), #24 (Zone D) — all assigned to the facility
-- 66 wines: 5 Caveau private label (matching pitch deck names), 8 investment-grade (DRC, Screaming Eagle, Petrus, etc.), 12 mid-range (Caymus, Silver Oak, etc.), 10 French classics, 10 Italian icons, 6 Spanish/Portuguese, 10 New World gems, 5 Champagne
-- 66 occupied locker slots (of 128 total)
+- 2 facilities: "Caveau Naples" (18 ft elevation), "Caveau Miami" (11 ft elevation) — both with generator, fire suppression, and inspection records
+- 6 facility events: Hurricane Helene (Naples), tropical depression (Miami), generator tests, fire suppression inspections
+- 1 member: "Robert Saenz", tier "black", role "member" — member of both facilities
+- 4 lockers: Naples #7 (Zone A), #12 (Zone B), #19 (Zone C); Miami #24 (Zone A)
+- 64 active wines: 5 Caveau private label, 10 investment-grade (matching Rob's 10-bottle portfolio PDF — Pétrus, Screaming Eagle, Harlan, Latour, Masseto, DRC Nuits-Saint-Georges, Palmer, Opus One, Ridge Monte Bello, Caymus; total $15,855), 10 mid-range, 9 French classics, 9 Italian icons, 6 Spanish/Portuguese, 9 New World gems, 5 Champagne + 1 held-back Caveau private label
+- 5 historical dispositions: Latour 2010 (sold at Sotheby's), Dom Pérignon P2 (consumed), Caymus 2016 (gifted), Silver Oak 2015 (transferred), Jordan 2017 (removed — cork failure)
+- 64 occupied locker slots (of 128 total)
 - 30 days of sensor readings at 5-min intervals (~34K rows across 4 lockers)
 - 20 historical alerts (including access/badge scan events)
 - 11 provenance certificates across multiple lockers
-- 4-6 WineValuations per wine (329 total) with sources: "manual", "liv-ex", "wine-searcher", "auction" — powers dashboard analytics trend chart
+- 4-6 WineValuations per wine with sources: "manual", "liv-ex", "wine-searcher", "auction" — powers dashboard analytics trend chart
 
 ### Sensor Simulation (client-side)
 ```
@@ -154,7 +156,7 @@ When seeding `ProvenanceCertificate` records, calculate `tempMean`, `tempMin`, `
 See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
 - The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#38 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
-- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0009.sql).
+- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0013.sql).
 - Config files: package.json, next.config.mjs, tailwind.config.ts, .env, vitest.config.ts.
 
 ---
@@ -276,17 +278,17 @@ gantt
 
     section Phase 1 — Foundation
     Auth + Roles              :done, p1a, 2026-04-14, 7d
-    Multi-facility support    :p1b, after p1a, 5d
+    Multi-facility support    :done, p1b, after p1a, 5d
     API routes                :done, p1c, after p1a, 5d
-    Wine image upload         :p1d, after p1c, 4d
+    Wine image upload         :done, p1d, after p1c, 4d
     Alert notifications       :done, p1e, after p1d, 4d
-    Member onboarding flow    :p1f, after p1e, 3d
+    Member onboarding flow    :done, p1f, after p1e, 3d
 
     section Phase 2 — IoT & Data
     IoT ingestion endpoint    :p2a, 2026-05-05, 5d
     Sensor data pipeline      :p2b, after p2a, 5d
     Wine valuation engine     :done, p2c, after p2a, 7d
-    Label scanning            :p2d, after p2c, 5d
+    Label scanning            :done, p2d, after p2c, 5d
     Locker check-in/out       :p2e, after p2b, 4d
     Add wine from locker slot :done, p2g, after p2e, 3d
     Dashboard analytics       :done, p2f, after p2g, 4d
@@ -300,12 +302,14 @@ gantt
     Multi-location mgmt       :p3f, after p3e, 5d
     Wine disposition          :done, p3h, after p3f, 3d
     Locker self-service       :done, p3i, after p3h, 3d
+    Collection filters        :done, p3j, after p3i, 3d
+    Locker slot filtering     :done, p3k, after p3j, 3d
 
     section Phase 4 — Vault Business
-    Liv-ex live pricing       :p4a, 2026-07-01, 7d
-    Provenance timeline       :p4b, after p4a, 7d
+    Liv-ex live pricing       :done, p4a, 2026-07-01, 7d
+    Provenance timeline       :done, p4b, after p4a, 7d
     Auction handoff package   :p4c, after p4b, 5d
-    Facility resilience       :p4d, after p4c, 5d
+    Facility resilience       :done, p4d, after p4c, 5d
 ```
 
 ### Phase 1 — Foundation (weeks 1–3 post-demo)
@@ -359,10 +363,24 @@ Framing comes from the April 2026 investor review (Robert Saenz): the locker pro
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 39 | Liv-ex live pricing integration | Replace seeded `WineValuation` data with a real Liv-ex API client. Daily price sync job, per-wine "last updated" timestamps, graceful fallback to last known price on API failure. Unlocks real-time collection valuation on the dashboard and wine detail page — the thing a member checks before deciding to hold or sell. |
+| 39 | ~~Liv-ex live pricing integration~~ | ~~Replace seeded `WineValuation` data with a real Liv-ex API client. Daily price sync job (`/api/cron/livex-sync`, Vercel Cron at 9 AM UTC), per-wine "last updated" timestamps, graceful fallback to last known price on API failure. Unlocks real-time collection valuation on the dashboard and wine detail page. Done.~~ |
 | 40 | ~~Provenance chain-of-custody timeline~~ | ~~Per-bottle timeline rendering the unbroken Sentinel history from intake to today: temperature/humidity envelope, access events, facility moves, disposition. Signed JSON + PDF export attached to the existing certificate. Done.~~ |
 | 41 | Auction / broker handoff package | One-click bundle for Christie's / Sotheby's / Acker / private brokers: provenance certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." |
 | 42 | ~~Facility resilience & hurricane reporting~~ | ~~Facility-level dashboard for elevation, generator uptime, fire suppression status, and logged weather/hurricane events. Auto-generated post-event member reports ("your cellar was safe during Hurricane X — here's the environmental record"). Naples-specific differentiator vs. Carl's Wine Vault and the reason a collector picks an above-sea-level monitored facility over a home cellar. Done.~~ |
+
+### Phase 5 — Investor-Ready (pre-seed)
+
+Features sourced from Robert Saenz's April 2026 business docs (Equity Investor Summary, Home Cellar Program, 10-Bottle Portfolio, NFC strategy email). These turn the working demo into an investor-ready platform before the seed round closes. Prioritize features that make the next investor conversation stronger.
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 43 | NFC bottle tracking + tap-to-verify | NFC tag intake workflow: tag bottle at intake, photograph, assign to member portfolio. Phone tap on tag opens the bottle's Custody & Condition Report (public `/bottle/[tag-id]` landing page). Two tag tiers: invisible capsule tag under foil for trophy bottles ($1,000+), branded navy/gold Caveau neck collar with embedded NFC for standard bottles (under $1,000). No QR stickers — auction houses notice post-production label modification. |
+| 44 | Membership tier pricing | Four tiers with pricing: Collector ($29/mo), Reserve (TBD), Private Vault ($349/mo), Estate ($999/mo). Tier determines included services vs. fee-based add-ons. Hurricane Emergency Collection Protection included in Private Vault and Estate; available as $500–$1,500 fee for Reserve. Update onboarding wizard, settings, and billing UI. Stripe integration (extends #27). |
+| 45 | Investment portfolio view | Per-bottle CAGR projections, portfolio total with 5-year projection, tier labels (Anchor/Icon/Blue-Chip/Prestige/Accessible/Approachable). Sourced from Liv-ex historical data (#39). Dashboard card showing portfolio appreciation vs. S&P 500 baseline. Matches the 10-Bottle PDF format. |
+| 46 | Hurricane Emergency Collection Protection | Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. |
+| 47 | Exit facilitation workflow | Commission tracking (10–12% on sales), auction house handoff (extends #41), acquisition sourcing margin tracking (8–12%). Member-facing "ready to sell" flow: select bottles → generate handoff package → choose channel (auction, broker, private sale) → track proceeds. |
+| 48 | Home Cellar Program (Year 2) | New location type: "home cellar" alongside "vault." Sentinel sensor at member's home feeds the same dashboard. Certified installer network tracking. Phase 1: white-label SensorPush hardware with Caveau-branded enclosure. Phase 2: custom enclosure with bottle probe + LTE-M cellular fallback. Phase 3: fully proprietary Caveau Sentinel at scale. |
+| 49 | Founding member waitlist | Pre-launch waitlist and LOI tracking. Naples Winter Wine Festival activation (Jan 30–Feb 1, 2027). Founding member discount tiers. Converts to full membership at Q3 2027 soft launch. |
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 
@@ -439,8 +457,8 @@ Full codebase audit identified the items below. Security hotfixes (certificate I
 |---------|-----------|-----------------|
 | Database | RDS db.t3.micro (free tier) | RDS db.t3.medium+ with read replicas. Connection pooling via PgBouncer or Prisma Accelerate. |
 | Sensor data | ~34K rows (30 days, 4 lockers) | Millions of rows/year. Partition by month, rollup aggregation, TimescaleDB extension if needed. |
-| Images | No images (placeholder URLs) | S3 + CloudFront. Lambda@Edge for on-the-fly resizing. |
-| Auth | Hardcoded demo user | NextAuth.js with JWT sessions. Row-level security via Prisma middleware or PostgreSQL RLS. |
+| Images | S3 + CloudFront (live since #18). Presigned uploads, public URLs via CDN. | Lambda@Edge for on-the-fly resizing at scale. |
+| Auth | NextAuth.js v4 with JWT sessions, Credentials provider, CSRF (live since #15) | Row-level security via Prisma middleware or PostgreSQL RLS. |
 | Hosting | Vercel (free tier) | Vercel Pro for more bandwidth, or self-host on AWS with Docker/ECS for full control. |
 | Monitoring | None | CloudWatch alarms, Sentry for error tracking, Grafana for sensor dashboards (internal). |
 | CI/CD | build.sh pipeline | GitHub Actions: lint, type-check, build, deploy on merge to main. |

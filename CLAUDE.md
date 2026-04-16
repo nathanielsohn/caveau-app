@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → custody & condition reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 18 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 18 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -262,6 +262,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 
 ## Not Yet Implemented (on roadmap)
 
+**Phase 2–3 (remaining):**
 - Real IoT device connections (#21, #22)
 - Locker check-in/out staff workflow (#25)
 - Payments / membership (#27)
@@ -269,7 +270,17 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - Mobile app (#29)
 - Insurance integration (#31)
 - Multi-location management (#32)
-- Wine marketplace (#33)
+- ~~Wine marketplace (#33)~~ — deprioritized, dilutes vault-custodian positioning
+- Auction / broker handoff package (#41)
+
+**Phase 5 — Investor-Ready (from Rob's April 2026 business docs):**
+- NFC bottle tracking + tap-to-verify (#43)
+- Membership tier pricing (#44)
+- Investment portfolio view with CAGR projections (#45)
+- Hurricane Emergency Collection Protection protocol (#46)
+- Exit facilitation workflow (#47)
+- Home Cellar Program (#48)
+- Founding member waitlist (#49)
 
 See SPEC.md "Post-Demo Roadmap" for full details. Done features are marked ~~strikethrough~~ in the tables.
 
