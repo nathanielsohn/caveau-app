@@ -108,6 +108,9 @@ interface DashboardClientProps {
   topLosers: AppreciationWine[];
   /** Null when member has no investment-grade bottles. */
   portfolio: PortfolioSnapshot | null;
+  /** First name resolved server-side so the welcome line doesn't flash
+   *  "Member" before the client session hydrates. */
+  firstName: string;
 }
 
 function severityBadgeClass(severity: string): string {
@@ -132,9 +135,16 @@ export default function DashboardClient({
   topGainers,
   topLosers,
   portfolio,
+  firstName: serverFirstName,
 }: DashboardClientProps) {
-  const { data: session } = useSession();
-  const firstName = session?.user?.name?.split(" ")[0] ?? "Member";
+  const { data: session, status } = useSession();
+  // Prefer the server-resolved first name on first paint so the greeting
+  // doesn't flash "Member"; fall back to the client session only after it
+  // hydrates, which is the path that picks up live profile edits.
+  const firstName =
+    status === "authenticated"
+      ? session?.user?.name?.split(" ")[0] ?? serverFirstName
+      : serverFirstName;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">

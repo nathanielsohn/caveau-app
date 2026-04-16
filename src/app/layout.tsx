@@ -55,12 +55,18 @@ export default async function RootLayout({
   // unmigrated DB) collapse to an empty list — the nav still renders.
   let facilities: Awaited<ReturnType<typeof getMemberFacilities>> = [];
   let currentFacilityId: string | null = null;
+  // Server-side session snapshot so Nav can show the member name + tier on
+  // first paint instead of flashing placeholders before JWT hydration.
+  let navDisplayName: string | null = null;
+  let navTier: string | null = null;
   try {
     const session = await getServerAuth();
     if (session?.user?.id) {
       facilities = await getMemberFacilities(session.user.id);
       const current = await getCurrentFacility(session.user.id);
       currentFacilityId = current?.id ?? null;
+      navDisplayName = session.user.name ?? null;
+      navTier = session.user.tier ?? null;
     }
   } catch {
     // swallow — layout must never throw
@@ -79,6 +85,8 @@ export default async function RootLayout({
             <Nav
               facilities={facilities}
               currentFacilityId={currentFacilityId}
+              displayName={navDisplayName}
+              tier={navTier}
             />
             {/* md:ml-56 offsets for the desktop sidebar; mobile padding stacks the
                 bottom tab bar (h-16 = 4rem) on top of the iPhone home indicator. */}

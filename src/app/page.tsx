@@ -364,6 +364,7 @@ export default async function DashboardPage() {
           topGainers={topGainers}
           topLosers={topLosers}
           portfolio={portfolioData}
+          firstName={session.user.name?.split(" ")[0] ?? "Member"}
         />
       </>
     );

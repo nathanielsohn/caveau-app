@@ -36,12 +36,28 @@ interface FacilityOption {
 interface NavProps {
   facilities: FacilityOption[];
   currentFacilityId: string | null;
+  /** Resolved server-side so the member line doesn't flash "—" before
+   *  the client session hydrates. */
+  displayName: string | null;
+  /** Resolved server-side so the tier line doesn't pop in after hydration. */
+  tier: string | null;
 }
 
-export default function Nav({ facilities, currentFacilityId }: NavProps) {
+export default function Nav({
+  facilities,
+  currentFacilityId,
+  displayName: serverDisplayName,
+  tier: serverTier,
+}: NavProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isPending, startTransition] = useTransition();
+
+  const hydrated = status === "authenticated";
+  const displayName = hydrated
+    ? session?.user?.name ?? serverDisplayName
+    : serverDisplayName;
+  const tier = hydrated ? session?.user?.tier ?? serverTier : serverTier;
 
   const handleFacilityChange = (id: string) => {
     if (id === currentFacilityId) return;
@@ -70,8 +86,8 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
   )
     return null;
 
-  const tierLabel = session?.user?.tier
-    ? session.user.tier.charAt(0).toUpperCase() + session.user.tier.slice(1) + " Tier"
+  const tierLabel = tier
+    ? tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier"
     : "";
 
   // Facility switcher only makes sense on pages whose data is facility-scoped.
@@ -157,7 +173,7 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
             Member
           </p>
           <p className="text-sm text-primary font-medium truncate">
-            {session?.user?.name || "—"}
+            {displayName || "—"}
           </p>
           <p className="text-xs text-gold-text">{tierLabel}</p>
           <button
@@ -180,7 +196,7 @@ export default function Nav({ facilities, currentFacilityId }: NavProps) {
             Member
           </p>
           <p className="text-sm text-primary font-medium truncate">
-            {session?.user?.name || "—"}
+            {displayName || "—"}
           </p>
           {tierLabel && (
             <p className="text-[11px] text-gold-text">{tierLabel}</p>
