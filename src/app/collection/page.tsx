@@ -13,6 +13,7 @@ import {
   requestScanUploadUrl,
   scanWineLabel,
 } from "./label-scan-actions";
+import { createHandoffPackage } from "@/app/handoff/actions";
 import CollectionClient from "./collection-client";
 import type { WineCardData } from "@/components/wine-card";
 
@@ -188,6 +189,7 @@ export default async function CollectionPage() {
       visionConfigured={isVisionConfigured()}
       requestScanUploadUrlAction={requestScanUploadUrl}
       scanWineLabelAction={scanWineLabel}
+      createHandoffPackageAction={createHandoffPackage}
     />
   );
 }

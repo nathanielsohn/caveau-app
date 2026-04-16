@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import WineCard, { type WineCardData } from "@/components/wine-card";
 import AddWineForm from "@/components/add-wine-form";
+import HandoffPackageButton from "@/components/handoff-package-button";
 import { FacilityPill } from "@/components/facility-context";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import type {
   ScanUploadUrlResult,
   ScanWineLabelResult,
 } from "@/app/collection/label-scan-actions";
+import type { CreatePackageResult } from "@/app/handoff/actions";
 
 interface LockerOption {
   id: string;
@@ -31,6 +33,9 @@ interface CollectionClientProps {
     contentType: string,
   ) => Promise<ScanUploadUrlResult>;
   scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
+  createHandoffPackageAction: (
+    formData: FormData,
+  ) => Promise<CreatePackageResult>;
 }
 
 type SortKey = "added" | "value" | "vintage" | "name" | "drinkWindow";
@@ -67,6 +72,7 @@ export default function CollectionClient({
   visionConfigured,
   requestScanUploadUrlAction,
   scanWineLabelAction,
+  createHandoffPackageAction,
 }: CollectionClientProps) {
   const [search, setSearch] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
@@ -471,55 +477,80 @@ export default function CollectionClient({
         </div>
       ) : view === "grid" ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-          {filtered.map((wine) => (
-            <WineCard key={wine.id} wine={wine} />
-          ))}
+          {filtered.map((wine) => {
+            const isInCellar = !wine.status || wine.status === "in_cellar";
+            return (
+              <div key={wine.id} className="relative group">
+                <WineCard wine={wine} />
+                {isInCellar && (
+                  <HandoffPackageButton
+                    wineId={wine.id}
+                    wineName={wine.name}
+                    createHandoffPackageAction={createHandoffPackageAction}
+                    variant="card"
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {filtered.map((wine) => (
-            <Link
-              key={wine.id}
-              href={`/wine/${wine.id}`}
-              className="glass-card p-4 flex items-center gap-4 hover:border-gold/30 transition-all duration-200 group"
-            >
-              {/* Icon placeholder */}
-              <div className="w-10 h-10 rounded-lg bg-caveau-graphite flex items-center justify-center flex-shrink-0">
-                <WineIcon className="w-5 h-5 text-burgundy/60" strokeWidth={1.2} />
-              </div>
+          {filtered.map((wine) => {
+            const isInCellar = !wine.status || wine.status === "in_cellar";
+            return (
+              <div key={wine.id} className="relative flex items-center gap-2">
+                <Link
+                  href={`/wine/${wine.id}`}
+                  className="glass-card p-4 flex items-center gap-4 hover:border-gold/30 transition-all duration-200 group flex-1 min-w-0"
+                >
+                  {/* Icon placeholder */}
+                  <div className="w-10 h-10 rounded-lg bg-caveau-graphite flex items-center justify-center flex-shrink-0">
+                    <WineIcon className="w-5 h-5 text-burgundy/60" strokeWidth={1.2} />
+                  </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="font-serif text-sm text-primary truncate group-hover:text-gold transition-colors">
-                  {wine.name}
-                </p>
-                <p className="text-xs text-secondary">
-                  {wine.vintage} &middot; {wine.region} &middot; {wine.varietal}
-                </p>
-              </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-serif text-sm text-primary truncate group-hover:text-gold transition-colors">
+                      {wine.name}
+                    </p>
+                    <p className="text-xs text-secondary">
+                      {wine.vintage} &middot; {wine.region} &middot; {wine.varietal}
+                    </p>
+                  </div>
 
-              {/* Status badge for disposed wines */}
-              {wine.status && wine.status !== "in_cellar" && (
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 ${
-                  wine.status === "sold" ? "bg-gold/10 text-gold border-gold/20" :
-                  wine.status === "transferred" ? "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20" :
-                  wine.status === "consumed" ? "bg-burgundy/10 text-burgundy border-burgundy/20" :
-                  wine.status === "gifted" ? "bg-ok/10 text-ok border-ok/20" :
-                  "bg-danger/10 text-danger border-danger/20"
-                }`}>
-                  {wine.status.charAt(0).toUpperCase() + wine.status.slice(1)}
-                </span>
-              )}
+                  {/* Status badge for disposed wines */}
+                  {wine.status && wine.status !== "in_cellar" && (
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 ${
+                      wine.status === "sold" ? "bg-gold/10 text-gold border-gold/20" :
+                      wine.status === "transferred" ? "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20" :
+                      wine.status === "consumed" ? "bg-burgundy/10 text-burgundy border-burgundy/20" :
+                      wine.status === "gifted" ? "bg-ok/10 text-ok border-ok/20" :
+                      "bg-danger/10 text-danger border-danger/20"
+                    }`}>
+                      {wine.status.charAt(0).toUpperCase() + wine.status.slice(1)}
+                    </span>
+                  )}
 
-              {/* Value */}
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-semibold text-primary">
-                  {formatCurrency(wine.currentValue)}
-                </p>
-                <p className="text-xs text-secondary">{wine.producer}</p>
+                  {/* Value */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-semibold text-primary">
+                      {formatCurrency(wine.currentValue)}
+                    </p>
+                    <p className="text-xs text-secondary">{wine.producer}</p>
+                  </div>
+                </Link>
+                {isInCellar && (
+                  <HandoffPackageButton
+                    wineId={wine.id}
+                    wineName={wine.name}
+                    createHandoffPackageAction={createHandoffPackageAction}
+                    variant="list"
+                  />
+                )}
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 

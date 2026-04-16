@@ -48,6 +48,15 @@ const POLICIES: Array<{
     policy: { limit: 30, windowMs: 60_000 },
   },
   {
+    bucket: "handoff",
+    // Public handoff bundle pages (feature #41). Same enumeration concern as
+    // /verify — share tokens are unguessable by design, but we don't want
+    // scanners hammering the DB lookup. `/handoff` (no trailing slash) is
+    // the member's authenticated list page and isn't matched here.
+    match: (req) => req.nextUrl.pathname.startsWith("/handoff/"),
+    policy: { limit: 30, windowMs: 60_000 },
+  },
+  {
     bucket: "waitlist-submit",
     // Public waitlist POSTs (feature #49). Server actions from the /waitlist
     // marketing page arrive here as POSTs to the page path itself. Tight cap
@@ -147,6 +156,10 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/verify") ||
     pathname.startsWith("/api/auth") ||
     pathname === "/api/health" ||
+    // Handoff bundle pages (feature #41). The token-bearing path is public
+    // so auction houses and brokers can view without a login; the member's
+    // list page at `/handoff` (no trailing slash) stays authenticated.
+    pathname.startsWith("/handoff/") ||
     // Pre-launch founding-member waitlist landing page (feature #49). The
     // page + its server action POST are both unauthenticated by design.
     pathname === "/waitlist" ||

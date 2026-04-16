@@ -308,7 +308,7 @@ gantt
     section Phase 4 — Vault Business
     Liv-ex live pricing       :done, p4a, 2026-07-01, 7d
     Provenance timeline       :done, p4b, after p4a, 7d
-    Auction handoff package   :p4c, after p4b, 5d
+    Auction handoff package   :done, p4c, after p4b, 5d
     Facility resilience       :done, p4d, after p4c, 5d
 ```
 
@@ -365,7 +365,7 @@ Framing comes from the April 2026 investor review (Robert Saenz): the locker pro
 |---|---------|-------------|
 | 39 | ~~Liv-ex live pricing integration~~ | ~~Replace seeded `WineValuation` data with a real Liv-ex API client. Daily price sync job (`/api/cron/livex-sync`, Vercel Cron at 9 AM UTC), per-wine "last updated" timestamps, graceful fallback to last known price on API failure. Unlocks real-time collection valuation on the dashboard and wine detail page. Done.~~ |
 | 40 | ~~Provenance chain-of-custody timeline~~ | ~~Per-bottle timeline rendering the unbroken Sentinel history from intake to today: temperature/humidity envelope, access events, facility moves, disposition. Signed JSON + PDF export attached to the existing certificate. Done.~~ |
-| 41 | Auction / broker handoff package | One-click bundle for Christie's / Sotheby's / Acker / private brokers: provenance certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." |
+| 41 | ~~Auction / broker handoff package~~ | ~~One-click bundle for Christie's / Sotheby's / Acker / private brokers: provenance certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." Done.~~ |
 | 42 | ~~Facility resilience & hurricane reporting~~ | ~~Facility-level dashboard for elevation, generator uptime, fire suppression status, and logged weather/hurricane events. Auto-generated post-event member reports ("your cellar was safe during Hurricane X — here's the environmental record"). Naples-specific differentiator vs. Carl's Wine Vault and the reason a collector picks an above-sea-level monitored facility over a home cellar. Done.~~ |
 
 ### Phase 5 — Investor-Ready (pre-seed)

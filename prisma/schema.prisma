@@ -61,6 +61,12 @@ enum FacilityEventType {
   incident
 }
 
+enum HandoffChannel {
+  auction
+  broker
+  private
+}
+
 model Facility {
   id                    String    @id @default(uuid())
   name                  String
@@ -121,6 +127,7 @@ model Member {
   lockers               Locker[]
   dispositions          WineDisposition[]
   facilities            FacilityMember[]
+  handoffPackages       HandoffPackage[]
 
   @@index([tier])
   @@index([role])
@@ -156,6 +163,7 @@ model Wine {
   certificates     ProvenanceCertificate[]
   valuations       WineValuation[]
   dispositions     WineDisposition[]
+  handoffPackages  HandoffPackage[]
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
@@ -283,6 +291,37 @@ model WineDisposition {
   @@index([wineId])
   @@index([memberId])
   @@map("wine_dispositions")
+}
+
+model HandoffPackage {
+  id             String          @id @default(uuid())
+  wineId         String          @map("wine_id")
+  memberId       String          @map("member_id")
+  recipientName  String          @map("recipient_name")
+  recipientEmail String          @map("recipient_email")
+  channel        HandoffChannel
+  shareToken     String          @unique @map("share_token")
+  expiresAt      DateTime?       @map("expires_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  wine           Wine            @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  member         Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  accesses       HandoffAccess[]
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([wineId])
+  @@map("handoff_packages")
+}
+
+model HandoffAccess {
+  id         String         @id @default(uuid())
+  packageId  String         @map("package_id")
+  ipHash     String         @map("ip_hash")
+  userAgent  String?        @map("user_agent")
+  accessedAt DateTime       @default(now()) @map("accessed_at")
+  package    HandoffPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId, accessedAt(sort: Desc)])
+  @@map("handoff_accesses")
 }
 
 // Pre-launch founding-member waitlist (feature #49). Public signups land
