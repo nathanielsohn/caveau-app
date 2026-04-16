@@ -194,7 +194,12 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/cron/") ||
     // Sentinel device ingest (feature #21). Auth'd via Bearer
     // SENTINEL_INGEST_SECRET inside the route handler, not session cookies.
-    pathname.startsWith("/api/ingest/");
+    pathname.startsWith("/api/ingest/") ||
+    // SES bounce/complaint webhook (#19 follow-up). Auth IS the SNS
+    // signature verification done inside the route — there's no shared
+    // secret because SNS doesn't carry one, so this endpoint must be
+    // reachable without a session cookie for AWS to deliver to it.
+    pathname === "/api/ses/webhook";
 
   if (isPublic) {
     return applySecurityHeaders(NextResponse.next(), csp, pathname);

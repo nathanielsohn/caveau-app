@@ -136,6 +136,13 @@ model Member {
   emailAlertsEnabled    Boolean  @default(true) @map("email_alerts_enabled")
   emailAlertSeverity    String   @default("warning") @map("email_alert_severity")
   emailAlertCooldownMin Int       @default(30) @map("email_alert_cooldown_min")
+  // SES feedback (#19 follow-up). Set by `/api/ses/webhook` when SNS
+  // forwards a bounce or complaint for this member's address. The same
+  // route flips `emailAlertsEnabled` to false so we stop hammering a
+  // dead/angry inbox; `/settings` reads these to explain why alerts went
+  // quiet so the member can correct or appeal.
+  emailBounced          DateTime? @map("email_bounced")
+  emailComplained       DateTime? @map("email_complained")
   onboardedAt           DateTime? @map("onboarded_at")
   // Hurricane Emergency Collection Protection (feature #46). Members opt
   // in via /settings/hurricane; when active, staff see them in the

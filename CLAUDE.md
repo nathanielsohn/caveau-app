@@ -60,6 +60,11 @@ UPSTASH_REDIS_REST_TOKEN=xxx
 
 # Optional — enables alert email notifications via AWS SES (feature #19).
 # If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of sending.
+# When SES is live the operator must subscribe an SNS topic to
+# `https://<host>/api/ses/webhook` and attach Bounce + Complaint event
+# destinations on the SES Configuration Set / Identity. Without that
+# subscription, hard-bounced and complaining members keep receiving no
+# alerts (because SES drops them) and their dashboard stays silent.
 AWS_REGION=us-east-1
 AWS_SES_FROM_EMAIL=alerts@caveau.com
 

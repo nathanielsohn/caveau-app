@@ -22,6 +22,8 @@ export default async function SettingsPage() {
       emailAlertsEnabled: true,
       emailAlertSeverity: true,
       emailAlertCooldownMin: true,
+      emailBounced: true,
+      emailComplained: true,
       hurricaneProtectionActive: true,
     },
   });
@@ -83,6 +85,32 @@ export default async function SettingsPage() {
           <div className="mb-6 px-4 py-3 rounded-xl border border-warn/30 bg-warn/10 text-xs text-warn">
             Email delivery is not configured for this environment (AWS SES is inactive).
             Preferences will save but no emails will be sent until an administrator configures SES.
+          </div>
+        )}
+
+        {/* Bounce / complaint banner (#19 follow-up). Surfaced so a member
+            isn't silently locked out of alerts after AWS marks their address
+            undeliverable or they hit "report spam" — the webhook flips
+            emailAlertsEnabled off, this tells them why. */}
+        {member.emailBounced && (
+          <div className="mb-4 px-4 py-3 rounded-xl border border-danger/30 bg-danger/10 text-xs text-danger">
+            Email alerts were paused because messages to{" "}
+            <span className="font-medium">{member.email}</span> hard-bounced
+            on{" "}
+            {member.emailBounced.toLocaleDateString("en-US", {
+              dateStyle: "medium",
+            })}
+            . Update the address with support before re-enabling.
+          </div>
+        )}
+        {member.emailComplained && !member.emailBounced && (
+          <div className="mb-4 px-4 py-3 rounded-xl border border-warn/30 bg-warn/10 text-xs text-warn">
+            Email alerts were paused after a spam complaint was received from{" "}
+            <span className="font-medium">{member.email}</span> on{" "}
+            {member.emailComplained.toLocaleDateString("en-US", {
+              dateStyle: "medium",
+            })}
+            . Contact support to re-enable.
           </div>
         )}
 
