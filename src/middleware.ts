@@ -180,7 +180,10 @@ export async function middleware(req: NextRequest) {
     // Cron endpoints are auth'd via shared-secret Bearer token (CRON_SECRET),
     // not session cookies. Let them through the auth gate; the route handler
     // rejects unauthenticated invocations itself.
-    pathname.startsWith("/api/cron/");
+    pathname.startsWith("/api/cron/") ||
+    // Sentinel device ingest (feature #21). Auth'd via Bearer
+    // SENTINEL_INGEST_SECRET inside the route handler, not session cookies.
+    pathname.startsWith("/api/ingest/");
 
   if (isPublic) {
     return applySecurityHeaders(NextResponse.next(), csp);

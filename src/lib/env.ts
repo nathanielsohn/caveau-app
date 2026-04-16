@@ -27,7 +27,8 @@ type OptionalKey =
   | "FACILITY_COOKIE_SECRET"
   | "LIVEX_API_KEY"
   | "LIVEX_BASE_URL"
-  | "CRON_SECRET";
+  | "CRON_SECRET"
+  | "SENTINEL_INGEST_SECRET";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -141,5 +142,11 @@ export const env = {
   // header doesn't match. Leave unset in dev if you plan to hit the route
   // manually — it will still reject in production if you forget.
   CRON_SECRET: read("CRON_SECRET"),
+  // Shared secret that guards /api/ingest/sensor (feature #21). Sentinel
+  // devices send `Authorization: Bearer <SENTINEL_INGEST_SECRET>` on every
+  // reading. Leave unset in dev/test to allow unauthenticated posts for
+  // local simulation; production MUST set it or the route rejects all
+  // traffic.
+  SENTINEL_INGEST_SECRET: read("SENTINEL_INGEST_SECRET"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

@@ -110,6 +110,23 @@ export const AlertsQuerySchema = z.object({
     .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
 });
 
+// Sentinel device payload (feature #21). Ranges are defensive bounds, not
+// calibration limits — a reading outside these is almost certainly a
+// malformed packet. The db columns are Decimal(5,2) / Decimal(5,3) so we cap
+// well below the column ceiling to avoid Prisma coercion surprises.
+export const SensorIngestBodySchema = z.object({
+  lockerId: UuidSchema,
+  temperature: z.coerce.number().finite().min(-50).max(200),
+  humidity: z.coerce.number().finite().min(0).max(100),
+  vibration: z.coerce.number().finite().min(0).max(100),
+  lightLux: z.coerce.number().finite().min(0).max(100_000),
+  timestamp: z
+    .string()
+    .datetime({ offset: true })
+    .pipe(z.coerce.date()),
+  deviceSignature: z.string().min(1).max(512),
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**

@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → custody & condition reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 21 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 45, 46). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 23 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
 
 ## Stack
 
@@ -88,6 +88,14 @@ GOOGLE_CLOUD_VISION_API_KEY=AIzaSy...
 LIVEX_API_KEY=livex_live_...
 LIVEX_BASE_URL=https://api.liv-ex.com/v1
 CRON_SECRET=<random-base64-string>
+
+# Optional — shared Bearer secret that guards the Sentinel device ingest
+# endpoint (feature #21) at `/api/ingest/sensor`. Devices send
+# `Authorization: Bearer <SENTINEL_INGEST_SECRET>` on every reading. When
+# unset, the route allows unauthenticated POSTs in dev/test only so local
+# simulation keeps working; staging and production MUST set it or every
+# request returns 401.
+SENTINEL_INGEST_SECRET=<random-base64-string>
 ```
 
 ## Project Structure
@@ -263,7 +271,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 ## Not Yet Implemented (on roadmap)
 
 **Phase 2–3 (remaining):**
-- Real IoT device connections (#21, #22)
+- Real IoT sensor data pipeline — partitioning, rollups, retention (#22)
 - Locker check-in/out staff workflow (#25)
 - Payments / membership (#27)
 - Admin panel (#28)
