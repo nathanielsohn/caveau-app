@@ -227,6 +227,13 @@ export async function recordDisposition(formData: FormData) {
         notes,
       },
     });
+
+    // Release the physical slot so the locker view and "bottles stored"
+    // dashboard count stop rendering a ghost bottle.
+    await tx.lockerSlot.updateMany({
+      where: { wineId },
+      data: { wineId: null, dateStored: null },
+    });
   });
 
   // Best-effort S3 cleanup. A failure here just leaks a single object;
