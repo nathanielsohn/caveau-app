@@ -46,13 +46,17 @@ async function getMemberLockerContext(): Promise<
 }
 
 /**
- * Inner fetch, cached by (lockerId, hoursBack). Wrapped via unstable_cache
- * so repeated dashboard hits reuse the downsampled payload instead of
- * re-scanning sensor_readings every time. 60s revalidate keeps the live
- * tab feeling fresh while still absorbing bursty traffic.
+ * Inner fetch, cached by (lockerId, hoursBack, includeSimulation). Wrapped
+ * via unstable_cache so repeated dashboard hits reuse the downsampled
+ * payload instead of re-scanning sensor_readings every time. 60s revalidate
+ * keeps the live tab feeling fresh while still absorbing bursty traffic.
+ *
+ * `includeSimulation` controls whether the live-demo (recordLiveAlert)
+ * rows show up alongside real device alerts; defaults to false so the
+ * audit trail stays clean.
  */
 const fetchSentinelDataForLocker = unstable_cache(
-  async (lockerId: string, hoursBack: number) => {
+  async (lockerId: string, hoursBack: number, includeSimulation: boolean) => {
     const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
     const [readings, alerts] = await Promise.all([
@@ -61,7 +65,9 @@ const fetchSentinelDataForLocker = unstable_cache(
         orderBy: { timestamp: "asc" },
       }),
       prisma.alert.findMany({
-        where: { lockerId },
+        where: includeSimulation
+          ? { lockerId }
+          : { lockerId, source: "device" },
         orderBy: { timestamp: "desc" },
         take: 50,
       }),
@@ -113,7 +119,8 @@ const fetchSentinelDataForLocker = unstable_cache(
  * state instead of blank charts.
  */
 export async function fetchSentinelData(
-  hoursBack: number
+  hoursBack: number,
+  includeSimulation: boolean = false,
 ): Promise<{
   readings: DbSensorReading[];
   alerts: DbAlert[];
@@ -121,7 +128,11 @@ export async function fetchSentinelData(
 }> {
   const ctx = await getMemberLockerContext();
   if (!ctx) return { readings: [], alerts: [], hasLocker: false };
-  const data = await fetchSentinelDataForLocker(ctx.lockerId, hoursBack);
+  const data = await fetchSentinelDataForLocker(
+    ctx.lockerId,
+    hoursBack,
+    includeSimulation,
+  );
   return { ...data, hasLocker: true };
 }
 
@@ -161,7 +172,7 @@ export async function recordLiveAlert(input: {
   const { type, severity, message } = validation.data;
 
   const alert = await prisma.alert.create({
-    data: { lockerId, type, severity, message },
+    data: { lockerId, type, severity, message, source: "simulation" },
     select: { id: true },
   });
 

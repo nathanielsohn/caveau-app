@@ -103,6 +103,9 @@ export async function buildProvenanceBundle(
       where: {
         lockerId: cert.lockerId,
         timestamp: { gte: start, lte: end },
+        // Provenance is the chain-of-custody surface investors and
+        // buyers read; simulated alerts must never enter it.
+        source: "device",
       },
       orderBy: { timestamp: "asc" },
       select: {

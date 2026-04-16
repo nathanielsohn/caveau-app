@@ -89,6 +89,9 @@ export async function buildEventReport(
         lockerId: { in: lockerIds },
         timestamp: { gte: event.startedAt, lte: windowEnd },
         severity: { in: ["warning", "critical"] },
+        // Post-event reports describe what real hardware saw; exclude
+        // simulated alerts so the event narrative isn't padded.
+        source: "device",
       },
     }),
   ]);

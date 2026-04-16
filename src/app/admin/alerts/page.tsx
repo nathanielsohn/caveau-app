@@ -26,12 +26,9 @@ export default async function AdminAlertsPage({
         ? "all"
         : "open";
 
-  const where =
-    filter === "open"
-      ? { resolved: false }
-      : filter === "resolved"
-        ? { resolved: true }
-        : {};
+  const where: { source: "device"; resolved?: boolean } = { source: "device" };
+  if (filter === "open") where.resolved = false;
+  else if (filter === "resolved") where.resolved = true;
 
   const [alerts, openCount, resolvedCount] = await Promise.all([
     prisma.alert.findMany({
@@ -49,8 +46,8 @@ export default async function AdminAlertsPage({
         },
       },
     }),
-    prisma.alert.count({ where: { resolved: false } }),
-    prisma.alert.count({ where: { resolved: true } }),
+    prisma.alert.count({ where: { resolved: false, source: "device" } }),
+    prisma.alert.count({ where: { resolved: true, source: "device" } }),
   ]);
 
   const tabs: { key: Filter; label: string; count: number | null }[] = [

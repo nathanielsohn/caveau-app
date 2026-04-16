@@ -211,6 +211,9 @@ export async function POST(req: NextRequest) {
           type: breach.type as AlertType,
           resolved: false,
           timestamp: { gte: alertCooldownCutoff },
+          // Only dedup against other device alerts so a simulated alert
+          // from the /sentinel demo can't suppress a real breach.
+          source: "device",
         },
         select: { id: true },
       });
@@ -223,6 +226,7 @@ export async function POST(req: NextRequest) {
           severity: breach.severity as Severity,
           message: breach.message,
           timestamp: payload.timestamp,
+          source: "device",
         },
         select: { id: true },
       });

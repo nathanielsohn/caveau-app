@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
   const alerts = await prisma.alert.findMany({
     where: {
       locker: { memberId: ctx.memberId, facilityId: ctx.facilityId },
+      // Hide live-simulation alerts from the public alert feed; only
+      // /sentinel exposes a toggle to surface them.
+      source: "device",
       ...(resolvedFilter !== undefined && { resolved: resolvedFilter }),
     },
     orderBy: { timestamp: "desc" },

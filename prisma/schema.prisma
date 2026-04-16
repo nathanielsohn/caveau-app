@@ -81,6 +81,11 @@ enum HurricaneStage {
   cancelled
 }
 
+enum AlertSource {
+  device
+  simulation
+}
+
 model Facility {
   id                    String    @id @default(uuid())
   name                  String
@@ -272,16 +277,22 @@ model SensorReading {
 }
 
 model Alert {
-  id         String    @id @default(uuid())
-  lockerId   String    @map("locker_id")
+  id         String      @id @default(uuid())
+  lockerId   String      @map("locker_id")
   type       AlertType
   severity   Severity
+  // 'device' = persisted by the Sentinel ingest endpoint. 'simulation' =
+  // persisted by the /sentinel page's live-simulation action. UI lists
+  // and provenance aggregations filter to source='device' by default so
+  // simulated alerts can't pollute the audit trail; the /sentinel page
+  // has a toggle to surface them.
+  source     AlertSource @default(device)
   message    String
-  timestamp  DateTime  @default(now())
-  resolved   Boolean   @default(false)
-  notifiedAt DateTime? @map("notified_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  locker     Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  timestamp  DateTime    @default(now())
+  resolved   Boolean     @default(false)
+  notifiedAt DateTime?   @map("notified_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  locker     Locker      @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
   @@index([lockerId, timestamp(sort: Desc)])
   @@index([resolved, lockerId, timestamp(sort: Desc)])

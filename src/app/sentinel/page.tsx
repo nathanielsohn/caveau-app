@@ -127,6 +127,10 @@ export default function SentinelPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasLocker, setHasLocker] = useState(true);
+  // Show alerts written by the live demo (recordLiveAlert) alongside real
+  // device alerts. Defaults off so the audit trail stays clean; only this
+  // page exposes the toggle.
+  const [showSimulationAlerts, setShowSimulationAlerts] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Client-side dedupe for persisted live alerts: keeps the last time we
   // sent a given alert type up to the server. Prevents every 5-second tick
@@ -143,26 +147,32 @@ export default function SentinelPage() {
       : simulateReading();
 
   /* ── Fetch DB data ─────────────────────────────── */
-  const loadDbData = useCallback(async (selectedRange: TimeRange) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { readings, alerts, hasLocker: lockerPresent } =
-        await fetchSentinelData(TIME_RANGE_HOURS[selectedRange]);
-      setDbReadings(readings);
-      setDbAlerts(alerts.map((a) => ({ ...a, isNew: false })));
-      setHasLocker(lockerPresent);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load sensor data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadDbData = useCallback(
+    async (selectedRange: TimeRange, includeSimulation: boolean) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { readings, alerts, hasLocker: lockerPresent } =
+          await fetchSentinelData(
+            TIME_RANGE_HOURS[selectedRange],
+            includeSimulation,
+          );
+        setDbReadings(readings);
+        setDbAlerts(alerts.map((a) => ({ ...a, isNew: false })));
+        setHasLocker(lockerPresent);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load sensor data");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
-  /* ── Initial load + range changes ──────────────── */
+  /* ── Initial load + range / toggle changes ─────── */
   useEffect(() => {
-    void loadDbData(range);
-  }, [range, loadDbData]);
+    void loadDbData(range, showSimulationAlerts);
+  }, [range, showSimulationAlerts, loadDbData]);
 
   /* ── Live simulation (runs always for current values) */
   // The tick closure is held in a ref so the 5-second setInterval below
@@ -409,7 +419,7 @@ export default function SentinelPage() {
           <Activity className="w-5 h-5 text-danger" />
           <span className="text-sm text-danger">{error}</span>
           <button
-            onClick={() => loadDbData(range)}
+            onClick={() => loadDbData(range, showSimulationAlerts)}
             className="text-xs text-gold hover:text-gold-text transition-colors ml-2"
           >
             Retry
@@ -438,6 +448,17 @@ export default function SentinelPage() {
       )}
 
       {/* Alert list */}
+      <div className="flex items-center justify-end mb-2">
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showSimulationAlerts}
+            onChange={(e) => setShowSimulationAlerts(e.target.checked)}
+            className="w-4 h-4 rounded border-[#2A2A30] bg-[#0F0F11] text-gold focus:ring-gold focus:ring-offset-0"
+          />
+          Show simulation alerts
+        </label>
+      </div>
       <AlertList alerts={allAlerts} />
     </div>
   );

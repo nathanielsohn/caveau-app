@@ -32,12 +32,12 @@ export default async function AdminOverviewPage() {
       where: { status: "in_cellar" },
       _sum: { currentValue: true },
     }),
-    prisma.alert.count({ where: { resolved: false } }),
+    prisma.alert.count({ where: { resolved: false, source: "device" } }),
     prisma.alert.count({
-      where: { resolved: false, severity: "critical" },
+      where: { resolved: false, severity: "critical", source: "device" },
     }),
     prisma.alert.findMany({
-      where: { resolved: false },
+      where: { resolved: false, source: "device" },
       orderBy: { timestamp: "desc" },
       take: 5,
       include: {

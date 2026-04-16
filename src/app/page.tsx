@@ -126,7 +126,11 @@ export default async function DashboardPage() {
         lockerIds.length > 0
           ? withTimeout(
               prisma.alert.count({
-                where: { lockerId: { in: lockerIds }, resolved: false },
+                where: {
+                  lockerId: { in: lockerIds },
+                  resolved: false,
+                  source: "device",
+                },
               }),
               SECONDARY_TIMEOUT,
               "active-alerts",
@@ -134,7 +138,7 @@ export default async function DashboardPage() {
           : Promise.resolve(0),
         withTimeout(
           prisma.alert.findMany({
-            where: { lockerId: { in: lockerIds } },
+            where: { lockerId: { in: lockerIds }, source: "device" },
             orderBy: { timestamp: "desc" },
             take: 5,
             select: {
