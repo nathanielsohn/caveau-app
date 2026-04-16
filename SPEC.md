@@ -382,6 +382,32 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 | 48 | Home Cellar Program (Year 2) | New location type: "home cellar" alongside "vault." Sentinel sensor at member's home feeds the same dashboard. Certified installer network tracking. Phase 1: white-label SensorPush hardware with Caveau-branded enclosure. Phase 2: custom enclosure with bottle probe + LTE-M cellular fallback. Phase 3: fully proprietary Caveau Sentinel at scale. |
 | 49 | ~~Founding member waitlist~~ | ~~Pre-launch waitlist and LOI tracking. Naples Winter Wine Festival activation (Jan 30–Feb 1, 2027). Founding member discount tiers. Converts to full membership at Q3 2027 soft launch. Done.~~ |
 
+### Phase 6 — Investor Demo Gap (post-deck skim)
+
+Sourced from skimming the `Caveau_Pitch_Deck_FINAL.pptx` (18 slides) + equity summary on 2026-04-16. These close the gap between what the investor materials promise and what the app currently demos. Full rationale, P0/P1/P2 split, slide references, and 8–10 week build plan live in `~/Desktop/caveau-docs/product/2026-04-16-investor-demo-gap-list.md` — read that before planning a specific feature, not just the one-line entry here.
+
+Priority: AI Advisor chat (#50) first — it's the single biggest gap and unlocks the deck's centerpiece narrative. Then #51–54 to round out P0.
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 50 | AI Advisor chat | Conversational Claude surface with tool access to the member's portfolio, Liv-ex pricing, active Sentinel alerts, and tier details. Answers the four canonical slide-6 questions: best exit opportunity, portfolio vs. Liv-ex 100, alert interpretation, insurance rate estimate. Pitch deck's centerpiece (slides 1, 4, 5, 6, 10, 17); scales 85–90% of advisor Q&A so a human advisor can cover 300–500 members instead of 40–50. |
+| 51 | Biometric-verified Deliver Now | Vault → member home delivery flow. App-side ladder: biometric re-auth (Face ID/Touch ID) → delivery PIN → address confirmation → step-up OTP for deliveries >$2K. Door-side ladder: government-ID scan → name-match-to-account → authorized recipient registry → photo + timestamp log. Meets Florida DABT requirements. Slide 7. |
+| 52 | Concierge migration | 48-hour white-glove import from CellarTracker and Vivino CSV exports. Column-mapping UI, admin-facing migration queue for staff fulfillment. Positioned as the churn-killer on slides 5, 10, 17. |
+| 53 | Events & tasting module | Event model (date/location/capacity/price), member RSVP, admin event creation, per-event attendee roster, event-scoped non-member signup form. Seed Naples Winter Wine Festival (Jan 30–Feb 1 2027) as the first event. Projected largest Y3 revenue stream at $1.2M on slide 14. |
+| 54 | Founding Member pricing | Founding discount logic per tier ($119/$299/$849 vs. $149/$349/$999 list), price-locked-for-life flag, founding benefits bundle (90-day Private Vault trial, Welcome appraisal, Founding Circle status, Day 1 allocation access). Extends onboarding wizard. Slide 11. |
+| 55 | Exit signals | AI-surfaced sell-window alerts per bottle, tied to Liv-ex momentum + drink-window intersection. Visible on dashboard, wine detail, AI Advisor. Pipeline from signal → #47 exit facilitation. Slides 5, 6. |
+| 56 | Insurance savings estimate | Dashboard / portfolio card: collection value × tier storage discipline → estimated 20–35% premium savings range with PURE / Chubb / AXA XL / Berkley One named. Static math, no carrier API required. Slide 9. |
+| 57 | Portfolio vs. Liv-ex 100 | YTD portfolio performance charted against the Liv-ex Fine Wine 100 index. Slide 5 dashboard tile; slide 6 canonical advisor question. |
+| 58 | Sentinel fleet / device admin | Device-level registry per facility/locker: firmware version, battery %, WiFi vs. LTE-M connectivity state, last heartbeat, alert routing. Surfaces the "proprietary IoT hardware with patent portfolio" story from slide 17. |
+| 59 | Sentinel inventory & tier assignment | At-signup device allocation per tier (Collector purchase, Reserve 1 included, Private Vault 2 included, Estate 2 + Bottle Probe). Serial capture, location assignment, activation state. Slides 8, 12. |
+| 60 | Allocation access | Private Allocations feed: staff posts limited releases with per-tier eligibility; members request; staff fulfills. Founding benefit on slide 11; $1.5K–$5K annual value quoted on slide 9. |
+| 61 | Welcome appraisal | Point-in-time valuation document distinct from the Caveau Certificate — basis, date, appraiser, purpose, heirs (estate-scoped). Extends founding-member onboarding. Revenue stream on slide 15 (Appraisal & Estate Docs, $5K–$15K Y1). |
+| 62 | Acquisition sourcing | Member-requested bottle sourcing via Liv-ex or Caveau's private network. Request form → admin queue → fulfillment record → 8–12% margin tracked. Revenue stream #8 on slides 12 and 15. |
+
+Demo talk track — not a feature but a deliverable Rob requested 2026-04-16. Draft after P0 items (#50–54) ship, not before — the walkthrough should reflect the shipped app, not the planned one.
+
+Small side-fix not counted as a feature: `src/lib/tiers.ts` Reserve tier currently displays "Contact us" and `priceMonthlyUsd: null`. Pitch deck slide 8 confirms Reserve = $149/mo self-serve. Update the tier spec and the onboarding flow when touching tier code.
+
 ### Code Audit — Technical Debt Backlog (April 2026)
 
 Full codebase audit identified the items below. Security hotfixes (certificate IDOR, email normalization, signup hardening, demo credential gating) were fixed immediately. Remaining items are slotted into the phase where they become load-bearing.
