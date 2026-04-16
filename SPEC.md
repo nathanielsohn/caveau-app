@@ -377,7 +377,7 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 | 43 | ~~NFC bottle tracking + tap-to-verify~~ | ~~NFC tag intake workflow: tag bottle at intake, photograph, assign to member portfolio. Phone tap on tag opens the bottle's Custody & Condition Report (public `/bottle/[tag-id]` landing page). Two tag tiers: invisible capsule tag under foil for trophy bottles ($1,000+), branded navy/gold Caveau neck collar with embedded NFC for standard bottles (under $1,000). No QR stickers — auction houses notice post-production label modification. Done.~~ |
 | 44 | Membership tier pricing | Four tiers with pricing: Collector ($29/mo), Reserve (TBD), Private Vault ($349/mo), Estate ($999/mo). Tier determines included services vs. fee-based add-ons. Hurricane Emergency Collection Protection included in Private Vault and Estate; available as $500–$1,500 fee for Reserve. Update onboarding wizard, settings, and billing UI. Stripe integration (extends #27). |
 | 45 | ~~Investment portfolio view~~ | ~~Per-bottle CAGR projections, portfolio total with 5-year projection, tier labels (Anchor/Icon/Blue-Chip/Prestige/Accessible/Approachable). Sourced from Liv-ex historical data (#39). Dashboard card showing portfolio appreciation vs. S&P 500 baseline. Matches the 10-Bottle PDF format. Done.~~ |
-| 46 | Hurricane Emergency Collection Protection | Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. |
+| 46 | ~~Hurricane Emergency Collection Protection~~ | ~~Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. Done.~~ |
 | 47 | Exit facilitation workflow | Commission tracking (10–12% on sales), auction house handoff (extends #41), acquisition sourcing margin tracking (8–12%). Member-facing "ready to sell" flow: select bottles → generate handoff package → choose channel (auction, broker, private sale) → track proceeds. |
 | 48 | Home Cellar Program (Year 2) | New location type: "home cellar" alongside "vault." Sentinel sensor at member's home feeds the same dashboard. Certified installer network tracking. Phase 1: white-label SensorPush hardware with Caveau-branded enclosure. Phase 2: custom enclosure with bottle probe + LTE-M cellular fallback. Phase 3: fully proprietary Caveau Sentinel at scale. |
 | 49 | ~~Founding member waitlist~~ | ~~Pre-launch waitlist and LOI tracking. Naples Winter Wine Festival activation (Jan 30–Feb 1, 2027). Founding member discount tiers. Converts to full membership at Q3 2027 soft launch. Done.~~ |
@@ -420,10 +420,10 @@ Full codebase audit identified the items below. Security hotfixes (certificate I
 #### Phase 2 — IoT & Data (address alongside features 21–26)
 
 **Query performance:**
-- Fix N+1 in `/api/sensors/latest/route.ts`: replace per-locker loop with single `findMany` using `distinct: ['lockerId']`
+- ~~Fix N+1 in `/api/sensors/latest/route.ts`~~ — DONE: single `$queryRaw` with `DISTINCT ON (sr.locker_id)`, one round trip.
 - Combine two-step locker ID + alert fetch in `/api/alerts/route.ts` into single nested Prisma query
 - Add `select` clauses to over-fetching queries (wine detail includes full locker/certificate objects but only uses 2-3 fields)
-- Replace `<img>` with `next/image` in `wine-card.tsx` + configure `images.remotePatterns` in `next.config.mjs`
+- ~~Replace `<img>` with `next/image` in `wine-card.tsx`~~ — DONE: `next/image` in use; `images.remotePatterns` configured for S3 + CloudFront in `next.config.mjs`.
 
 **Caching:**
 - Replace blanket `force-dynamic` with ISR (`revalidate: 60`) on collection, dashboard, locker pages
@@ -438,7 +438,7 @@ Full codebase audit identified the items below. Security hotfixes (certificate I
 - Use `createMany()` in seed scripts instead of individual creates (~500 queries → ~5)
 
 **UX:**
-- Add error UI on dashboard data fetch failure (currently renders `$0` silently)
+- ~~Add error UI on dashboard data fetch failure~~ — DONE: `src/app/page.tsx` wraps fetches in try/catch with an "Unable to load dashboard" glass-card fallback; secondary queries use `Promise.allSettled` + 2.5s per-query timeout.
 - Add toast/notification on successful wine add (modal closes with no feedback)
 - Add `aria-live` region announcing live sensor data updates for screen readers
 

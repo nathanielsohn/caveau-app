@@ -72,6 +72,15 @@ enum NfcTagTier {
   collar
 }
 
+enum HurricaneStage {
+  watch_issued
+  transport_dispatched
+  sheltered
+  all_clear
+  returned
+  cancelled
+}
+
 model Facility {
   id                    String    @id @default(uuid())
   name                  String
@@ -84,6 +93,7 @@ model Facility {
   lockers               Locker[]
   members               FacilityMember[]
   events                FacilityEvent[]
+  hurricaneProtocols    HurricaneProtocol[]
 
   @@map("facilities")
 }
@@ -98,6 +108,7 @@ model FacilityEvent {
   notes      String?
   createdAt  DateTime          @default(now()) @map("created_at")
   facility   Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  hurricaneProtocols HurricaneProtocol[]
 
   @@index([facilityId, startedAt(sort: Desc)])
   @@map("facility_events")
@@ -126,6 +137,17 @@ model Member {
   emailAlertSeverity    String   @default("warning") @map("email_alert_severity")
   emailAlertCooldownMin Int       @default(30) @map("email_alert_cooldown_min")
   onboardedAt           DateTime? @map("onboarded_at")
+  // Hurricane Emergency Collection Protection (feature #46). Members opt
+  // in via /settings/hurricane; when active, staff see them in the
+  // roster for any new HurricaneProtocol activation and a
+  // HurricaneProtocolMember row is auto-created on dispatch. The
+  // insurance fields record the carrier partnership (#31) that grants
+  // premium discounts to enrolled members — surfaced on the settings
+  // card for the "why this matters" narrative.
+  hurricaneProtectionActive      Boolean   @default(false) @map("hurricane_protection_active")
+  hurricaneProtectionEnrolledAt  DateTime? @map("hurricane_protection_enrolled_at")
+  hurricaneInsurancePartner      String?   @map("hurricane_insurance_partner")
+  hurricaneInsuranceDiscountPct  Decimal?  @map("hurricane_insurance_discount_pct") @db.Decimal(5, 2)
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   wines                 Wine[]
@@ -133,6 +155,7 @@ model Member {
   dispositions          WineDisposition[]
   facilities            FacilityMember[]
   handoffPackages       HandoffPackage[]
+  hurricaneProtocolMemberships HurricaneProtocolMember[]
 
   @@index([tier])
   @@index([role])
@@ -402,4 +425,70 @@ model Waitlist {
   @@index([createdAt(sort: Desc)])
   @@index([loiSigned])
   @@map("waitlist_entries")
+}
+
+// Hurricane Emergency Collection Protection activation (feature #46). One
+// row per storm: staff kicks off a protocol when the NHC issues a watch for
+// the facility's region, refrigerated transport picks up enrolled members'
+// collections, and they shelter at an inland airport vault until the
+// all-clear. The stage enum walks left-to-right through the protocol so
+// the dashboard banner and staff console can render the current state
+// without a separate status field.
+//
+// `facilityEventId` is null until the protocol reaches `all_clear`, at
+// which point we create a corresponding FacilityEvent (type: hurricane)
+// spanning watchIssuedAt → allClearAt so the existing #42 post-event
+// report at /facility/events/[id] picks up seamlessly — members don't
+// need a separate "hurricane protocol report" page because #42 already
+// tells the right story ("your cellar was safe during Hurricane X").
+model HurricaneProtocol {
+  id                    String         @id @default(uuid())
+  facilityId            String         @map("facility_id")
+  stormName             String         @map("storm_name")
+  nhcAdvisory           String?        @map("nhc_advisory")
+  category              Int?
+  stage                 HurricaneStage @default(watch_issued)
+  watchIssuedAt         DateTime       @map("watch_issued_at")
+  transportDispatchedAt DateTime?      @map("transport_dispatched_at")
+  shelteredAt           DateTime?      @map("sheltered_at")
+  allClearAt            DateTime?      @map("all_clear_at")
+  returnedAt            DateTime?      @map("returned_at")
+  cancelledAt           DateTime?      @map("cancelled_at")
+  facilityEventId       String?        @unique @map("facility_event_id")
+  notes                 String?
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  facility              Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityEvent         FacilityEvent? @relation(fields: [facilityEventId], references: [id], onDelete: SetNull)
+  members               HurricaneProtocolMember[]
+
+  @@index([facilityId, watchIssuedAt(sort: Desc)])
+  @@index([stage])
+  @@map("hurricane_protocols")
+}
+
+// Per-member participation in a single HurricaneProtocol. Snapshot fields
+// (`bottleCountSnapshot`, `totalValueSnapshot`) are captured at pickup so
+// the post-event narrative can say "43 bottles, $112K protected" even if
+// the member's collection changes afterward. Intake/return photo keys are
+// S3 object keys for tamper-evidence photos taken by staff at the bottle
+// transfer — same pattern as NfcTag.intakeImageKey (#43). We leave them
+// nullable so a member who opts out of a specific activation still has a
+// row for audit purposes.
+model HurricaneProtocolMember {
+  id                  String            @id @default(uuid())
+  protocolId          String            @map("protocol_id")
+  memberId            String            @map("member_id")
+  bottleCountSnapshot Int?              @map("bottle_count_snapshot")
+  totalValueSnapshot  Decimal?          @map("total_value_snapshot") @db.Decimal(14, 2)
+  intakePhotoKey      String?           @map("intake_photo_key")
+  returnPhotoKey      String?           @map("return_photo_key")
+  notes               String?
+  createdAt           DateTime          @default(now()) @map("created_at")
+  protocol            HurricaneProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  member              Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([protocolId, memberId])
+  @@index([memberId, createdAt(sort: Desc)])
+  @@map("hurricane_protocol_members")
 }

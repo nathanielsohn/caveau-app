@@ -151,6 +151,8 @@ async function main() {
     prisma.provenanceCertificate.deleteMany(),
     prisma.wineValuation.deleteMany(),
     prisma.lockerSlot.deleteMany(),
+    prisma.hurricaneProtocolMember.deleteMany(),
+    prisma.hurricaneProtocol.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -261,6 +263,12 @@ async function main() {
       role: Role.member,
       passwordHash,
       onboardedAt: new Date(),
+      // Hurricane Protection (feature #46) — enrolled with PURE carrier
+      // discount to showcase the #31 insurance partnership narrative.
+      hurricaneProtectionActive: true,
+      hurricaneProtectionEnrolledAt: new Date(Date.now() - 120 * 86400000),
+      hurricaneInsurancePartner: 'PURE Insurance',
+      hurricaneInsuranceDiscountPct: 12.5,
     },
   });
   console.log(`  ✓ Member: ${member.name}`);
@@ -609,6 +617,51 @@ async function main() {
     dispositionCount++;
   }
   console.log(`  ✓ Historical dispositions: ${dispositionCount}`);
+
+  // Historical Hurricane Protection activation — ties to the Helene
+  // FacilityEvent seeded above. Stage = returned so the dashboard banner
+  // stays quiet on first load; Rob can see the row in the protocol
+  // history card on /settings/hurricane and trace through to the
+  // post-event environmental report at /facility/events/[id].
+  const heleneEvent = await prisma.facilityEvent.findFirst({
+    where: {
+      facilityId: naples.id,
+      type: FacilityEventType.hurricane,
+    },
+  });
+  if (heleneEvent) {
+    const totalPortfolioValue = createdWines.reduce(
+      (sum, w) => sum + Number(w.currentValue),
+      0,
+    );
+    const heleneProtocol = await prisma.hurricaneProtocol.create({
+      data: {
+        facilityId: naples.id,
+        stormName: 'Helene',
+        nhcAdvisory: 'AL092024',
+        category: 4,
+        stage: 'returned',
+        watchIssuedAt: new Date('2024-09-23T00:00:00Z'),
+        transportDispatchedAt: new Date('2024-09-24T06:00:00Z'),
+        shelteredAt: new Date('2024-09-25T14:00:00Z'),
+        allClearAt: new Date('2024-09-28T12:00:00Z'),
+        returnedAt: new Date('2024-09-30T18:00:00Z'),
+        facilityEventId: heleneEvent.id,
+        notes:
+          'Pre-landfall activation ahead of Helene. Refrigerated transport to Southwest Florida International airport vault; return delivery 48h after all-clear.',
+      },
+    });
+    await prisma.hurricaneProtocolMember.create({
+      data: {
+        protocolId: heleneProtocol.id,
+        memberId: member.id,
+        bottleCountSnapshot: Math.floor(createdWines.length * 0.6),
+        totalValueSnapshot: Math.round(totalPortfolioValue * 0.6 * 100) / 100,
+        notes: 'Complete inventory match on return. Zero temperature excursions in transit (Sentinel logger attached to case #3).',
+      },
+    });
+    console.log('  ✓ Hurricane protocol: Helene (returned)');
+  }
 
   console.log('\n✅ Seed complete!');
 }

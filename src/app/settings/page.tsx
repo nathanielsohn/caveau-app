@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, Mail } from "lucide-react";
+import { Bell, Mail, ShieldCheck, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
       emailAlertsEnabled: true,
       emailAlertSeverity: true,
       emailAlertCooldownMin: true,
+      hurricaneProtectionActive: true,
     },
   });
   if (!member) redirect("/auth/login");
@@ -64,6 +66,31 @@ export default async function SettingsPage() {
           }}
         />
       </div>
+
+      {/* Hurricane Protection card (#46) */}
+      <Link
+        href="/settings/hurricane"
+        className="glass-card p-6 md:p-8 mt-6 block hover:bg-[#1C1C20]/40 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-gold" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-serif text-lg text-primary">
+                Hurricane Emergency Collection Protection
+              </h2>
+              <p className="text-xs text-muted mt-0.5">
+                {member.hurricaneProtectionActive
+                  ? "Enrolled — pre-landfall rescue active"
+                  : "Not enrolled — opt in for storm-season coverage"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+        </div>
+      </Link>
     </div>
   );
 }

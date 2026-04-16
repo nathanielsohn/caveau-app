@@ -11,7 +11,9 @@ import {
   computePortfolioSummary,
   type PortfolioWineInput,
 } from "@/lib/investment";
+import { isActiveStage } from "@/lib/hurricane";
 import DashboardClient from "./dashboard-client";
+import HurricaneBanner from "@/components/hurricane-banner";
 
 // Force dynamic rendering — data comes from the database
 export const dynamic = "force-dynamic";
@@ -47,6 +49,7 @@ export default async function DashboardPage() {
       totalSlots,
       facilityCount,
       latestSyncRow,
+      hurricaneMembership,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -89,6 +92,26 @@ export default async function DashboardPage() {
         where: { memberId, lastValuationSyncAt: { not: null } },
         orderBy: { lastValuationSyncAt: "desc" },
         select: { lastValuationSyncAt: true },
+      }),
+      // Active hurricane protocol for this member, if any (feature #46).
+      // Surfaces the dashboard banner. One row at most while a protocol is
+      // live (returned / cancelled filter drops terminal rows).
+      prisma.hurricaneProtocolMember.findFirst({
+        where: {
+          memberId,
+          protocol: { stage: { notIn: ["returned", "cancelled"] } },
+        },
+        orderBy: { createdAt: "desc" },
+        include: {
+          protocol: {
+            select: {
+              stormName: true,
+              category: true,
+              stage: true,
+              facility: { select: { name: true } },
+            },
+          },
+        },
       }),
     ]);
 
@@ -316,17 +339,33 @@ export default async function DashboardPage() {
           }
         : null;
 
+    const activeHurricane =
+      hurricaneMembership && isActiveStage(hurricaneMembership.protocol.stage)
+        ? hurricaneMembership
+        : null;
+
     return (
-      <DashboardClient
-        metrics={metricsData}
-        topWines={topWines}
-        alerts={serializedAlerts}
-        valuationTrend={valuationTrend}
-        alertFrequency={alertFrequency}
-        topGainers={topGainers}
-        topLosers={topLosers}
-        portfolio={portfolioData}
-      />
+      <>
+        {activeHurricane && (
+          <HurricaneBanner
+            stormName={activeHurricane.protocol.stormName}
+            category={activeHurricane.protocol.category}
+            stage={activeHurricane.protocol.stage}
+            bottleCount={activeHurricane.bottleCountSnapshot}
+            facilityName={activeHurricane.protocol.facility.name}
+          />
+        )}
+        <DashboardClient
+          metrics={metricsData}
+          topWines={topWines}
+          alerts={serializedAlerts}
+          valuationTrend={valuationTrend}
+          alertFrequency={alertFrequency}
+          topGainers={topGainers}
+          topLosers={topLosers}
+          portfolio={portfolioData}
+        />
+      </>
     );
   } catch (error) {
     logger.error("Dashboard data fetch failed", error, {
