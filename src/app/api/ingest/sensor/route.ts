@@ -33,6 +33,7 @@
  * who's seen the shared Bearer secret.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
@@ -72,7 +73,14 @@ function authorized(req: NextRequest): boolean {
     return env.NODE_ENV === "development" || env.NODE_ENV === "test";
   }
   const header = req.headers.get("authorization") ?? "";
-  return header === `Bearer ${expected}`;
+  const expectedHeader = `Bearer ${expected}`;
+  // Length-check first so timingSafeEqual doesn't throw; the length
+  // gate itself leaks nothing beyond "wrong-length header," which is
+  // also what a naive string compare would reveal.
+  const a = Buffer.from(header);
+  const b = Buffer.from(expectedHeader);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export async function POST(req: NextRequest) {
