@@ -20,7 +20,12 @@ const config: Config = {
         // Text
         primary: "#E8E6E1",
         secondary: "#ADABA6",
-        muted: "#8B8B96",
+        // Bumped from #8B8B96 — the old value cleared WCAG AA only at ≥18px
+        // against caveau-graphite (#1C1C20), but the app uses `text-muted`
+        // at 12px throughout for metadata. #A0A0AA hits ~4.9:1 on graphite
+        // and ~6.8:1 on caveau-black, comfortably AA for small text on
+        // both surfaces.
+        muted: "#A0A0AA",
         // Accents
         gold: {
           DEFAULT: "#FFD166",
