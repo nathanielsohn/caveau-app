@@ -60,7 +60,7 @@ export default function CertificateDoc({
               Caveau
             </h1>
             <p className="text-xs uppercase tracking-[0.3em] text-gold-text">
-              Custody & Condition Report
+              Certificate
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export default function CertificateDoc({
           {/* Certificate Number & Issue Date */}
           <div className="text-center">
             <p className="text-xs uppercase tracking-[0.2em] text-muted mb-2">
-              Report No.
+              Certificate No.
             </p>
             <p className="font-mono text-sm text-gold-text tracking-wider mb-4">
               {certificate.certificateNumber}

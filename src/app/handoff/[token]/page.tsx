@@ -159,7 +159,7 @@ function BundleView({ bundle }: { bundle: HandoffBundle }) {
               }
             />
             <Fact
-              label="Custody certificate"
+              label="Caveau Certificate"
               value={
                 provenance ? (
                   <span className="font-mono text-sm text-gold-text">
@@ -270,7 +270,7 @@ function BundleView({ bundle }: { bundle: HandoffBundle }) {
         ) : (
           <section className="glass-card p-6 text-center">
             <p className="text-sm text-secondary">
-              No provenance certificate has been issued yet for this bottle.
+              No Caveau Certificate has been issued yet for this bottle.
             </p>
           </section>
         )}
@@ -278,7 +278,7 @@ function BundleView({ bundle }: { bundle: HandoffBundle }) {
         <footer className="text-center text-xs text-muted pb-6">
           <p>This link is private. Please do not forward.</p>
           <p className="mt-1">
-            Caveau · Naples, FL · Custody & Condition Services
+            Caveau · Naples, FL
           </p>
         </footer>
       </main>

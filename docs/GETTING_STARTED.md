@@ -38,7 +38,7 @@ NEXTAUTH_URL=http://localhost:3000
 # Leave unset in production builds.
 NEXT_PUBLIC_SHOW_DEMO_CREDS=true
 
-# Optional — dedicated HMAC keys for provenance certificate hashes and the
+# Optional — dedicated HMAC keys for Caveau Certificate hashes and the
 # signed facility-switcher cookie. Both fall back to NEXTAUTH_SECRET when
 # unset (fine for demo/dev); set independent random values in production
 # so a leak of one secret doesn't compromise the others.
@@ -121,7 +121,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full directory tree and data fl
 | `NEXTAUTH_SECRET` | Yes | JWT signing secret (`openssl rand -base64 32`) |
 | `NEXTAUTH_URL` | No | App base URL. Set for local dev (`http://localhost:3000`) or when attaching a custom domain; NextAuth falls back to the request host / `VERCEL_URL` otherwise. |
 | `NEXT_PUBLIC_SHOW_DEMO_CREDS` | No | When `"true"`, the login page surfaces the demo credentials block. Leave unset in production. |
-| `CERTIFICATE_HMAC_SECRET` | No | Dedicated HMAC key for provenance certificate hashes. Falls back to `NEXTAUTH_SECRET`. |
+| `CERTIFICATE_HMAC_SECRET` | No | Dedicated HMAC key for Caveau Certificate hashes. Falls back to `NEXTAUTH_SECRET`. |
 | `FACILITY_COOKIE_SECRET` | No | Dedicated HMAC key for the signed facility-switcher cookie. Falls back to `NEXTAUTH_SECRET`. |
 | `UPSTASH_REDIS_REST_URL` | No | Enables distributed rate limiting; in-memory limiter is used when unset. |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Companion token for Upstash Redis. |

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and provenance certificates.
+Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and Caveau Certificates.
 
 ## Stack
 
@@ -49,7 +49,7 @@ caveau-app/
 │   │   ├── locker/             # Locker visualization + server actions
 │   │   ├── sentinel/           # IoT monitoring + server actions
 │   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
-│   │   ├── certificate/[id]/   # Provenance certificate
+│   │   ├── certificate/[id]/   # Caveau Certificate (legacy redirect)
 │   │   ├── verify/[hash]/      # Public certificate verification
 │   │   └── api/                # REST endpoints
 │   │       ├── auth/

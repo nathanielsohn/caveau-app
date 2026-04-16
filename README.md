@@ -1,8 +1,8 @@
 # ◈ Caveau
 
-**Luxury wine cellar management with IoT monitoring and provenance certificates.**
+**Luxury wine cellar management with IoT monitoring and Caveau Certificates.**
 
-Caveau is a web application for managing wine collections, visualizing locker storage, monitoring environmental conditions via IoT sensors, and generating provenance certificates for fine wine authentication.
+Caveau is a web application for managing wine collections, visualizing locker storage, monitoring environmental conditions via IoT sensors, and issuing Caveau Certificates for fine wine authentication.
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Locker | `/locker` | Visual 4×8 slot grid with bottle details |
 | Sentinel | `/sentinel` | Live IoT monitoring: temp, humidity, vibration, light |
 | Wine Detail | `/wine/:id` | Full bottle profile with valuation |
-| Certificate | `/certificate/:id` | Provenance certificate with data integrity proof |
+| Certificate | `/certificate/:id` | Caveau Certificate with data integrity proof |
 | Verify | `/verify/:hash` | Public certificate verification (no auth) |
 
 See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature status.

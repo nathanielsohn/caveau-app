@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → custody & condition reports → valuations.
+A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Certificates → valuations.
 
 **Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 24 of 28 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. See SPEC.md "Post-Demo Roadmap" for full status.
 
@@ -43,7 +43,7 @@ NEXTAUTH_URL=http://localhost:3000
 # block (`robert@caveau.com` / `demo1234`). Leave unset in production.
 NEXT_PUBLIC_SHOW_DEMO_CREDS=true
 
-# Optional — dedicated HMAC keys for provenance certificate hashes
+# Optional — dedicated HMAC keys for Caveau Certificate hashes
 # (src/lib/certificate-hash.ts) and the signed facility-switcher cookie
 # (src/lib/current-facility.ts). Both fall back to NEXTAUTH_SECRET when
 # unset, which is fine for dev/demo; set independent random values in
@@ -174,7 +174,7 @@ src/
 │   │   ├── disposition-button.tsx # Client button that opens the disposition dialog
 │   │   └── loading.tsx
 │   ├── report/[id]/
-│   │   ├── page.tsx            # Custody & condition report (with QR code)
+│   │   ├── page.tsx            # Caveau Certificate (with QR code)
 │   │   ├── error.tsx
 │   │   └── loading.tsx
 │   ├── certificate/[id]/
@@ -200,7 +200,7 @@ src/
 │   ├── sensor-charts.tsx       # Recharts (temp, humidity, vibration, access log)
 │   ├── dashboard-charts.tsx    # Analytics (value trend, utilization, alert freq)
 │   ├── alert-list.tsx          # Alert history table
-│   ├── certificate-doc.tsx     # Custody & condition report layout + QR code
+│   ├── certificate-doc.tsx     # Caveau Certificate layout + QR code
 │   ├── add-wine-form.tsx       # Add wine modal/form
 │   ├── disposition-form.tsx    # Wine disposition modal (<dialog>)
 │   ├── valuation-chart.tsx     # Wine valuation price history chart

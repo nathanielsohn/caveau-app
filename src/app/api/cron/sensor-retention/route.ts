@@ -10,7 +10,7 @@
  * This is the interim solution. Roadmap #22 is the real fix —
  * partitioning by month + downsampled rollups so historical reads stay
  * fast at scale. Until that lands, 90 days of raw readings is plenty
- * for the live dashboard, charts, and provenance certificates.
+ * for the live dashboard, charts, and Caveau Certificates.
  *
  * Auth: shared-secret Bearer token (`CRON_SECRET`), same pattern as
  * /api/cron/livex-sync. Vercel cron sends the header automatically when

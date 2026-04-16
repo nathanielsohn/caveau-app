@@ -218,7 +218,7 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
             </div>
             <p className="text-xs text-secondary">
               {custody.sampleCount.toLocaleString()} sensor readings recorded
-              while this bottle sat under Caveau custody. Report{" "}
+              while this bottle sat under Caveau custody. Certificate{" "}
               <span className="font-mono text-gold-text">
                 {certificate.certificateNumber}
               </span>{" "}
@@ -228,16 +228,15 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
         ) : (
           <section className="glass-card p-5 text-center">
             <p className="text-sm text-secondary">
-              No Custody &amp; Condition Report has been issued for this bottle
-              yet.
+              No Caveau Certificate has been issued for this bottle yet.
             </p>
             <p className="text-xs text-muted mt-1">
-              Reports are issued after the first monitoring window closes.
+              Certificates are issued after the first monitoring window closes.
             </p>
           </section>
         )}
 
-        {/* CTA → Custody & Condition Report */}
+        {/* CTA → Caveau Certificate */}
         {certificate ? (
           <Link
             href={`/report/${certificate.id}`}
@@ -250,10 +249,10 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
                 </div>
                 <div>
                   <p className="font-serif text-base text-primary group-hover:text-gold transition-colors">
-                    View full Custody &amp; Condition Report
+                    View full Caveau Certificate
                   </p>
                   <p className="text-xs text-muted mt-0.5">
-                    Environmental envelope, provenance timeline, integrity hash.
+                    Environmental envelope, chain of custody, integrity hash.
                   </p>
                 </div>
               </div>
@@ -263,7 +262,7 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
         ) : null}
 
         <footer className="text-center text-xs text-muted py-6 space-y-1">
-          <p>Caveau · Naples, FL · Custody &amp; Condition Services</p>
+          <p>Caveau · Naples, FL</p>
           <p className="text-muted/70">
             Tap the chip again any time to refresh this record.
           </p>

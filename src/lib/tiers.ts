@@ -38,7 +38,7 @@ export const TIERS: readonly TierSpec[] = [
     includedServices: [
       "One 32-bottle climate-controlled locker",
       "24/7 Sentinel environmental monitoring",
-      "Custody & condition reports on demand",
+      "Caveau Certificates on demand",
       "Email alerts on threshold breaches",
     ],
     dbTier: Tier.gold,

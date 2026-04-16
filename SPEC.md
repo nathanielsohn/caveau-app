@@ -2,7 +2,7 @@
 
 ## Context
 
-Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder (Rob Saenz) and an investor are excited about the tech stack: a wine cellar management app + Sentinel IoT monitoring + provenance certificates. Nathaniel (developer) has been brought in by Sam (GM) to build a working demo app by Monday April 13, 2026. The app will be built by Claude Code in ~3 autonomous sessions over the weekend.
+Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder (Rob Saenz) and an investor are excited about the tech stack: a wine cellar management app + Sentinel IoT monitoring + Caveau Certificates. Nathaniel (developer) has been brought in by Sam (GM) to build a working demo app by Monday April 13, 2026. The app will be built by Claude Code in ~3 autonomous sessions over the weekend.
 
 **Constraints:**
 - One developer maintaining this long-term
@@ -46,10 +46,10 @@ Visual 4×8 grid of locker slots. Empty vs occupied. Click slot → slide-out pa
 IoT dashboard: 4 condition cards (temp, humidity, vibration, light), temperature area chart, humidity line chart, vibration gauge, alert history. Time range toggle (1H/6H/24H/7D/30D). Live-updating simulated data.
 
 ### 5. Wine Detail (`/wine/[id]`)
-Full bottle profile: image, producer, region, vintage, tasting notes, purchase price vs current value, storage location, link to custody & condition report.
+Full bottle profile: image, producer, region, vintage, tasting notes, purchase price vs current value, storage location, link to Caveau Certificate.
 
-### 6. Custody & Condition Report (`/report/[id]`)
-Standalone printable page: wine info, monitoring period, environmental summary, SHA-256 integrity badge, report number, chain-of-custody timeline. No sidebar. Legacy `/certificate/[id]` redirects here.
+### 6. Caveau Certificate (`/report/[id]`)
+Standalone printable page: wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number, chain-of-custody timeline. No sidebar. Legacy `/certificate/[id]` redirects here.
 
 ---
 
@@ -107,7 +107,7 @@ All cards use: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 roun
 - 64 occupied locker slots (of 128 total)
 - 30 days of sensor readings at 5-min intervals (~34K rows across 4 lockers)
 - 20 historical alerts (including access/badge scan events)
-- 11 provenance certificates across multiple lockers
+- 11 Caveau Certificates across multiple lockers
 - 4-6 WineValuations per wine with sources: "manual", "liv-ex", "wine-searcher", "auction" — powers dashboard analytics trend chart
 
 ### Sensor Simulation (client-side)
@@ -365,7 +365,7 @@ Framing comes from the April 2026 investor review (Robert Saenz): the locker pro
 |---|---------|-------------|
 | 39 | ~~Liv-ex live pricing integration~~ | ~~Replace seeded `WineValuation` data with a real Liv-ex API client. Daily price sync job (`/api/cron/livex-sync`, Vercel Cron at 9 AM UTC), per-wine "last updated" timestamps, graceful fallback to last known price on API failure. Unlocks real-time collection valuation on the dashboard and wine detail page. Done.~~ |
 | 40 | ~~Provenance chain-of-custody timeline~~ | ~~Per-bottle timeline rendering the unbroken Sentinel history from intake to today: temperature/humidity envelope, access events, facility moves, disposition. Signed JSON + PDF export attached to the existing certificate. Done.~~ |
-| 41 | ~~Auction / broker handoff package~~ | ~~One-click bundle for Christie's / Sotheby's / Acker / private brokers: provenance certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." Done.~~ |
+| 41 | ~~Auction / broker handoff package~~ | ~~One-click bundle for Christie's / Sotheby's / Acker / private brokers: Caveau Certificate + full Sentinel history + current Liv-ex valuation + photos, exported as a single shareable link with per-recipient access logs. Turns "stored with Caveau" into "ready to transact when the time is right." Done.~~ |
 | 42 | ~~Facility resilience & hurricane reporting~~ | ~~Facility-level dashboard for elevation, generator uptime, fire suppression status, and logged weather/hurricane events. Auto-generated post-event member reports ("your cellar was safe during Hurricane X — here's the environmental record"). Naples-specific differentiator vs. Carl's Wine Vault and the reason a collector picks an above-sea-level monitored facility over a home cellar. Done.~~ |
 
 ### Phase 5 — Investor-Ready (pre-seed)
@@ -374,7 +374,7 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 43 | ~~NFC bottle tracking + tap-to-verify~~ | ~~NFC tag intake workflow: tag bottle at intake, photograph, assign to member portfolio. Phone tap on tag opens the bottle's Custody & Condition Report (public `/bottle/[tag-id]` landing page). Two tag tiers: invisible capsule tag under foil for trophy bottles ($1,000+), branded navy/gold Caveau neck collar with embedded NFC for standard bottles (under $1,000). No QR stickers — auction houses notice post-production label modification. Done.~~ |
+| 43 | ~~NFC bottle tracking + tap-to-verify~~ | ~~NFC tag intake workflow: tag bottle at intake, photograph, assign to member portfolio. Phone tap on tag opens the bottle's Caveau Certificate (public `/bottle/[tag-id]` landing page). Two tag tiers: invisible capsule tag under foil for trophy bottles ($1,000+), branded navy/gold Caveau neck collar with embedded NFC for standard bottles (under $1,000). No QR stickers — auction houses notice post-production label modification. Done.~~ |
 | 44 | ~~Membership tier pricing~~ | ~~Four tiers with pricing: Collector ($29/mo), Reserve (TBD), Private Vault ($349/mo), Estate ($999/mo). Tier determines included services vs. fee-based add-ons. Hurricane Emergency Collection Protection included in Private Vault and Estate; available as $500–$1,500 fee for Reserve. Update onboarding wizard, settings, and billing UI. Stripe integration (extends #27). Done — tier metadata in `src/lib/tiers.ts`; Stripe wiring still deferred to #27.~~ |
 | 45 | ~~Investment portfolio view~~ | ~~Per-bottle CAGR projections, portfolio total with 5-year projection, tier labels (Anchor/Icon/Blue-Chip/Prestige/Accessible/Approachable). Sourced from Liv-ex historical data (#39). Dashboard card showing portfolio appreciation vs. S&P 500 baseline. Matches the 10-Bottle PDF format. Done.~~ |
 | 46 | ~~Hurricane Emergency Collection Protection~~ | ~~Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. Done.~~ |

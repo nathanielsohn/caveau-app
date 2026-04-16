@@ -3,7 +3,7 @@
  *
  * The public /bottle/[tagId] page resolves a tag serial to a lightweight
  * render-ready bundle — wine facts, current Liv-ex valuation, latest
- * Custody & Condition Report, and a Sentinel chain-of-custody summary.
+ * Caveau Certificate, and a Sentinel chain-of-custody summary.
  * Scans are logged opportunistically; a logging failure must never break
  * the public render path.
  *

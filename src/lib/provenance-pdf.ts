@@ -36,9 +36,9 @@ export async function renderProvenancePdf(
   bundle: ProvenanceBundle,
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Caveau Custody & Condition Report — ${bundle.certificateNumber}`);
+  doc.setTitle(`Caveau Certificate — ${bundle.certificateNumber}`);
   doc.setAuthor("Caveau");
-  doc.setSubject("Custody & condition chain-of-custody bundle");
+  doc.setSubject("Caveau Certificate — chain-of-custody bundle");
   doc.setProducer("Caveau provenance-pdf");
   doc.setCreator("Caveau");
 
@@ -65,13 +65,13 @@ export async function renderProvenancePdf(
 function drawHeader(s: RenderState, bundle: ProvenanceBundle) {
   drawCentered(s, "CAVEAU", s.serifBold, 22, INK);
   s.cursor -= 4;
-  drawCentered(s, "CUSTODY & CONDITION REPORT", s.body, 9, GOLD, 2.5);
+  drawCentered(s, "CERTIFICATE", s.body, 9, GOLD, 2.5);
   s.cursor -= 18;
   drawHr(s);
   s.cursor -= 18;
   drawCentered(
     s,
-    `Report ${bundle.certificateNumber}`,
+    `Certificate ${bundle.certificateNumber}`,
     s.bodyBold,
     10,
     INK,

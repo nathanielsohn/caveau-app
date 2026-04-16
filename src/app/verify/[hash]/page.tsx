@@ -57,10 +57,10 @@ export default async function VerifyPage({
           <div className="flex flex-col items-center mb-8">
             <CheckCircle2 size={48} className="text-ok mb-3" />
             <h1 className="font-serif text-2xl sm:text-3xl text-primary">
-              Report Verified
+              Certificate Verified
             </h1>
             <p className="text-sm text-secondary mt-1">
-              This custody & condition report is authentic.
+              This Caveau Certificate is authentic.
             </p>
           </div>
 
@@ -127,7 +127,7 @@ export default async function VerifyPage({
             {/* Certificate Number */}
             <div className="text-center">
               <p className="text-xs uppercase tracking-[0.2em] text-muted mb-2">
-                Report No.
+                Certificate No.
               </p>
               <p className="font-mono text-sm text-gold-text tracking-wider">
                 {certificate.certificateNumber}
@@ -147,7 +147,7 @@ export default async function VerifyPage({
 
           {/* Footer */}
           <p className="text-center text-xs text-muted mt-6">
-            Verified by Caveau Custody & Condition System
+            Verified by Caveau
           </p>
         </div>
       ) : (
@@ -156,10 +156,10 @@ export default async function VerifyPage({
           <div className="flex flex-col items-center mb-8">
             <XCircle size={48} className="text-danger mb-3" />
             <h1 className="font-serif text-2xl sm:text-3xl text-primary">
-              Report Not Found
+              Certificate Not Found
             </h1>
             <p className="text-sm text-secondary mt-1">
-              No report matches the provided hash.
+              No certificate matches the provided hash.
             </p>
           </div>
 

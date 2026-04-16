@@ -385,7 +385,7 @@ async function main() {
   }
   console.log(`  ✓ Alerts: ${alertData.length}`);
 
-  // 7. Provenance certificates — investment-grade wines across lockers
+  // 7. Caveau Certificates — investment-grade wines across lockers
   const certConfigs = [
     // DRC, Screaming Eagle, Petrus, Lafite, Opus One (locker 7)
     ...createdWines.slice(5, 10).map((w) => ({ wine: w, lockerId: locker7.id })),
@@ -409,7 +409,7 @@ async function main() {
     const certKey = process.env.NEXTAUTH_SECRET;
     if (!certKey) {
       throw new Error(
-        'NEXTAUTH_SECRET is required to seed provenance certificates',
+        'NEXTAUTH_SECRET is required to seed Caveau Certificates',
       );
     }
     const hash = createHmac('sha256', certKey)
@@ -432,7 +432,7 @@ async function main() {
     });
     certCount++;
   }
-  console.log(`  ✓ Provenance certificates: ${certCount}`);
+  console.log(`  ✓ Caveau Certificates: ${certCount}`);
 
   // 8. Wine valuations — multiple entries per wine over 12 months, varied sources
   const valuationSources = ['manual', 'liv-ex', 'wine-searcher', 'auction', 'liv-ex', 'manual'];
