@@ -20,6 +20,7 @@ interface AddWineFormProps {
   visionConfigured: boolean;
   requestScanUploadUrlAction: (
     contentType: string,
+    contentLength: number,
   ) => Promise<ScanUploadUrlResult>;
   scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
@@ -35,24 +36,28 @@ export default function AddWineForm({
 }: AddWineFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  // Pull focus into the first field when the modal opens so keyboard users
-  // aren't stranded behind the backdrop. Escape handling is delegated to
-  // the backdrop click handler via key-capture below.
+  // Drive the native <dialog> from the `open` prop. Native dialog gives us
+  // Escape + focus trap + focus return to the triggering element for free,
+  // so the hand-rolled Escape listener this replaced is gone.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    else if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  // On open pull focus into the name input. showModal() would otherwise
+  // auto-focus the close button, which is correct per spec but jarring
+  // for a form-first modal.
   useEffect(() => {
     if (!open) return;
-    const t = window.setTimeout(() => nameInputRef.current?.focus(), 0);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      window.clearTimeout(t);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose]);
+    const id = requestAnimationFrame(() => nameInputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
   // Controlled values so the Scan Label result can populate them. Empty
   // strings are sentinel "untouched" so the user keeps typing freedom.
   const [name, setName] = useState("");
@@ -98,24 +103,21 @@ export default function AddWineForm({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Add wine"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        paddingTop: "max(1rem, env(safe-area-inset-top))",
-        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+    <dialog
+      ref={dialogRef}
+      onClose={handleClose}
+      onClick={(e) => {
+        // Light-dismiss on backdrop click. The ::backdrop pseudo is the
+        // dialog element itself outside the inner panel, so a click whose
+        // target is the dialog (and not a descendant) is the backdrop.
+        if (e.target === dialogRef.current) handleClose();
       }}
+      aria-label="Add wine"
+      className="fixed inset-0 z-50 m-auto w-full max-w-md max-h-[85dvh] p-0 bg-transparent backdrop:bg-black/70 backdrop:backdrop-blur-sm open:block"
     >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      {/* Modal — max-h uses dvh to sidestep iOS Safari's address-bar vh bug. */}
-      <div className="relative w-full max-w-md glass-card p-6 max-h-[85dvh] overflow-y-auto">
+      {/* Modal — max-h on the dialog handles overflow; inner div carries the
+          glass-card chrome. */}
+      <div className="w-full glass-card p-6 max-h-[85dvh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-serif text-xl text-primary">Add Wine</h2>
@@ -283,6 +285,6 @@ export default function AddWineForm({
           </button>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 }
