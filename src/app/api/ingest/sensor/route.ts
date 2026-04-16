@@ -51,6 +51,15 @@ export const maxDuration = 15;
 // cases we want an operator to see, not silently accept.
 const MAX_CLOCK_SKEW_MS = 30 * 60 * 1000;
 
+// Collapse bursty threshold breaches into a single Alert row within this
+// window. notify-alert.ts enforces its own per-member email cooldown on
+// top of this; the DB-row dedup keeps the dashboard and alerts table
+// from filling with 100 "temp high" entries when a sensor sits 1°F over
+// the limit for an hour. Keep in sync with the default Member
+// `emailAlertCooldownMin` so a member's inbox and their dashboard stay
+// roughly aligned.
+const ALERT_COOLDOWN_MINUTES = 30;
+
 function unauthorized(): NextResponse {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
@@ -115,17 +124,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Locker not found" }, { status: 404 });
   }
 
-  const reading = await prisma.sensorReading.create({
-    data: {
+  // Idempotent ingest. The @@unique([lockerId, timestamp]) constraint
+  // makes a replayed Bearer-authenticated POST a no-op: the catch branch
+  // returns 200 without re-running threshold checks or emitting another
+  // alert row.
+  let readingId: number;
+  let isNewReading = true;
+  try {
+    const reading = await prisma.sensorReading.create({
+      data: {
+        lockerId: payload.lockerId,
+        temperature: new Prisma.Decimal(payload.temperature),
+        humidity: new Prisma.Decimal(payload.humidity),
+        vibration: new Prisma.Decimal(payload.vibration),
+        lightLux: new Prisma.Decimal(payload.lightLux),
+        timestamp: payload.timestamp,
+      },
+      select: { id: true },
+    });
+    readingId = reading.id;
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const existing = await prisma.sensorReading.findUnique({
+        where: {
+          lockerId_timestamp: {
+            lockerId: payload.lockerId,
+            timestamp: payload.timestamp,
+          },
+        },
+        select: { id: true },
+      });
+      if (!existing) throw err;
+      readingId = existing.id;
+      isNewReading = false;
+    } else {
+      throw err;
+    }
+  }
+
+  if (!isNewReading) {
+    logger.info("[ingest/sensor] duplicate reading ignored", {
       lockerId: payload.lockerId,
-      temperature: new Prisma.Decimal(payload.temperature),
-      humidity: new Prisma.Decimal(payload.humidity),
-      vibration: new Prisma.Decimal(payload.vibration),
-      lightLux: new Prisma.Decimal(payload.lightLux),
-      timestamp: payload.timestamp,
-    },
-    select: { id: true },
-  });
+      readingId,
+    });
+    return NextResponse.json(
+      { status: "ok", readingId, alerts: [], duplicate: true },
+      { status: 200 },
+    );
+  }
 
   // Evaluate thresholds against the normalized (number) reading — Decimal
   // arithmetic isn't needed here and `checkThresholds` already takes numbers.
@@ -137,9 +186,28 @@ export async function POST(req: NextRequest) {
     timestamp: payload.timestamp,
   });
 
+  const alertCooldownCutoff = new Date(
+    Date.now() - ALERT_COOLDOWN_MINUTES * 60_000,
+  );
+
   const alertIds: string[] = [];
   for (const breach of breaches) {
     try {
+      // Collapse bursty breaches into a single Alert row per incident.
+      // We can't use a DB unique on alerts because `resolved` and
+      // `notifiedAt` are mutable; app-level dedup on an open alert of the
+      // same (locker, type) within the cooldown window is the fix.
+      const recentOpen = await prisma.alert.findFirst({
+        where: {
+          lockerId: payload.lockerId,
+          type: breach.type as AlertType,
+          resolved: false,
+          timestamp: { gte: alertCooldownCutoff },
+        },
+        select: { id: true },
+      });
+      if (recentOpen) continue;
+
       const alert = await prisma.alert.create({
         data: {
           lockerId: payload.lockerId,
@@ -162,14 +230,14 @@ export async function POST(req: NextRequest) {
 
   logger.info("[ingest/sensor] reading accepted", {
     lockerId: payload.lockerId,
-    readingId: reading.id,
+    readingId,
     alerts: alertIds.length,
   });
 
   return NextResponse.json(
     {
       status: "ok",
-      readingId: reading.id,
+      readingId,
       alerts: alertIds,
     },
     { status: 201 },

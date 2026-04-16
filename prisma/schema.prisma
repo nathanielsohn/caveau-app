@@ -258,6 +258,7 @@ model SensorReading {
   timestamp   DateTime @default(now())
   locker      Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
+  @@unique([lockerId, timestamp])
   @@index([lockerId, timestamp(sort: Desc)])
   @@map("sensor_readings")
 }
