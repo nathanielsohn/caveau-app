@@ -8,17 +8,25 @@ import { getServerAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { STAGE_ORDER } from "@/lib/hurricane";
 
-async function requireStaff() {
+// Hurricane protocol actions are destructive (activate, advance stage,
+// snapshot bottle counts) and today have no per-facility binding — the
+// role check is global. Narrow them to `admin` so a staff account on
+// facility A can't mutate facility B's protocol once #32 (multi-location)
+// lands a second facility. Swap this for a FacilityStaff membership check
+// once that table exists.
+// TODO(#32): replace with `requireFacilityStaff(facilityId)` once the
+// FacilityStaff table ships.
+async function requireAdmin() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
-  if (session.user.role !== Role.admin && session.user.role !== Role.staff) {
+  if (session.user.role !== Role.admin) {
     redirect("/");
   }
   return session;
 }
 
 export async function activateProtocol(formData: FormData): Promise<void> {
-  await requireStaff();
+  await requireAdmin();
 
   const facilityId = String(formData.get("facilityId") ?? "");
   const stormName = String(formData.get("stormName") ?? "").trim();
@@ -74,7 +82,7 @@ export async function activateProtocol(formData: FormData): Promise<void> {
 }
 
 export async function advanceStage(formData: FormData): Promise<void> {
-  await requireStaff();
+  await requireAdmin();
 
   const protocolId = String(formData.get("protocolId") ?? "");
   const targetStage = String(formData.get("stage") ?? "") as HurricaneStage;
@@ -156,7 +164,7 @@ export async function advanceStage(formData: FormData): Promise<void> {
 // compute sensible defaults server-side (current live portfolio) but let
 // staff overwrite if the physical count diverges.
 export async function snapshotMember(formData: FormData): Promise<void> {
-  await requireStaff();
+  await requireAdmin();
 
   const membershipId = String(formData.get("membershipId") ?? "");
   const bottleCountRaw = String(formData.get("bottleCount") ?? "").trim();
