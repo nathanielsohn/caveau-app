@@ -111,6 +111,9 @@ export default function LockerGrid({
   const [actionError, setActionError] = useState<string | null>(null);
   const addFormRef = useRef<HTMLFormElement>(null);
   const lastHandledTrigger = useRef(0);
+  const pickerDialogRef = useRef<HTMLDialogElement>(null);
+  const pickerSearchRef = useRef<HTMLInputElement>(null);
+  const addFormNameRef = useRef<HTMLInputElement>(null);
 
   // Scanned-field state for the inline add-wine form. Controlled inputs so a
   // successful scan can pre-fill them. imageKey gets threaded through the
@@ -148,6 +151,31 @@ export default function LockerGrid({
 
   // Any modal sheet open → lock body scroll so iOS doesn't scroll behind it.
   useBodyScrollLock(Boolean(selectedSlot) || Boolean(pickerSlot));
+
+  // Drive the picker <dialog> from pickerSlot state. Native <dialog> gives
+  // us Escape + focus trap + backdrop for free; on close the browser
+  // restores focus to the slot button that triggered the open.
+  useEffect(() => {
+    const dialog = pickerDialogRef.current;
+    if (!dialog) return;
+    if (pickerSlot && !dialog.open) {
+      dialog.showModal();
+    } else if (!pickerSlot && dialog.open) {
+      dialog.close();
+    }
+  }, [pickerSlot]);
+
+  // On open, pull focus into the right field: the search input for the
+  // wine list, or the name input when the add-wine form is showing. Without
+  // this the user would have to tab past all 32 slot buttons to reach it.
+  useEffect(() => {
+    if (!pickerSlot) return;
+    const id = requestAnimationFrame(() => {
+      if (showAddForm) addFormNameRef.current?.focus();
+      else pickerSearchRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pickerSlot, showAddForm]);
 
   // Build a map of slotPosition -> SlotData for the 32 slots
   const slotMap = useMemo(() => {
@@ -589,30 +617,21 @@ export default function LockerGrid({
         )}
       </AnimatePresence>
 
-      {/* Wine picker modal (empty slot) */}
-      <AnimatePresence>
-        {pickerSlot && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-40"
-              onClick={closePicker}
-            />
-
-            {/* Modal — wrapper handles centering so framer-motion's animated
-                transform doesn't fight Tailwind's translate utilities. */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="pointer-events-auto w-full sm:max-w-md max-h-full bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-            >
-              {showAddForm ? (
+      {/* Wine picker modal (empty slot) — native <dialog> gets Escape +
+          focus trap + focus return for free. Backdrop click dismiss is
+          wired via a click handler that checks e.target === dialog. */}
+      {pickerSlot && (
+        <dialog
+          ref={pickerDialogRef}
+          onClose={closePicker}
+          onClick={(e) => {
+            if (e.target === pickerDialogRef.current) closePicker();
+          }}
+          aria-label="Assign wine to slot"
+          className="fixed inset-0 z-50 m-auto w-full max-w-md max-h-[calc(100dvh-2rem)] p-0 bg-transparent backdrop:bg-black/60 open:flex items-center justify-center"
+        >
+          <div className="w-full max-h-full bg-[#141416] border border-[#2A2A30]/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            {showAddForm ? (
                 <form ref={addFormRef} action={handleAddWineToSlot} className="flex flex-col flex-1 min-h-0">
                   <div className="p-5 border-b border-[#2A2A30]/50 shrink-0">
                     <div className="flex items-center justify-between">
@@ -671,7 +690,7 @@ export default function LockerGrid({
                     )}
                     <div>
                       <label htmlFor="locker-wine-name" className="block text-sm text-secondary mb-1.5">Wine Name</label>
-                      <input id="locker-wine-name" name="name" type="text" required value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
+                      <input ref={addFormNameRef} id="locker-wine-name" name="name" type="text" required value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="e.g. Château Margaux" className="w-full bg-[#1C1C20] border border-[#2A2A30] rounded-xl px-3 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -733,6 +752,7 @@ export default function LockerGrid({
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                       <input
+                        ref={pickerSearchRef}
                         type="text"
                         placeholder="Search wines..."
                         value={searchQuery}
@@ -813,11 +833,9 @@ export default function LockerGrid({
                   )}
                 </>
               )}
-            </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+          </div>
+        </dialog>
+      )}
     </div>
   );
 }
