@@ -244,7 +244,7 @@ model LockerSlot {
   wine         Wine?     @relation(fields: [wineId], references: [id], onDelete: SetNull)
 
   @@unique([lockerId, slotPosition])
-  @@index([wineId])
+  @@unique([wineId])
   @@map("locker_slots")
 }
 
