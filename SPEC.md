@@ -417,7 +417,7 @@ Full codebase audit identified the items below. Security hotfixes (certificate I
 **Security hardening:**
 - ~~Rate limiting on `/api/auth/signup` and login~~ — DONE: in-memory per-IP limiter (5 req/60s) in middleware. Migrate to Redis for production scaling.
 - Tighten CSP: replace `unsafe-inline` with nonces (blocked by Next.js App Router inline script injection)
-- ~~Add explicit `maxAge` to JWT session config~~ — DONE: set to 4 hours (14400s)
+- ~~Add explicit `maxAge` to JWT session config~~ — DONE: 1 hour absolute (3600s) with 15-min sliding refresh (900s); tightened from the original 4-hour window to shrink the exposure time a stolen device has against a logged-in collector.
 - ~~Add CSRF token to signup form~~ — DONE: double-submit cookie with SHA-256 hash verification
 
 **Schema integrity:**

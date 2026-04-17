@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Custody & Condition Reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 24 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 42, 43, 44, 45, 46). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. Start with #50 AI Advisor chat. Full gap analysis at `~/Desktop/caveau-docs/product/2026-04-16-investor-demo-gap-list.md`.** See SPEC.md "Post-Demo Roadmap" for full status.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 26 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. Start with #50 AI Advisor chat. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
 
 ## Stack
 
@@ -43,6 +43,11 @@ NEXTAUTH_URL=http://localhost:3000
 # block (`robert@caveau.com` / `demo1234`). Leave unset in production.
 NEXT_PUBLIC_SHOW_DEMO_CREDS=true
 
+# Optional — Sentry DSN for error tracking. When unset, `src/lib/env.ts`
+# leaves `env.SENTRY_DSN` undefined and the app runs without Sentry
+# instrumentation. Wire this up in production.
+SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project>
+
 # Optional — dedicated HMAC keys for Caveau Custody & Condition Report hashes
 # (src/lib/certificate-hash.ts) and the signed facility-switcher cookie
 # (src/lib/current-facility.ts). Both fall back to NEXTAUTH_SECRET when
@@ -74,6 +79,12 @@ AWS_SES_FROM_EMAIL=alerts@caveau.com
 # when set, public image URLs go through the CDN instead of S3 directly.
 AWS_S3_BUCKET=caveau-wine-images
 AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
+
+# Optional — presigned upload URL TTL in seconds. Defaults to 300 (5 min)
+# and clamped to [60, 900] in src/lib/env.ts so a typo can't yield a
+# 1-second or all-day URL. Bump it if collectors on slow phones see
+# frequent "uploaded too late" failures.
+S3_UPLOAD_URL_TTL_SECONDS=300
 
 # Optional — enables wine label OCR via Google Cloud Vision (feature #24).
 # If GOOGLE_CLOUD_VISION_API_KEY is unset, the Scan Label button renders
@@ -108,7 +119,7 @@ SENTINEL_INGEST_SECRET=<random-base64-string>
 ```
 prisma/
 ├── schema.prisma               # Data models (generates TypeScript types)
-├── migrations/                 # Flat SQL migrations (0001..0017)
+├── migrations/                 # Flat SQL migrations (0001..0024)
 ├── seed.ts                     # Seed data script
 └── seed-sensors.ts             # Sensor reading seed script
 src/
@@ -269,7 +280,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - **Signup** creates a new member with role `"member"` and tier `"gold"` (re-confirmed in the onboarding wizard), minimum 10-char password with uppercase + lowercase + digit required, email format validated. Returns 201 for both new and existing accounts to prevent user enumeration. CSRF double-submit cookie validated via SHA-256 hash. After signup the client auto-signs in and pushes the user to `/onboarding`.
 - **Onboarding wizard** (`/onboarding`, feature #20): three steps — pick tier, reserve a fresh 32-slot locker, add an optional first bottle. The wizard runs server actions for each step and calls `useSession().update()` on completion to refresh the JWT. The `jwt` callback re-reads `tier` and `onboardedAt` from the DB when `trigger === "update"` so middleware sees the new state without a relogin.
 - **Password hashing**: bcrypt with 13 rounds (on signup). Login uses `bcrypt.compare` which has no cost parameter.
-- **Session timeout**: 4 hours (14400 seconds), JWT strategy, no refresh token
+- **Session timeout**: 1 hour absolute (`maxAge: 3600`) with a 15-minute sliding refresh (`updateAge: 900`) so an active user isn't kicked mid-session but an idle tab goes cold quickly. JWT strategy, no refresh token. See `src/lib/auth.ts` for the config.
 - **Rate limiting**: in-memory per-IP limiter on auth endpoints (5 requests / 60s window). Note: resets on deploy, does not persist across serverless instances.
 - **Role values**: `admin`, `staff`, `member` — RBAC guards are live; `/admin/*` is gated to role `admin` in middleware with a layout-level re-check (feature #28).
 
@@ -282,15 +293,11 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - Mobile app (#29)
 - Insurance integration (#31)
 - Multi-location management (#32)
-- ~~Wine marketplace (#33)~~ — deprioritized, dilutes vault-custodian positioning
-- Auction / broker handoff package (#41)
+- ~~Wine marketplace (#33)~~ — deprioritized 2026-04-14, dilutes vault-custodian positioning. Not "not yet built" — intentionally killed.
 
 **Phase 5 — Investor-Ready (from Rob's April 2026 business docs):**
-- Membership tier pricing (#44)
-- Hurricane Emergency Collection Protection protocol (#46)
 - Exit facilitation workflow (#47)
 - Home Cellar Program (#48)
-- Founding member waitlist (#49)
 
 See SPEC.md "Post-Demo Roadmap" for full details. Done features are marked ~~strikethrough~~ in the tables.
 
