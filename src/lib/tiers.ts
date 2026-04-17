@@ -5,9 +5,9 @@ import { Tier } from "@prisma/client";
  *
  * There are four public tiers but only three values in the `Tier` enum
  * (gold / platinum / black) — adding a fourth would require a migration,
- * so Reserve is intentionally sales-gated ("Contact us") and has no
- * self-serve DB mapping. The three self-serve tiers map 1:1 onto the
- * existing enum.
+ * so Reserve is priced but has no self-serve DB mapping and renders in
+ * onboarding as "By invitation" rather than a selectable option. The
+ * three self-serve tiers map 1:1 onto the existing enum.
  */
 export type TierSlug = "collector" | "reserve" | "private_vault" | "estate";
 
@@ -48,8 +48,8 @@ export const TIERS: readonly TierSpec[] = [
     name: "Reserve",
     description:
       "For growing collections that need flexible capacity and hands-on intake support.",
-    priceMonthlyUsd: null,
-    priceDisplay: "Contact us",
+    priceMonthlyUsd: 149,
+    priceDisplay: "$149/mo",
     hurricaneProtection: "addon",
     includedServices: [
       "Multiple lockers scaled to your holdings",
