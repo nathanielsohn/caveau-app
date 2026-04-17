@@ -29,6 +29,7 @@
  *     200 with a counts breakdown so cron history stays green. Use the
  *     `skipped` / `failed` counts to detect a degraded upstream.
  */
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -62,7 +63,13 @@ function authorized(req: NextRequest): boolean {
     return env.NODE_ENV === "development" || env.NODE_ENV === "test";
   }
   const header = req.headers.get("authorization") ?? "";
-  return header === `Bearer ${expected}`;
+  const expectedHeader = `Bearer ${expected}`;
+  const headerBuf = Buffer.from(header);
+  const expectedBuf = Buffer.from(expectedHeader);
+  // timingSafeEqual throws on mismatched lengths, so short-circuit here.
+  // The only leak is the overall header length, which is not sensitive.
+  if (headerBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(headerBuf, expectedBuf);
 }
 
 export async function GET(req: NextRequest) {
