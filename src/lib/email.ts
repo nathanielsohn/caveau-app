@@ -66,6 +66,18 @@ function severityColor(severity: Severity): string {
   return "#60A5FA";
 }
 
+/**
+ * Pick a public origin to deep-link into the app from email body. Falls
+ * back through NEXTAUTH_URL → VERCEL_URL → null. Returning null is fine —
+ * the email body just omits the CTA link and reverts to plain copy.
+ */
+function getAppBaseUrl(): string | null {
+  if (env.NEXTAUTH_URL) return env.NEXTAUTH_URL.replace(/\/$/, "");
+  const vercel = process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel}`;
+  return null;
+}
+
 function buildHtml(recipient: AlertEmailRecipient, alert: AlertEmailPayload): string {
   const accent = severityColor(alert.severity);
   const when = alert.timestamp.toLocaleString("en-US", {
@@ -73,6 +85,10 @@ function buildHtml(recipient: AlertEmailRecipient, alert: AlertEmailPayload): st
     timeStyle: "short",
   });
   const severityLabel = alert.severity.toUpperCase();
+  const baseUrl = getAppBaseUrl();
+  const settingsLink = baseUrl
+    ? `<a href="${baseUrl}/settings" style="color:#FFD166;text-decoration:underline;">Caveau settings</a>`
+    : "Caveau settings";
 
   return `<!doctype html>
 <html lang="en">
@@ -112,7 +128,7 @@ function buildHtml(recipient: AlertEmailRecipient, alert: AlertEmailPayload): st
 
                 <p style="margin:24px 0 0 0;color:#8B8B96;font-size:12px;line-height:1.5;">
                   Hello ${escapeHtml(recipient.name)},<br />
-                  This automated alert was sent because one of your lockers breached its environmental threshold. You can adjust or disable email alerts in your Caveau settings.
+                  This automated alert was sent because one of your lockers breached its environmental threshold. You can adjust or disable email alerts in your ${settingsLink}.
                 </p>
               </td>
             </tr>
@@ -134,6 +150,7 @@ function buildText(recipient: AlertEmailRecipient, alert: AlertEmailPayload): st
     dateStyle: "medium",
     timeStyle: "short",
   });
+  const baseUrl = getAppBaseUrl();
   return [
     `CAVEAU SENTINEL — ${alert.severity.toUpperCase()} ALERT`,
     "",
@@ -147,6 +164,7 @@ function buildText(recipient: AlertEmailRecipient, alert: AlertEmailPayload): st
     "This automated alert was sent because one of your lockers breached its",
     "environmental threshold. You can adjust or disable email alerts in your",
     "Caveau settings.",
+    ...(baseUrl ? ["", `Manage alerts: ${baseUrl}/settings`] : []),
     "",
     "— Caveau Sentinel",
   ].join("\n");
