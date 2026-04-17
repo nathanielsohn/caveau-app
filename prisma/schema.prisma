@@ -226,6 +226,20 @@ model WineValuation {
   @@map("wine_valuations")
 }
 
+// Liv-ex Fine Wine 100 index history (feature #50 — AI Advisor Q2). Seeded
+// monthly so the advisor can compute portfolio-vs-benchmark deltas until a
+// live Liv-ex 100 feed is wired. One row per snapshot date; `date` is unique
+// so a re-seed or future sync job can upsert on that column.
+model LivexBenchmark {
+  id         String   @id @default(uuid())
+  date       DateTime @unique
+  indexValue Decimal  @map("index_value") @db.Decimal(9, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([date(sort: Desc)])
+  @@map("livex_benchmark")
+}
+
 model Locker {
   id           String                @id @default(uuid())
   lockerNumber Int                   @map("locker_number")

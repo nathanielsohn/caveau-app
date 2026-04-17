@@ -685,6 +685,50 @@ async function main() {
     console.log('  ✓ Hurricane protocol: Helene (returned)');
   }
 
+  // 11. Liv-ex Fine Wine 100 benchmark (feature #50 — AI Advisor). Seeds
+  // 25 monthly index points (Apr 2024 – Apr 2026) so the advisor's
+  // getLivexBenchmark tool has data to compare the member's portfolio YTD
+  // against. skipDuplicates lets a re-run be idempotent — the `date`
+  // unique index rejects dupes without aborting the batch.
+  const benchmarkPoints: { year: number; month: number; indexValue: number }[] = [
+    // 2024 Apr–Dec
+    { year: 2024, month: 4, indexValue: 350 },
+    { year: 2024, month: 5, indexValue: 345 },
+    { year: 2024, month: 6, indexValue: 340 },
+    { year: 2024, month: 7, indexValue: 338 },
+    { year: 2024, month: 8, indexValue: 335 },
+    { year: 2024, month: 9, indexValue: 332 },
+    { year: 2024, month: 10, indexValue: 330 },
+    { year: 2024, month: 11, indexValue: 329 },
+    { year: 2024, month: 12, indexValue: 328 },
+    // 2025 Jan–Dec
+    { year: 2025, month: 1, indexValue: 331 },
+    { year: 2025, month: 2, indexValue: 333 },
+    { year: 2025, month: 3, indexValue: 336 },
+    { year: 2025, month: 4, indexValue: 338 },
+    { year: 2025, month: 5, indexValue: 340 },
+    { year: 2025, month: 6, indexValue: 342 },
+    { year: 2025, month: 7, indexValue: 341 },
+    { year: 2025, month: 8, indexValue: 343 },
+    { year: 2025, month: 9, indexValue: 344 },
+    { year: 2025, month: 10, indexValue: 346 },
+    { year: 2025, month: 11, indexValue: 348 },
+    { year: 2025, month: 12, indexValue: 350 },
+    // 2026 Jan–Apr
+    { year: 2026, month: 1, indexValue: 353 },
+    { year: 2026, month: 2, indexValue: 355 },
+    { year: 2026, month: 3, indexValue: 358 },
+    { year: 2026, month: 4, indexValue: 361 },
+  ];
+  await prisma.livexBenchmark.createMany({
+    data: benchmarkPoints.map((p) => ({
+      date: new Date(Date.UTC(p.year, p.month - 1, 1)),
+      indexValue: p.indexValue,
+    })),
+    skipDuplicates: true,
+  });
+  console.log(`  ✓ Liv-ex benchmark points: ${benchmarkPoints.length}`);
+
   console.log('\n✅ Seed complete!');
 }
 

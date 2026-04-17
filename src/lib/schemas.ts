@@ -129,6 +129,16 @@ export const SensorIngestBodySchema = z.object({
   deviceSignature: z.string().min(1).max(512),
 });
 
+// ── Advisor tool params (feature #50) ─────────────────────────────────────
+
+export const AdvisorWineIdParamSchema = z.object({
+  wineId: UuidSchema,
+});
+
+export const AdvisorBenchmarkParamSchema = z.object({
+  since: DateSchema.optional(),
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**
