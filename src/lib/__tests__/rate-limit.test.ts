@@ -54,19 +54,22 @@ describe("clientIp", () => {
     expect(clientIp(headers)).toBe("10.0.0.1");
   });
 
-  it("falls back to the first x-forwarded-for entry", () => {
+  it("ignores x-forwarded-for when x-real-ip is absent", () => {
+    // XFF is attacker-controllable on non-Vercel ingress, so the
+    // implementation deliberately never reads it. Make sure a spoofed
+    // XFF-only request lands in the shared 'unknown' bucket.
     const headers = new Headers();
     headers.set("x-forwarded-for", "198.51.100.7, 10.0.0.1");
-    expect(clientIp(headers)).toBe("198.51.100.7");
+    expect(clientIp(headers)).toBe("unknown");
   });
 
   it("returns 'unknown' when no IP headers are present", () => {
     expect(clientIp(new Headers())).toBe("unknown");
   });
 
-  it("trims whitespace around forwarded entries", () => {
+  it("trims whitespace in x-real-ip", () => {
     const headers = new Headers();
-    headers.set("x-forwarded-for", "  198.51.100.42  , 10.0.0.1");
-    expect(clientIp(headers)).toBe("198.51.100.42");
+    headers.set("x-real-ip", "  10.0.0.5  ");
+    expect(clientIp(headers)).toBe("10.0.0.5");
   });
 });
