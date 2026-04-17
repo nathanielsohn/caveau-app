@@ -159,7 +159,7 @@ function BundleView({ bundle }: { bundle: HandoffBundle }) {
               }
             />
             <Fact
-              label="Caveau Certificate"
+              label="Custody & Condition Report"
               value={
                 provenance ? (
                   <span className="font-mono text-sm text-gold-text">
@@ -270,7 +270,7 @@ function BundleView({ bundle }: { bundle: HandoffBundle }) {
         ) : (
           <section className="glass-card p-6 text-center">
             <p className="text-sm text-secondary">
-              No Caveau Certificate has been issued yet for this bottle.
+              No Caveau Custody & Condition Report has been issued yet for this bottle.
             </p>
           </section>
         )}

@@ -2,7 +2,7 @@
  * Handoff package assembly for feature #41.
  *
  * A handoff package is a shareable bundle of everything an auction house or
- * broker needs to validate a bottle: the Caveau Certificate, the full
+ * broker needs to validate a bottle: the Caveau Custody & Condition Report, the full
  * Sentinel environmental envelope (reused from #40), the current Liv-ex
  * valuation, and the wine photo. The recipient opens the bundle via a
  * random share token; each view is logged to `HandoffAccess`.
@@ -89,9 +89,9 @@ export async function loadHandoffBundle(
   });
   if (!pkg) return null;
 
-  // Most recent Caveau Certificate for the bottle. We pick at view time
+  // Most recent Custody & Condition Report for the bottle. We pick at view time
   // (rather than storing certificateId on the package) so the bundle always
-  // reflects the freshest custody record — a new certificate issued after the
+  // reflects the freshest custody record — a new report issued after the
   // package was created should still show up.
   const cert = await prisma.provenanceCertificate.findFirst({
     where: { wineId: pkg.wineId },

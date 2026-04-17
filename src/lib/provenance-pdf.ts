@@ -36,9 +36,9 @@ export async function renderProvenancePdf(
   bundle: ProvenanceBundle,
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  doc.setTitle(`Caveau Certificate — ${bundle.certificateNumber}`);
+  doc.setTitle(`Caveau Custody & Condition Report — ${bundle.certificateNumber}`);
   doc.setAuthor("Caveau");
-  doc.setSubject("Caveau Certificate — chain-of-custody bundle");
+  doc.setSubject("Caveau Custody & Condition Report — chain-of-custody bundle");
   doc.setProducer("Caveau provenance-pdf");
   doc.setCreator("Caveau");
 

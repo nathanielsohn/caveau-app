@@ -20,12 +20,12 @@ API routes are implemented. All endpoints require authentication via NextAuth JW
 | GET | `/api/sensors/latest` | Yes | Latest sensor reading per locker |
 | GET | `/api/sensors/history` | Yes | Historical readings (`?lockerId=`, `?range=`) — rate-limited 30 / 60s per IP |
 | GET | `/api/alerts` | Yes | Recent alerts (`?resolved=true/false`) |
-| GET | `/api/certificates/[id]` | Yes | Certificate with wine and locker data (ownership verified) |
+| GET | `/api/certificates/[id]` | Yes | Custody & Condition Report with wine and locker data (ownership verified) |
 | POST | `/api/auth/signup` | No | Create account (email validated, 10-char min password with upper+lower+digit, CSRF double-submit verified) — rate-limited 5 / 60s per IP |
 | `*` | `/api/auth/[...nextauth]` | No | NextAuth handlers (login, CSRF, session) — login rate-limited 10 / 60s per IP |
 | GET | `/api/health` | No | Public uptime probe — returns `{ ok: true }` |
 
-Wine bottle photo uploads (#18) are **not** exposed as a REST endpoint; they run through the `getUploadUrl` server action in `src/app/wine/[id]/actions.ts`, which mints a presigned S3 PUT URL that the browser uploads to directly. Public verification of certificate hashes is served by the `/verify/[hash]` page (SSR with per-IP rate limiting), not an API route.
+Wine bottle photo uploads (#18) are **not** exposed as a REST endpoint; they run through the `getUploadUrl` server action in `src/app/wine/[id]/actions.ts`, which mints a presigned S3 PUT URL that the browser uploads to directly. Public verification of Custody & Condition Report hashes is served by the `/verify/[hash]` page (SSR with per-IP rate limiting), not an API route.
 
 ## Data Access
 
@@ -38,7 +38,7 @@ flowchart TD
         C[Collection]
         L[Locker]
         W[Wine Detail]
-        Cert[Certificate]
+        Cert[Custody & Condition Report]
         Sen[Sentinel]
         Mob[Mobile / External]
     end
@@ -59,7 +59,7 @@ flowchart TD
     SC & SA & API --> P
 ```
 
-- **Server Components** — call Prisma directly (Dashboard, Collection, Locker, Wine Detail, Certificate)
+- **Server Components** — call Prisma directly (Dashboard, Collection, Locker, Wine Detail, Custody & Condition Report)
 - **Server Actions** — called from Client Components (Sentinel fetches historical data, Collection adds wines)
 - **API Routes** — REST endpoints with auth guards, primarily for mobile/external consumers
 

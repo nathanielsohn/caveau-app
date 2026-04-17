@@ -95,7 +95,7 @@ Add in Vercel Dashboard → Settings → Environment Variables. **Only two vars 
 | `NEXTAUTH_SECRET` | Yes | JWT signing secret — generate with `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | No | Public app URL (e.g. `https://caveau.vercel.app`). Vercel sets `VERCEL_URL` automatically; NextAuth falls back to it if `NEXTAUTH_URL` is unset. Set it explicitly when you attach a custom domain. |
 | `NEXT_PUBLIC_SHOW_DEMO_CREDS` | No | When `"true"`, the login page renders the `robert@caveau.com / demo1234` block. Leave unset in production. |
-| `CERTIFICATE_HMAC_SECRET` | No | Independent HMAC key for Caveau Certificate hashes (`src/lib/certificate-hash.ts`). Falls back to `NEXTAUTH_SECRET` if unset — fine for the demo; set a dedicated random value in real production so a leak of one secret doesn't compromise the other. |
+| `CERTIFICATE_HMAC_SECRET` | No | Independent HMAC key for Caveau Custody & Condition Report hashes (`src/lib/certificate-hash.ts`). Falls back to `NEXTAUTH_SECRET` if unset — fine for the demo; set a dedicated random value in real production so a leak of one secret doesn't compromise the other. |
 | `FACILITY_COOKIE_SECRET` | No | Independent HMAC key for the signed facility-switcher cookie (`src/lib/current-facility.ts`). Same fallback story as above. |
 | `UPSTASH_REDIS_REST_URL` | No | Enables distributed rate limiting. Without it, `src/lib/rate-limit.ts` uses the per-Lambda in-memory limiter, which resets on cold start. |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Companion token for Upstash Redis. Both must be set for the Redis limiter to activate. |

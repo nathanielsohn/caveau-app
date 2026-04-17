@@ -218,7 +218,7 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
             </div>
             <p className="text-xs text-secondary">
               {custody.sampleCount.toLocaleString()} sensor readings recorded
-              while this bottle sat under Caveau custody. Certificate{" "}
+              while this bottle sat under Caveau custody. Report{" "}
               <span className="font-mono text-gold-text">
                 {certificate.certificateNumber}
               </span>{" "}
@@ -228,15 +228,15 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
         ) : (
           <section className="glass-card p-5 text-center">
             <p className="text-sm text-secondary">
-              No Caveau Certificate has been issued for this bottle yet.
+              No Caveau Custody & Condition Report has been issued for this bottle yet.
             </p>
             <p className="text-xs text-muted mt-1">
-              Certificates are issued after the first monitoring window closes.
+              Reports are issued after the first monitoring window closes.
             </p>
           </section>
         )}
 
-        {/* CTA → Caveau Certificate */}
+        {/* CTA → Caveau Custody & Condition Report */}
         {certificate ? (
           <Link
             href={`/report/${certificate.id}`}
@@ -249,7 +249,7 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
                 </div>
                 <div>
                   <p className="font-serif text-base text-primary group-hover:text-gold transition-colors">
-                    View full Caveau Certificate
+                    View full Custody & Condition Report
                   </p>
                   <p className="text-xs text-muted mt-0.5">
                     Environmental envelope, chain of custody, integrity hash.

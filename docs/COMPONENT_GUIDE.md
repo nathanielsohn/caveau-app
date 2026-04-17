@@ -152,11 +152,11 @@ Alert history table with columns: time, type, severity (color-coded badge), mess
 ### certificate-doc.tsx
 **Status:** Complete (Feature 13 + Stretch Goal 17)
 
-Full certificate layout: gold double-line border, Caveau ◈ logo centered, wine info, monitoring period, environmental summary, SHA-256 integrity badge, certificate number, QR code linking to `/verify/[hash]` for public verification. Print-optimized with `@media print` styles.
+Full Custody & Condition Report layout: gold double-line border, Caveau ◈ logo centered, wine info, monitoring period, environmental summary, SHA-256 integrity badge, report number, QR code linking to `/verify/[hash]` for public verification. Print-optimized with `@media print` styles.
 
 **Props:** ProvenanceCertificate with wine and locker relations
 
-**Used in:** Certificate page
+**Used in:** Custody & Condition Report page
 
 ---
 
@@ -232,7 +232,7 @@ Alert → email dispatch (#19). Reads each member's notification preferences (`e
 Presigned upload URL helpers + `getPublicUrl(imageKey)` (#18). Returns the CloudFront URL when `AWS_CLOUDFRONT_DOMAIN` is set, otherwise the direct S3 URL. When `AWS_S3_BUCKET` is unset, `isUploadEnabled()` returns false so the UI can show the disabled state.
 
 ### certificate-hash.ts
-HMAC generation and verification for Caveau Certificate hashes. Keeps the hashing key in one place so `/verify/[hash]` and certificate creation use the same algorithm.
+HMAC generation and verification for Caveau Custody & Condition Report hashes. Keeps the hashing key in one place so `/verify/[hash]` and report creation use the same algorithm.
 
 ### use-body-scroll-lock.ts
 React hook that locks background scroll when a modal is open — used by the disposition dialog, add-wine modal, and locker slot picker.

@@ -133,7 +133,7 @@ export default function NfcTagCard(props: NfcTagCardProps) {
           </div>
           <p className="text-xs text-muted mt-1">
             Tap a phone to the {tag.tier === "capsule" ? "capsule" : "collar"} to
-            pull up this bottle&apos;s Caveau Certificate.
+            pull up this bottle&apos;s Custody & Condition Report.
           </p>
         </div>
       </div>

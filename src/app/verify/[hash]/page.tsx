@@ -57,14 +57,14 @@ export default async function VerifyPage({
           <div className="flex flex-col items-center mb-8">
             <CheckCircle2 size={48} className="text-ok mb-3" />
             <h1 className="font-serif text-2xl sm:text-3xl text-primary">
-              Certificate Verified
+              Report Verified
             </h1>
             <p className="text-sm text-secondary mt-1">
-              This Caveau Certificate is authentic.
+              This Caveau Custody & Condition Report is authentic.
             </p>
           </div>
 
-          {/* Certificate Details Card */}
+          {/* Report Details Card */}
           <div className="bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 rounded-2xl p-6 sm:p-8 space-y-6">
             {/* Wine Info */}
             <div className="text-center">
@@ -124,10 +124,10 @@ export default async function VerifyPage({
             {/* Divider */}
             <div className="h-px bg-[#2A2A30]/50" />
 
-            {/* Certificate Number */}
+            {/* Report Number */}
             <div className="text-center">
               <p className="text-xs uppercase tracking-[0.2em] text-muted mb-2">
-                Certificate No.
+                Report No.
               </p>
               <p className="font-mono text-sm text-gold-text tracking-wider">
                 {certificate.certificateNumber}
@@ -156,10 +156,10 @@ export default async function VerifyPage({
           <div className="flex flex-col items-center mb-8">
             <XCircle size={48} className="text-danger mb-3" />
             <h1 className="font-serif text-2xl sm:text-3xl text-primary">
-              Certificate Not Found
+              Report Not Found
             </h1>
             <p className="text-sm text-secondary mt-1">
-              No certificate matches the provided hash.
+              No report matches the provided hash.
             </p>
           </div>
 

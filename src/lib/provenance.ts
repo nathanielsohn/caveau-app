@@ -190,7 +190,7 @@ export async function buildProvenanceBundle(
   events.push({
     kind: "certificate",
     date: cert.createdAt.toISOString(),
-    title: "Caveau Certificate issued",
+    title: "Custody & Condition Report issued",
     detail: cert.certificateNumber,
   });
 

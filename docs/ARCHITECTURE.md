@@ -4,7 +4,7 @@
 
 ## Overview
 
-Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and Caveau Certificates.
+Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and Caveau Custody & Condition Reports.
 
 ## Stack
 
@@ -49,7 +49,7 @@ caveau-app/
 │   │   ├── locker/             # Locker visualization + server actions
 │   │   ├── sentinel/           # IoT monitoring + server actions
 │   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
-│   │   ├── certificate/[id]/   # Caveau Certificate (legacy redirect)
+│   │   ├── certificate/[id]/   # Caveau Custody & Condition Report (legacy redirect)
 │   │   ├── verify/[hash]/      # Public certificate verification
 │   │   └── api/                # REST endpoints
 │   │       ├── auth/
@@ -76,7 +76,7 @@ caveau-app/
 │   │   ├── sensor-charts.tsx   # Temp/humidity/vibration charts + access log
 │   │   ├── dashboard-charts.tsx # Analytics (value trend, utilization, alerts)
 │   │   ├── alert-list.tsx      # Alert history table
-│   │   ├── certificate-doc.tsx # Certificate layout + QR code
+│   │   ├── certificate-doc.tsx # Custody & Condition Report layout + QR code
 │   │   ├── add-wine-form.tsx   # Add wine modal
 │   │   ├── disposition-form.tsx # Wine disposition dialog
 │   │   ├── valuation-chart.tsx # Wine price history chart
@@ -118,7 +118,7 @@ flowchart LR
     F --> A
 ```
 
-Pages using this: Dashboard, Collection, Wine Detail, Certificate, Locker.
+Pages using this: Dashboard, Collection, Wine Detail, Custody & Condition Report, Locker.
 
 ### Client Components (interactive)
 Pages requiring `setInterval`, event handlers, or browser APIs use **Client Components** with `'use client'`. These cannot call Prisma directly — they fetch data via **Server Actions**:
@@ -212,7 +212,7 @@ See [DECISIONS.md](./DECISIONS.md) for the full decision log.
 | Locker (`/locker`) | Server + Client hybrid | Required | Prisma fetch → client-side interaction + slot actions |
 | Sentinel (`/sentinel`) | Client Component | Required | Server Actions + 5s live simulation |
 | Wine Detail (`/wine/[id]`) | Server Component | Required | Prisma (wine + valuations + dispositions) |
-| Certificate (`/certificate/[id]`) | Server Component | Required (ownership-checked) | Prisma (certificate + stats) |
+| Custody & Condition Report (`/report/[id]`, `/certificate/[id]` redirect) | Server Component | Required (ownership-checked) | Prisma (report + stats) |
 | Verify (`/verify/[hash]`) | Server Component | **Public** | Prisma (hash lookup, rate-limited) |
 | Onboarding (`/onboarding`) | Server + Client hybrid | Required (un-onboarded only) | Prisma fetch → 3-step wizard server actions |
 | Settings (`/settings`) | Server Component | Required | Prisma (member preferences + form action) |

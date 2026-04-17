@@ -535,7 +535,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         )}
       </div>
 
-      {/* Caveau Certificate link */}
+      {/* Caveau Custody & Condition Report link */}
       {certificate && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -545,7 +545,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </div>
               <div>
                 <h2 className="font-serif text-lg text-primary">
-                  Caveau Certificate
+                  Custody & Condition Report
                 </h2>
                 <p className="text-xs text-muted">
                   {certificate.certificateNumber}
@@ -556,7 +556,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               href={`/report/${certificate.id}`}
               className="btn-gold text-sm"
             >
-              View Certificate
+              View Report
             </Link>
           </div>
         </div>
