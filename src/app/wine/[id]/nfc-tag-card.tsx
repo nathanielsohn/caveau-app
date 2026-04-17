@@ -470,7 +470,7 @@ function NfcTagForm({
           {/* Intake photo */}
           <div>
             <label className="block text-xs text-muted uppercase tracking-wide mb-1.5">
-              Intake photo (optional)
+              Intake photo
             </label>
             {s3Configured ? (
               <div className="flex items-center gap-3">
