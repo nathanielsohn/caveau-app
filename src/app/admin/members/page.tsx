@@ -5,32 +5,47 @@ import { formatCurrencyCompact, formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function AdminMembersPage() {
-  const members = await prisma.member.findMany({
-    orderBy: [{ role: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      tier: true,
-      onboardedAt: true,
-      createdAt: true,
-      _count: {
-        select: { wines: true, lockers: true, facilities: true },
+  // Pull the member roster and the in-cellar wine aggregates in parallel.
+  // The aggregate replaces an earlier `wines: { select: { currentValue } }`
+  // include that loaded every bottle into Node just to sum it — a 50-member
+  // x 50-bottle roster transferred 2,500 rows for a number we can compute
+  // in the database in one round-trip.
+  const [members, walletAggregates] = await Promise.all([
+    prisma.member.findMany({
+      orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        tier: true,
+        onboardedAt: true,
+        createdAt: true,
+        _count: {
+          select: { lockers: true, facilities: true },
+        },
       },
-      wines: {
-        where: { status: "in_cellar" },
-        select: { currentValue: true },
+    }),
+    prisma.wine.groupBy({
+      by: ["memberId"],
+      where: { status: "in_cellar" },
+      _sum: { currentValue: true },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const aggregateByMember = new Map(
+    walletAggregates.map((a) => [
+      a.memberId,
+      {
+        activeCount: a._count._all,
+        totalValue: Number(a._sum.currentValue ?? 0),
       },
-    },
-  });
+    ]),
+  );
 
   const rows = members.map((m) => {
-    const activeCount = m.wines.length;
-    const totalValue = m.wines.reduce(
-      (sum, w) => sum + Number(w.currentValue),
-      0,
-    );
+    const agg = aggregateByMember.get(m.id);
     return {
       id: m.id,
       name: m.name,
@@ -41,8 +56,8 @@ export default async function AdminMembersPage() {
       joinedAt: m.createdAt,
       lockerCount: m._count.lockers,
       facilityCount: m._count.facilities,
-      activeCount,
-      totalValue,
+      activeCount: agg?.activeCount ?? 0,
+      totalValue: agg?.totalValue ?? 0,
     };
   });
 
