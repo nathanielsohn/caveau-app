@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import ValuationChart from "@/components/valuation-chart";
 import DispositionButton from "./disposition-button";
+import DeliverNowButton from "./deliver-now-button";
 import WineImageUpload from "@/components/wine-image-upload";
 import { getPublicUrl, isS3Configured } from "@/lib/s3";
 import { recordDisposition, requestWineUploadUrl, setWineImage } from "./actions";
@@ -103,6 +104,29 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
   if (!wine) {
     notFound();
   }
+
+  // Pre-fill the Deliver Now dialog with this member's most recently used
+  // address. Any status — even cancelled/expired — qualifies as "last used".
+  const recentDelivery = await prisma.deliveryRequest.findFirst({
+    where: { memberId: session.user.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      deliveryAddressLine1: true,
+      deliveryAddressLine2: true,
+      deliveryCity: true,
+      deliveryState: true,
+      deliveryPostalCode: true,
+    },
+  });
+  const defaultDeliveryAddress = recentDelivery
+    ? {
+        line1: recentDelivery.deliveryAddressLine1,
+        line2: recentDelivery.deliveryAddressLine2,
+        city: recentDelivery.deliveryCity,
+        state: recentDelivery.deliveryState,
+        postalCode: recentDelivery.deliveryPostalCode,
+      }
+    : null;
 
   // Build the absolute /bottle/[tagId] URL so the member can hand the link
   // to an auction house or paste it into an email. Origin comes from the
@@ -287,14 +311,21 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </p>
             )}
 
-            {/* Disposition button / status badge */}
-            <div className="pt-2">
+            {/* Disposition + Deliver Now buttons */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <DispositionButton
                 wineId={wine.id}
                 wineName={wine.name}
                 status={wine.status}
                 recordDispositionAction={recordDisposition}
               />
+              {wine.status === "in_cellar" && slot && (
+                <DeliverNowButton
+                  wineId={wine.id}
+                  wineName={wine.name}
+                  defaultAddress={defaultDeliveryAddress}
+                />
+              )}
             </div>
           </div>
         </div>

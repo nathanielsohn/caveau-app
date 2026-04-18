@@ -13,6 +13,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Check,
   ChevronRight,
+  Copy,
   Fingerprint,
   Lock,
   MapPin,
@@ -68,6 +69,12 @@ interface LadderClientProps {
   delivery: DeliveryView;
   initialStep: DeliveryStepKey;
   memberEmail: string;
+  /**
+   * One-shot PIN passed via `?showPin=` after a fresh Deliver Now request.
+   * Rendered in a dismissible card at the top of the page, then the query
+   * param is stripped via router.replace so a refresh doesn't resurface it.
+   */
+  showPin?: string | null;
 }
 
 const STEP_ORDER: DeliveryStepKey[] = ["biometric", "pin", "address", "otp"];
@@ -96,9 +103,25 @@ export default function LadderClient({
   delivery,
   initialStep,
   memberEmail,
+  showPin,
 }: LadderClientProps) {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
+
+  // One-shot PIN surface (feature #51). The PIN arrives in-memory via the
+  // initial prop; we drop it into local state on first render and
+  // router.replace the URL to scrub the query. A refresh re-derives from
+  // the URL (now clean) and the card never reappears.
+  const [oneShotPin, setOneShotPin] = useState<string | null>(showPin ?? null);
+  const [pinCopied, setPinCopied] = useState(false);
+  useEffect(() => {
+    if (!showPin) return;
+    setOneShotPin(showPin);
+    router.replace(`/deliveries/${delivery.id}`);
+    // We intentionally only react to the initial showPin value. Once stripped
+    // from the URL, subsequent renders pass null and must not re-trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -414,6 +437,19 @@ export default function LadderClient({
   return (
     <div className="min-h-screen bg-caveau-black text-primary px-4 py-8 md:py-12">
       <div className="mx-auto w-full max-w-2xl">
+        {oneShotPin && (
+          <OneShotPinCard
+            pin={oneShotPin}
+            copied={pinCopied}
+            onCopy={() => {
+              void navigator.clipboard
+                .writeText(oneShotPin)
+                .then(() => setPinCopied(true));
+            }}
+            onDismiss={() => setOneShotPin(null)}
+          />
+        )}
+
         <Header
           delivery={delivery}
           onCancel={() => setCancelConfirm(true)}
@@ -1113,6 +1149,64 @@ function TerminalBanner({
       <div className="mt-6 inline-flex items-center gap-2 text-xs text-muted">
         {delivery.items.length} bottle{delivery.items.length === 1 ? "" : "s"}{" "}
         · {formatCurrency(delivery.totalValueUsd)}
+      </div>
+    </div>
+  );
+}
+
+// ── One-shot PIN card ───────────────────────────────────────────────────
+
+function OneShotPinCard({
+  pin,
+  copied,
+  onCopy,
+  onDismiss,
+}: {
+  pin: string;
+  copied: boolean;
+  onCopy: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="mb-6 rounded-2xl border border-gold/40 bg-gold/5 p-4 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-gold mb-1">
+            Save your delivery PIN
+          </div>
+          <p className="text-sm text-secondary">
+            You&rsquo;ll need this 4-digit PIN at the verification step. It
+            won&rsquo;t be shown again.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-muted hover:text-primary text-xs transition-colors"
+          aria-label="Dismiss PIN card"
+        >
+          Dismiss
+        </button>
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="font-serif text-3xl md:text-4xl tracking-[0.4em] text-gold select-all">
+          {pin}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gold/40 text-gold text-xs hover:bg-gold/10 transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check size={12} /> Copied
+            </>
+          ) : (
+            <>
+              <Copy size={12} /> Copy
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

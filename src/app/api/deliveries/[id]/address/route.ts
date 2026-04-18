@@ -14,7 +14,7 @@ import {
   parseOr400,
   parsePathParamOr404,
 } from "@/lib/schemas";
-import { canTransition } from "@/lib/delivery";
+import { canTransition, generateDriverToken } from "@/lib/delivery";
 import { logger } from "@/lib/logger";
 
 export async function POST(
@@ -63,6 +63,12 @@ export async function POST(
     return NextResponse.json({ error: "invalid_state" }, { status: 409 });
   }
 
+  // When no OTP is required, address_confirmed is the terminal member-side
+  // transition and the door-side driver URL becomes reachable. Generate the
+  // driverToken now so the admin/driver flow can pick up the delivery.
+  // For OTP-required deliveries we wait for /otp to succeed — see that route.
+  const driverToken = delivery.otpRequired ? undefined : generateDriverToken();
+
   try {
     await prisma.$transaction([
       prisma.deliveryRequest.update({
@@ -74,6 +80,7 @@ export async function POST(
           deliveryState: address.state.toUpperCase(),
           deliveryPostalCode: address.postalCode,
           status: "address_confirmed",
+          ...(driverToken ? { driverToken } : {}),
         },
       }),
       prisma.deliveryEvent.create({

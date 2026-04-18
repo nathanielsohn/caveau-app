@@ -57,6 +57,14 @@ const POLICIES: Array<{
     policy: { limit: 30, windowMs: 60_000 },
   },
   {
+    bucket: "handoff-driver",
+    // Public driver-side delivery ladder (feature #51). 256-bit driver
+    // tokens are unguessable; the IP limit exists so a scanner can't
+    // hammer the DB looking for a token that resolves.
+    match: (req) => req.nextUrl.pathname.startsWith("/handoff-driver/"),
+    policy: { limit: 30, windowMs: 60_000 },
+  },
+  {
     bucket: "bottle-tap",
     // Public NFC tap-to-verify landing page (feature #43). Same enumeration
     // concern as /verify and /handoff — tag serials are unguessable but we
@@ -229,6 +237,13 @@ export async function middleware(req: NextRequest) {
     // so auction houses and brokers can view without a login; the member's
     // list page at `/handoff` (no trailing slash) stays authenticated.
     pathname.startsWith("/handoff/") ||
+    // Driver-side delivery ladder (feature #51). The Caveau courier opens
+    // a tokenized URL on their phone; no member session. The token itself
+    // (256 bits, base64url) is the bearer credential.
+    pathname.startsWith("/handoff-driver/") ||
+    // Door-side delivery API routes keyed by driverToken. Auth IS the
+    // token, checked inside each route handler via loadDeliveryByDriverToken.
+    pathname.startsWith("/api/deliveries/by-token/") ||
     // Public NFC tap-to-verify landing page (feature #43). Tag serials are
     // unguessable; the page enforces its own rate limit (see POLICIES above)
     // and logs every successful lookup.

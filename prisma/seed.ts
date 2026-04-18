@@ -10,7 +10,12 @@ import {
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
-import { hashPin, hashOtp, defaultExpiresAt } from '../src/lib/delivery';
+import {
+  hashPin,
+  hashOtp,
+  defaultExpiresAt,
+  generateDriverToken,
+} from '../src/lib/delivery';
 
 const prisma = new PrismaClient();
 
@@ -719,6 +724,12 @@ async function main() {
     const DEMO_OTP = '518204';
     const { salt: pinSalt, hash: pinHash } = hashPin(DEMO_PIN);
     const { salt: otpSalt, hash: otpHash } = hashOtp(DEMO_OTP);
+    // Demo shortcut: the runtime generates driverToken only on the final
+    // member-side transition (see /address and /otp routes). The seeded
+    // delivery is parked pre-OTP, so it would normally have no token —
+    // but we need the door-side /handoff-driver/[token] URL to demo
+    // without forcing OTP completion first, so issue a token here.
+    const demoDriverToken = generateDriverToken();
     const deliveryRequest = await prisma.deliveryRequest.create({
       data: {
         memberId: member.id,
@@ -737,6 +748,7 @@ async function main() {
         deliveryState: 'FL',
         deliveryPostalCode: '34102',
         expiresAt: defaultExpiresAt(new Date(now)),
+        driverToken: demoDriverToken,
       },
     });
     await prisma.deliveryRequestItem.createMany({
@@ -775,6 +787,7 @@ async function main() {
     });
     console.log(`  ✓ Authorized recipients: 2`);
     console.log(`  ✓ Delivery request (in-flight): demo PIN ${DEMO_PIN}, OTP ${DEMO_OTP}`);
+    console.log(`  ✓ Driver token (door-side demo URL): ${demoDriverToken}`);
   }
 
   // 11. Liv-ex Fine Wine 100 benchmark (feature #50 — AI Advisor). Seeds

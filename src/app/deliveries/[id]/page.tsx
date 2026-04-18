@@ -44,8 +44,10 @@ function deriveStep(
 
 export default async function DeliveryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ showPin?: string | string[] }>;
 }) {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
@@ -54,6 +56,15 @@ export default async function DeliveryPage({
   const idParse = UuidSchema.safeParse(rawId);
   if (!idParse.success) notFound();
   const id = idParse.data;
+
+  // One-shot PIN: the Deliver Now button redirects here with ?showPin=<pin>
+  // after creating the request. The client strips the query on mount via
+  // router.replace so a refresh doesn't resurface the PIN. We only accept
+  // a 4-digit numeric string so a tampered URL can't inject arbitrary text.
+  const rawShowPin = (await searchParams).showPin;
+  const showPinCandidate = Array.isArray(rawShowPin) ? rawShowPin[0] : rawShowPin;
+  const showPin =
+    showPinCandidate && /^\d{4}$/.test(showPinCandidate) ? showPinCandidate : null;
 
   const delivery = await prisma.deliveryRequest.findFirst({
     where: { id, memberId: session.user.id },
@@ -147,6 +158,7 @@ export default async function DeliveryPage({
       delivery={view}
       initialStep={currentStep}
       memberEmail={memberEmail}
+      showPin={showPin}
     />
   );
 }

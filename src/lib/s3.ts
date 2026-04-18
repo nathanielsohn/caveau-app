@@ -168,6 +168,8 @@ const KEY_PATTERNS: RegExp[] = [
   /^wines\/[0-9a-f-]{36}\/scans\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
   // NFC intake photos: nfc-intake/{memberId}/{wineId}/{uploadId}.{ext}
   /^nfc-intake\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
+  // Deliver Now handoff photos (feature #51): deliveries/{deliveryId}/{uploadId}.{ext}
+  /^deliveries\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
 ];
 
 export function isValidUploadKey(key: string): boolean {

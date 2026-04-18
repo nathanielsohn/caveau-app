@@ -15,7 +15,7 @@ import {
   parsePathParamOr404,
 } from "@/lib/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { canTransition, verifyOtp } from "@/lib/delivery";
+import { canTransition, generateDriverToken, verifyOtp } from "@/lib/delivery";
 import { logger } from "@/lib/logger";
 
 const OTP_ATTEMPT_WINDOW_MIN = 15;
@@ -122,6 +122,12 @@ export async function POST(
     );
   }
 
+  // otp_verified is the terminal member-side transition for OTP-required
+  // deliveries — hand the driverToken out here so the door-side URL becomes
+  // reachable. Non-OTP deliveries receive their token one step earlier in
+  // /api/deliveries/[id]/address.
+  const driverToken = generateDriverToken();
+
   try {
     await prisma.$transaction([
       prisma.deliveryRequest.update({
@@ -129,6 +135,7 @@ export async function POST(
         data: {
           status: "otp_verified",
           otpVerifiedAt: new Date(),
+          driverToken,
         },
       }),
       prisma.deliveryEvent.create({

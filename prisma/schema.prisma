@@ -605,6 +605,11 @@ model DeliveryRequest {
   scannedRecipientName String?                @map("scanned_recipient_name")
   handoffPhotoKey      String?                @map("handoff_photo_key")
 
+  // Unguessable token that keys the public driver URL at
+  // /handoff-driver/[token]. Null until the member-side ladder finishes
+  // (address_confirmed when !otpRequired, otp_verified when otpRequired).
+  driverToken          String?                @unique @map("driver_token")
+
   expiresAt            DateTime               @map("expires_at")
   completedAt          DateTime?              @map("completed_at")
   cancelledAt          DateTime?              @map("cancelled_at")

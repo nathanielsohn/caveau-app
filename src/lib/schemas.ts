@@ -212,6 +212,24 @@ export const DeliveryRequestIdParamSchema = z.object({
   deliveryRequestId: UuidSchema,
 });
 
+// Door-side (driver) routes — Step 3. Input is a driver-typed name read off
+// the recipient's ID; server matches case-insensitively against the
+// AuthorizedRecipient registry for the member.
+export const IdScanBodySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+});
+
+export const DriverUploadUrlBodySchema = z.object({
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  // Hardcoded 5MB cap — mirrors MAX_IMAGE_BYTES in src/lib/s3.ts without an
+  // import cycle.
+  contentLength: z.number().int().positive().max(5 * 1024 * 1024),
+});
+
+export const DriverCompleteBodySchema = z.object({
+  photoKey: z.string().trim().min(1).max(512),
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**

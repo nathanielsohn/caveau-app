@@ -17,6 +17,116 @@ import type { DeliveryStatus } from "@prisma/client";
 import { prisma } from "./prisma";
 import { toNumber } from "./utils";
 
+// ── Driver token ──────────────────────────────────────────────────────────
+
+/** base64url-encoded 32-byte random = 43 chars. Be generous (32-128) so
+ *  future key-length tweaks don't break the route-param validator. */
+export const DRIVER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+
+/** 256-bit random token, base64url encoded. Populated on the final
+ *  member-side transition (see address/otp routes) to key the public
+ *  `/handoff-driver/[token]` driver URL. */
+export function generateDriverToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export interface DriverBundle {
+  delivery: {
+    id: string;
+    memberId: string;
+    status: DeliveryStatus;
+    otpRequired: boolean;
+    expiresAt: Date;
+    completedAt: Date | null;
+    cancelledAt: Date | null;
+    deliveryAddressLine1: string;
+    deliveryAddressLine2: string | null;
+    deliveryCity: string;
+    deliveryState: string;
+    deliveryPostalCode: string;
+  };
+  member: { name: string };
+  items: Array<{
+    id: string;
+    name: string;
+    vintage: number;
+    producer: string;
+  }>;
+  recipients: Array<{
+    id: string;
+    name: string;
+    relationship: string | null;
+  }>;
+}
+
+/** Loads a delivery by its driverToken. Returns null on miss. The bundle
+ *  carries only fields the public driver page renders — never PIN, OTP,
+ *  salts/hashes, or wine currentValue. */
+export async function loadDeliveryByDriverToken(
+  token: string,
+): Promise<DriverBundle | null> {
+  if (!DRIVER_TOKEN_PATTERN.test(token)) return null;
+
+  const row = await prisma.deliveryRequest.findUnique({
+    where: { driverToken: token },
+    select: {
+      id: true,
+      memberId: true,
+      status: true,
+      otpRequired: true,
+      expiresAt: true,
+      completedAt: true,
+      cancelledAt: true,
+      deliveryAddressLine1: true,
+      deliveryAddressLine2: true,
+      deliveryCity: true,
+      deliveryState: true,
+      deliveryPostalCode: true,
+      member: { select: { name: true } },
+      items: {
+        select: {
+          id: true,
+          wine: {
+            select: { id: true, name: true, vintage: true, producer: true },
+          },
+        },
+      },
+    },
+  });
+  if (!row) return null;
+
+  const recipients = await prisma.authorizedRecipient.findMany({
+    where: { memberId: row.memberId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, relationship: true },
+  });
+
+  return {
+    delivery: {
+      id: row.id,
+      memberId: row.memberId,
+      status: row.status,
+      otpRequired: row.otpRequired,
+      expiresAt: row.expiresAt,
+      completedAt: row.completedAt,
+      cancelledAt: row.cancelledAt,
+      deliveryAddressLine1: row.deliveryAddressLine1,
+      deliveryAddressLine2: row.deliveryAddressLine2,
+      deliveryCity: row.deliveryCity,
+      deliveryState: row.deliveryState,
+      deliveryPostalCode: row.deliveryPostalCode,
+    },
+    member: { name: row.member.name },
+    items: row.items.map((it) => ({
+      id: it.id,
+      name: it.wine.name,
+      vintage: it.wine.vintage,
+      producer: it.wine.producer,
+    })),
+    recipients,
+  };
+}
+
 // ── PIN / OTP generation ──────────────────────────────────────────────────
 
 /** 4-digit numeric PIN, leading zeros preserved. Mod-bias is ~0.08% over
