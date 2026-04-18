@@ -179,6 +179,26 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+// Process-scoped reminder so the first alert email out of each Lambda cold
+// start leaves a visible log line asking the operator to verify the SNS
+// bounce/complaint webhook is wired. SES silently swallows feedback for a
+// misconfigured subscription, so without this we'd never know bouncing
+// members are missing alerts. One line per process is enough — Vercel log
+// drains bucket on the message string, so the operator sees the reminder
+// until they confirm the subscription manually.
+let webhookReminderSent = false;
+
+function maybeLogWebhookReminder(): void {
+  if (webhookReminderSent) return;
+  webhookReminderSent = true;
+  console.warn(
+    JSON.stringify({
+      level: "warn",
+      msg: "[email] First SES send from this process — confirm SNS Bounce/Complaint subscription is active at /api/ses/webhook or bouncing members will be silently dropped.",
+    }),
+  );
+}
+
 /**
  * Send a branded alert email via AWS SES.
  * Returns `true` on success, `false` on any failure or missing config.
@@ -213,6 +233,7 @@ export async function sendAlertEmail(
         },
       }),
     );
+    maybeLogWebhookReminder();
     return true;
   } catch (err) {
     // Never let email delivery break alert creation. Log and move on.

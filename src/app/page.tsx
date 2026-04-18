@@ -49,6 +49,7 @@ export default async function DashboardPage() {
       totalSlots,
       facilityCount,
       latestSyncRow,
+      latestValuationRow,
       hurricaneMembership,
     ] = await Promise.all([
       prisma.wine.findMany({
@@ -92,6 +93,17 @@ export default async function DashboardPage() {
         where: { memberId, lastValuationSyncAt: { not: null } },
         orderBy: { lastValuationSyncAt: "desc" },
         select: { lastValuationSyncAt: true },
+      }),
+      // Fallback anchor for the "Updated <relative>" footnote when no wine
+      // has ever been Liv-ex synced (dev / unconfigured installs). Running
+      // this unconditionally alongside the sync-stamp query keeps both
+      // lookups in the same round-trip — cheaper than the old pattern of
+      // firing a sequential fallback query only when the primary returned
+      // null. On a configured deployment this row is ignored.
+      prisma.wineValuation.findFirst({
+        where: { wine: { memberId } },
+        orderBy: { date: "desc" },
+        select: { date: true },
       }),
       // Active hurricane protocol for this member, if any (feature #46).
       // Surfaces the dashboard banner. One row at most while a protocol is
@@ -215,18 +227,10 @@ export default async function DashboardPage() {
         : 0;
 
     // Fall back to the most recent WineValuation.date when no wine has a
-    // real Liv-ex sync stamped. One extra query, only when needed.
-    let latestSyncAt: Date | null = latestSyncRow?.lastValuationSyncAt ?? null;
-    if (!latestSyncAt) {
-      const fallback = await prisma.wineValuation
-        .findFirst({
-          where: { wine: { memberId } },
-          orderBy: { date: "desc" },
-          select: { date: true },
-        })
-        .catch(() => null);
-      latestSyncAt = fallback?.date ?? null;
-    }
+    // real Liv-ex sync stamped. The fallback row was prefetched in the
+    // initial Promise.all so no extra round-trip is needed.
+    const latestSyncAt: Date | null =
+      latestSyncRow?.lastValuationSyncAt ?? latestValuationRow?.date ?? null;
 
     // Serialize data for the client component
     const metricsData = {

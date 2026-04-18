@@ -212,7 +212,11 @@ export async function POST(req: NextRequest) {
     }
     try {
       await fetch(confirmUrl.toString(), { method: "GET", cache: "no-store" });
-      logger.info("[ses/webhook] subscription confirmed", {
+      // WARN-level so this shows up prominently in the log drain during
+      // operator setup — pairs with the reminder in src/lib/email.ts.
+      // Seeing this line once per topic is the "plumbing is wired"
+      // confirmation; missing it means bounces are going into the void.
+      logger.warn("[ses/webhook] subscription confirmed", {
         topic: body.TopicArn,
       });
     } catch (err) {

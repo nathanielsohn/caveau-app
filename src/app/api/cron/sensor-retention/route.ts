@@ -12,6 +12,12 @@
  * fast at scale. Until that lands, 90 days of raw readings is plenty
  * for the live dashboard, charts, and Caveau Custody & Condition Reports.
  *
+ * Deletes are chunked: a single unbounded DELETE on tens of millions of
+ * rows blows past the Vercel `maxDuration` cap and generates a huge WAL
+ * batch that fights live ingest writes for row locks. We loop small
+ * `DELETE ... LIMIT N` sweeps until either the backlog is drained or we
+ * hit a soft deadline, at which point the next cron run finishes the job.
+ *
  * Auth: shared-secret Bearer token (`CRON_SECRET`), same pattern as
  * /api/cron/livex-sync. Vercel cron sends the header automatically when
  * `CRON_SECRET` is set; manual curl calls must supply it.
@@ -25,12 +31,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { getRequestId } from "@/lib/request-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const maxDuration = 60;
 
 const RETENTION_DAYS = 90;
+const CHUNK_SIZE = 10_000;
+// Hard-cap the in-request loop so we always return before Vercel kills the
+// function and leaves us with no log line. Whatever's left rolls forward to
+// tomorrow's run.
+const SOFT_DEADLINE_MS = 55_000;
+// Safety net — if the deadline check somehow misfires (clock skew, a stall
+// inside a single DELETE), this caps the absolute number of iterations per
+// run so we can't spin forever.
+const MAX_ITERATIONS = 2_000;
 
 function unauthorized(): NextResponse {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -57,13 +73,37 @@ export async function GET(req: NextRequest) {
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
   const startedAt = Date.now();
 
-  const res = await prisma.sensorReading.deleteMany({
-    where: { timestamp: { lt: cutoff } },
-  });
+  let totalDeleted = 0;
+  let iterations = 0;
+  let completed = false;
+
+  // `DELETE ... WHERE ... LIMIT N` is not standard SQL in Postgres, so we
+  // use the `WHERE ctid IN (SELECT ctid ... LIMIT N)` pattern. Prisma's
+  // deleteMany has no limit option; $executeRaw is the only way to bound it.
+  while (iterations < MAX_ITERATIONS) {
+    if (Date.now() - startedAt > SOFT_DEADLINE_MS) break;
+    const deleted = await prisma.$executeRaw`
+      DELETE FROM sensor_readings
+      WHERE ctid IN (
+        SELECT ctid FROM sensor_readings
+        WHERE timestamp < ${cutoff}
+        LIMIT ${CHUNK_SIZE}
+      )
+    `;
+    iterations++;
+    totalDeleted += Number(deleted);
+    if (Number(deleted) < CHUNK_SIZE) {
+      completed = true;
+      break;
+    }
+  }
 
   const durationMs = Date.now() - startedAt;
   logger.info("[cron/sensor-retention] complete", {
-    deleted: res.count,
+    requestId: getRequestId(),
+    deleted: totalDeleted,
+    iterations,
+    completed,
     cutoff: cutoff.toISOString(),
     retentionDays: RETENTION_DAYS,
     durationMs,
@@ -71,7 +111,9 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     status: "ok",
-    deleted: res.count,
+    deleted: totalDeleted,
+    iterations,
+    completed,
     retentionDays: RETENTION_DAYS,
     cutoff: cutoff.toISOString(),
     durationMs,

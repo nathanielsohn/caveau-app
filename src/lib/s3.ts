@@ -79,6 +79,10 @@ export async function getUploadUrl(
     );
     return null;
   }
+  if (!isValidUploadKey(key)) {
+    console.warn(`[s3] rejecting upload URL — key does not match an accepted shape: ${key}`);
+    return null;
+  }
   if (
     !Number.isInteger(contentLength) ||
     contentLength <= 0 ||
@@ -146,4 +150,27 @@ export async function deleteObject(key: string | null | undefined): Promise<bool
 /** True when the upload pipeline is fully configured. */
 export function isS3Configured(): boolean {
   return Boolean(env.AWS_S3_BUCKET);
+}
+
+/**
+ * Accepted key shapes. Every caller in this repo builds its key as one of
+ * these three forms; hard-coding the pattern here lets `getUploadUrl`
+ * reject anything else before we hand it to the AWS SDK. Belt-and-braces
+ * against a future caller accidentally (or maliciously) passing a
+ * traversal-prone key like `wines/../../other-member/file.jpg` — S3
+ * happily accepts such strings as object names and would pollute the
+ * bucket namespace.
+ */
+const KEY_PATTERNS: RegExp[] = [
+  // Wine image uploads: wines/{memberId}/{wineId}/{uploadId}.{ext}
+  /^wines\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
+  // Label OCR scans: wines/{memberId}/scans/{uploadId}.{ext}
+  /^wines\/[0-9a-f-]{36}\/scans\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
+  // NFC intake photos: nfc-intake/{memberId}/{wineId}/{uploadId}.{ext}
+  /^nfc-intake\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/,
+];
+
+export function isValidUploadKey(key: string): boolean {
+  if (key.includes("..") || key.includes("\0")) return false;
+  return KEY_PATTERNS.some((re) => re.test(key));
 }

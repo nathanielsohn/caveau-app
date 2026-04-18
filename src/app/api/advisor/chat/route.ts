@@ -50,6 +50,7 @@ import {
 } from "@/lib/advisor-tools";
 import { tierSpecForDbTier } from "@/lib/tiers";
 import { logger } from "@/lib/logger";
+import { getRequestId } from "@/lib/request-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
   }
 
   const memberId = session.user.id;
+  const requestId = getRequestId();
 
   // Per-member rate limit — 20 requests/hour. Per-IP would be wrong here
   // because multiple members can share a household NAT, and per-member
@@ -150,6 +152,7 @@ export async function POST(req: NextRequest) {
     tierSlug = tier.slug as typeof tierSlug;
   } catch (err) {
     logger.warn("[advisor-chat] member context prefetch failed", {
+      requestId,
       memberId,
       error: err instanceof Error ? err.message : String(err),
     });
@@ -179,6 +182,15 @@ export async function POST(req: NextRequest) {
   // the stream is always closed and an SSE error event is emitted before
   // the pipe goes away.
   void (async () => {
+    // Accumulate usage across every iteration so we can log a single line
+    // with the full request's token spend. Lets us price advisor traffic
+    // per-member and per-tier later without re-parsing stream events.
+    let totalInput = 0;
+    let totalOutput = 0;
+    let totalCacheCreate = 0;
+    let totalCacheRead = 0;
+    let toolCalls = 0;
+    let toolErrors = 0;
     try {
       for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
         const stream = client.messages.stream({
@@ -206,6 +218,10 @@ export async function POST(req: NextRequest) {
         });
 
         const message = await stream.finalMessage();
+        totalInput += message.usage.input_tokens ?? 0;
+        totalOutput += message.usage.output_tokens ?? 0;
+        totalCacheCreate += message.usage.cache_creation_input_tokens ?? 0;
+        totalCacheRead += message.usage.cache_read_input_tokens ?? 0;
 
         // Append the assistant turn so subsequent requests see it. Pass
         // the full content array (not just text) — the SDK requires
@@ -220,34 +236,53 @@ export async function POST(req: NextRequest) {
           break;
         }
 
-        // Execute each tool_use block. Tools are small and independent
-        // so Promise.all is safe — no ordering dependency.
+        // Execute each tool_use block. Tools are independent so we run
+        // them in parallel, but with allSettled so one tool's throw
+        // doesn't cancel the others — the model still needs a
+        // tool_result for every tool_use block or the next turn errors.
         const toolUses = message.content.filter(
           (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
         );
-        const toolResults = await Promise.all(
+        toolCalls += toolUses.length;
+        const settled = await Promise.allSettled(
           toolUses.map(async (tu) => {
-            // Optional: let the UI render "Advisor is checking your
-            // portfolio…" style affordances. Cheap — a single SSE line.
             void writer.write(
               sseEncode({ type: "tool_use", name: tu.name }),
             );
-            const dispatched = await dispatchTool(tu.name, tu.input);
-            if (dispatched.ok) {
-              return {
-                type: "tool_result" as const,
-                tool_use_id: tu.id,
-                content: JSON.stringify(dispatched.result),
-              };
-            }
+            return dispatchTool(tu.name, tu.input);
+          }),
+        );
+        const toolResults = settled.map((outcome, i) => {
+          const tu = toolUses[i];
+          if (outcome.status === "rejected") {
+            toolErrors += 1;
+            logger.error(
+              "[advisor-chat] tool threw",
+              outcome.reason,
+              { requestId, memberId, tool: tu.name },
+            );
             return {
               type: "tool_result" as const,
               tool_use_id: tu.id,
               is_error: true,
-              content: dispatched.error,
+              content: "Tool execution failed.",
             };
-          }),
-        );
+          }
+          if (outcome.value.ok) {
+            return {
+              type: "tool_result" as const,
+              tool_use_id: tu.id,
+              content: JSON.stringify(outcome.value.result),
+            };
+          }
+          toolErrors += 1;
+          return {
+            type: "tool_result" as const,
+            tool_use_id: tu.id,
+            is_error: true,
+            content: outcome.value.error,
+          };
+        });
 
         messages.push({ role: "user", content: toolResults });
 
@@ -268,7 +303,7 @@ export async function POST(req: NextRequest) {
 
       void writer.write(sseEncode({ type: "done" }));
     } catch (err) {
-      logger.error("[advisor-chat] stream failed", err, { memberId });
+      logger.error("[advisor-chat] stream failed", err, { requestId, memberId });
       try {
         void writer.write(
           sseEncode({
@@ -283,6 +318,20 @@ export async function POST(req: NextRequest) {
         // Swallow — the writer is already closed.
       }
     } finally {
+      // One structured line per chat request summarizing Anthropic spend
+      // and tool activity. Lets us bucket cost per member/tier offline
+      // without running a second pass over the streaming events.
+      logger.info("[advisor-chat] usage", {
+        requestId,
+        memberId,
+        tier: tierSlug,
+        inputTokens: totalInput,
+        outputTokens: totalOutput,
+        cacheCreateTokens: totalCacheCreate,
+        cacheReadTokens: totalCacheRead,
+        toolCalls,
+        toolErrors,
+      });
       try {
         await writer.close();
       } catch {

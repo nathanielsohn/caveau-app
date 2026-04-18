@@ -122,12 +122,41 @@ function buildCsp(): string {
  * (removal takes months) and we're not ready to opt in. Gated on prod
  * so localhost dev over `http://` still works unhindered.
  */
+/**
+ * Accept a caller-supplied `x-request-id` only when it looks like one of
+ * ours — a UUIDv4 or a short opaque hex/dash string. This lets a gateway
+ * or load test propagate correlation without letting a random client
+ * inject arbitrary log payload content.
+ */
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+
+function resolveRequestId(req: NextRequest): string {
+  const inbound = req.headers.get("x-request-id");
+  if (inbound && REQUEST_ID_PATTERN.test(inbound)) return inbound;
+  return crypto.randomUUID();
+}
+
 function applySecurityHeaders(
   res: NextResponse,
   csp: string,
   pathname: string,
+  requestId: string,
 ): NextResponse {
   res.headers.set("Content-Security-Policy", csp);
+  res.headers.set("x-request-id", requestId);
+  // Defense-in-depth headers. CSP `frame-ancestors 'none'` supersedes
+  // X-Frame-Options in modern browsers, but older clients (and some
+  // embedding contexts) still honor the legacy header. Permissions-Policy
+  // deny-lists browser capabilities the app never uses; if an XSS or a
+  // compromised third-party script tries to reach for the camera/mic/
+  // geolocation/payment APIs, the browser refuses. `nosniff` stops MIME
+  // sniffing from promoting a JSON/text response into executable HTML.
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set(
+    "Permissions-Policy",
+    "geolocation=(), microphone=(), camera=(), payment=()",
+  );
   if (process.env.NODE_ENV === "production") {
     res.headers.set(
       "Strict-Transport-Security",
@@ -164,13 +193,26 @@ function tooManyRequestsResponse(resetAt: number): NextResponse {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const csp = buildCsp();
+  const requestId = resolveRequestId(req);
+
+  // Forward the request id into the route handler so Node server code can
+  // read it via `next/headers`. Returning NextResponse.next with an explicit
+  // request.headers override replays the request with the mutated set.
+  const forwardHeaders = new Headers(req.headers);
+  forwardHeaders.set("x-request-id", requestId);
+  const nextWithId = () =>
+    NextResponse.next({ request: { headers: forwardHeaders } });
 
   // --- Rate limit policy match (checked before auth so unauth scrapers count) ---
   for (const entry of POLICIES) {
     if (entry.match(req)) {
       const ip = clientIp(req.headers);
       const result = await checkRateLimit(`${entry.bucket}:${ip}`, entry.policy);
-      if (!result.allowed) return tooManyRequestsResponse(result.resetAt);
+      if (!result.allowed) {
+        const res = tooManyRequestsResponse(result.resetAt);
+        res.headers.set("x-request-id", requestId);
+        return res;
+      }
       break;
     }
   }
@@ -208,7 +250,7 @@ export async function middleware(req: NextRequest) {
     pathname === "/api/ses/webhook";
 
   if (isPublic) {
-    return applySecurityHeaders(NextResponse.next(), csp, pathname);
+    return applySecurityHeaders(nextWithId(), csp, pathname, requestId);
   }
 
   // --- Protected paths — require auth ---
@@ -218,7 +260,12 @@ export async function middleware(req: NextRequest) {
     const loginUrl = new URL("/auth/login", req.url);
     const validated = safeCallback(pathname);
     if (validated) loginUrl.searchParams.set("callbackUrl", validated);
-    return applySecurityHeaders(NextResponse.redirect(loginUrl), csp, pathname);
+    return applySecurityHeaders(
+      NextResponse.redirect(loginUrl),
+      csp,
+      pathname,
+      requestId,
+    );
   }
 
   // --- Onboarding gate ---
@@ -234,6 +281,7 @@ export async function middleware(req: NextRequest) {
       NextResponse.redirect(new URL("/onboarding", req.url)),
       csp,
       pathname,
+      requestId,
     );
   }
   if (token.onboarded && isOnboardingRoute) {
@@ -241,6 +289,7 @@ export async function middleware(req: NextRequest) {
       NextResponse.redirect(new URL("/", req.url)),
       csp,
       pathname,
+      requestId,
     );
   }
 
@@ -252,10 +301,11 @@ export async function middleware(req: NextRequest) {
       NextResponse.redirect(new URL("/", req.url)),
       csp,
       pathname,
+      requestId,
     );
   }
 
-  return applySecurityHeaders(NextResponse.next(), csp, pathname);
+  return applySecurityHeaders(nextWithId(), csp, pathname, requestId);
 }
 
 export const config = {

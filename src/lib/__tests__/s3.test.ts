@@ -58,7 +58,11 @@ describe("getUploadUrl — TTL clamping", () => {
     process.env.S3_UPLOAD_URL_TTL_SECONDS = "5";
     const { getUploadUrl } = await importFreshS3();
 
-    await getUploadUrl("images/test.jpg", "image/jpeg", 1024);
+    await getUploadUrl(
+      "wines/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+      "image/jpeg",
+      1024,
+    );
 
     expect(getSignedUrl).toHaveBeenCalledTimes(1);
     const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
@@ -69,7 +73,11 @@ describe("getUploadUrl — TTL clamping", () => {
     process.env.S3_UPLOAD_URL_TTL_SECONDS = "99999";
     const { getUploadUrl } = await importFreshS3();
 
-    await getUploadUrl("images/test.jpg", "image/jpeg", 1024);
+    await getUploadUrl(
+      "wines/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+      "image/jpeg",
+      1024,
+    );
 
     const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
     expect(opts.expiresIn).toBe(900);
@@ -79,7 +87,11 @@ describe("getUploadUrl — TTL clamping", () => {
     process.env.S3_UPLOAD_URL_TTL_SECONDS = "420";
     const { getUploadUrl } = await importFreshS3();
 
-    await getUploadUrl("images/test.jpg", "image/jpeg", 1024);
+    await getUploadUrl(
+      "wines/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+      "image/jpeg",
+      1024,
+    );
 
     const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
     expect(opts.expiresIn).toBe(420);
@@ -88,7 +100,11 @@ describe("getUploadUrl — TTL clamping", () => {
   it("falls back to the 300-second default when TTL env var is unset", async () => {
     const { getUploadUrl } = await importFreshS3();
 
-    await getUploadUrl("images/test.jpg", "image/jpeg", 1024);
+    await getUploadUrl(
+      "wines/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+      "image/jpeg",
+      1024,
+    );
 
     const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
     expect(opts.expiresIn).toBe(300);
@@ -154,7 +170,11 @@ describe("no-op behavior when AWS_S3_BUCKET is unset", () => {
   it("getUploadUrl returns null and never calls getSignedUrl", async () => {
     const { getUploadUrl } = await importFreshS3();
 
-    const result = await getUploadUrl("images/test.jpg", "image/jpeg", 1024);
+    const result = await getUploadUrl(
+      "wines/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+      "image/jpeg",
+      1024,
+    );
 
     expect(result).toBeNull();
     expect(getSignedUrl).not.toHaveBeenCalled();
@@ -168,5 +188,55 @@ describe("no-op behavior when AWS_S3_BUCKET is unset", () => {
   it("isS3Configured reports false", async () => {
     const { isS3Configured } = await importFreshS3();
     expect(isS3Configured()).toBe(false);
+  });
+});
+
+describe("isValidUploadKey — accepted shapes only", () => {
+  const MEMBER = "00000000-0000-4000-8000-00000000aaaa";
+  const WINE = "00000000-0000-4000-8000-00000000bbbb";
+  const UPLOAD = "00000000-0000-4000-8000-00000000cccc";
+
+  it("accepts wine image keys", async () => {
+    const { isValidUploadKey } = await importFreshS3();
+    expect(
+      isValidUploadKey(`wines/${MEMBER}/${WINE}/${UPLOAD}.jpg`),
+    ).toBe(true);
+    expect(
+      isValidUploadKey(`wines/${MEMBER}/${WINE}/${UPLOAD}.png`),
+    ).toBe(true);
+    expect(
+      isValidUploadKey(`wines/${MEMBER}/${WINE}/${UPLOAD}.webp`),
+    ).toBe(true);
+  });
+
+  it("accepts label-scan and NFC-intake keys", async () => {
+    const { isValidUploadKey } = await importFreshS3();
+    expect(
+      isValidUploadKey(`wines/${MEMBER}/scans/${UPLOAD}.jpg`),
+    ).toBe(true);
+    expect(
+      isValidUploadKey(`nfc-intake/${MEMBER}/${WINE}/${UPLOAD}.jpg`),
+    ).toBe(true);
+  });
+
+  it("rejects path-traversal attempts", async () => {
+    const { isValidUploadKey } = await importFreshS3();
+    expect(isValidUploadKey(`wines/${MEMBER}/../${WINE}/${UPLOAD}.jpg`)).toBe(false);
+    expect(isValidUploadKey(`wines/${MEMBER}/${WINE}/../${UPLOAD}.jpg`)).toBe(false);
+  });
+
+  it("rejects unknown prefixes, extensions, and shapes", async () => {
+    const { isValidUploadKey } = await importFreshS3();
+    expect(isValidUploadKey(`etc/passwd`)).toBe(false);
+    expect(isValidUploadKey(`wines/${MEMBER}/${WINE}/${UPLOAD}.exe`)).toBe(false);
+    expect(isValidUploadKey(`images/test.jpg`)).toBe(false);
+    expect(isValidUploadKey("")).toBe(false);
+  });
+
+  it("rejects null-byte injection", async () => {
+    const { isValidUploadKey } = await importFreshS3();
+    expect(
+      isValidUploadKey(`wines/${MEMBER}/${WINE}/${UPLOAD}.jpg\0.txt`),
+    ).toBe(false);
   });
 });

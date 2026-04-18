@@ -77,6 +77,15 @@ export default async function RootLayout({
       <body
         className={`${playfair.variable} ${inter.variable} font-sans bg-caveau-black text-primary min-h-screen`}
       >
+        {/* Skip link for keyboard users — visible only when focused.
+            Placed before Providers so it's the first interactive element
+            in tab order. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-gold focus:text-black focus:outline-none focus:ring-2 focus:ring-gold/60"
+        >
+          Skip to main content
+        </a>
         <Providers>
           <FacilityProvider
             facilities={facilities}
@@ -90,7 +99,10 @@ export default async function RootLayout({
             />
             {/* md:ml-56 offsets for the desktop sidebar; mobile padding stacks the
                 bottom tab bar (h-16 = 4rem) on top of the iPhone home indicator. */}
-            <main className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen">
+            <main
+              id="main"
+              className="md:ml-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 min-h-screen"
+            >
               {children}
             </main>
             <Toaster />

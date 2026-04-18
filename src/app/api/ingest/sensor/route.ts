@@ -41,6 +41,7 @@ import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { checkThresholds, type AlertType, type Severity } from "@/lib/sensors";
 import { notifyAlert } from "@/lib/notify-alert";
+import { getRequestId } from "@/lib/request-context";
 import { parseOr400, SensorIngestBodySchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,7 @@ function authorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
 
+  const requestId = getRequestId();
   let body: unknown;
   try {
     body = await req.json();
@@ -175,6 +177,7 @@ export async function POST(req: NextRequest) {
 
   if (!isNewReading) {
     logger.info("[ingest/sensor] duplicate reading ignored", {
+      requestId,
       lockerId: payload.lockerId,
       readingId,
     });
@@ -234,6 +237,7 @@ export async function POST(req: NextRequest) {
       void notifyAlert(alert.id);
     } catch (err) {
       logger.error("[ingest/sensor] alert write failed", err, {
+        requestId,
         lockerId: payload.lockerId,
         type: breach.type,
       });
@@ -241,6 +245,7 @@ export async function POST(req: NextRequest) {
   }
 
   logger.info("[ingest/sensor] reading accepted", {
+    requestId,
     lockerId: payload.lockerId,
     readingId,
     alerts: alertIds.length,

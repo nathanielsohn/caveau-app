@@ -36,6 +36,7 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { fetchLivexPrice, isLivexConfigured } from "@/lib/livex";
 import { logger } from "@/lib/logger";
+import { getRequestId } from "@/lib/request-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,6 +49,12 @@ export const maxDuration = 60;
 // Hard cap on wines processed per invocation. Well above any realistic
 // demo collection; a production deploy would page through the set.
 const MAX_WINES_PER_RUN = 500;
+
+// Small concurrency so a catalog-wide run doesn't hammer Liv-ex with
+// hundreds of parallel requests and trip their rate limiter. Two in
+// flight keeps us politely below the typical 1 req/s upstream ceiling
+// while still finishing a 500-wine sync inside the 60s Vercel cap.
+const CONCURRENCY = 2;
 
 function unauthorized(): NextResponse {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -72,11 +79,103 @@ function authorized(req: NextRequest): boolean {
   return timingSafeEqual(headerBuf, expectedBuf);
 }
 
+type WineRow = {
+  id: string;
+  name: string;
+  producer: string;
+  vintage: number;
+};
+
+type WineOutcome = "updated" | "skipped" | "failed";
+
+async function syncOneWine(
+  wine: WineRow,
+  requestId: string | undefined,
+): Promise<WineOutcome> {
+  let quote;
+  try {
+    quote = await fetchLivexPrice({
+      producer: wine.producer,
+      name: wine.name,
+      vintage: wine.vintage,
+    });
+  } catch (err) {
+    // fetchLivexPrice shouldn't throw, but belt-and-braces: a single
+    // bad wine must never poison the whole run.
+    logger.warn("[cron/livex-sync] fetch threw", {
+      requestId,
+      wineId: wine.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return "failed";
+  }
+
+  if (!quote) return "skipped";
+
+  try {
+    const quoteDate = new Date(quote.quotedAt);
+    const priceDecimal = new Prisma.Decimal(quote.priceUsd);
+
+    await prisma.$transaction(async (tx) => {
+      // Upsert-style: the unique key on (wineId, date, source) lets us
+      // re-run the sync within the same day without duplicating rows.
+      await tx.wineValuation.upsert({
+        where: {
+          wineId_date_source: {
+            wineId: wine.id,
+            date: quoteDate,
+            source: "liv-ex",
+          },
+        },
+        create: {
+          wineId: wine.id,
+          date: quoteDate,
+          source: "liv-ex",
+          price: priceDecimal,
+        },
+        update: {
+          price: priceDecimal,
+        },
+      });
+
+      // Only overwrite currentValue when this quote is the latest row
+      // for the wine — mirrors the backdate guard in the manual
+      // valuation action in src/app/wine/[id]/page.tsx.
+      const latest = await tx.wineValuation.findFirst({
+        where: { wineId: wine.id },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
+        select: { date: true, price: true },
+      });
+
+      const updates: { currentValue?: Prisma.Decimal; lastValuationSyncAt: Date } = {
+        lastValuationSyncAt: new Date(),
+      };
+      if (latest && latest.date.getTime() === quoteDate.getTime()) {
+        updates.currentValue = priceDecimal;
+      }
+
+      await tx.wine.update({
+        where: { id: wine.id },
+        data: updates,
+      });
+    });
+
+    return "updated";
+  } catch (err) {
+    logger.error("[cron/livex-sync] write failed", err, {
+      requestId,
+      wineId: wine.id,
+    });
+    return "failed";
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
+  const requestId = getRequestId();
 
   if (!isLivexConfigured()) {
-    logger.info("[cron/livex-sync] skipped — LIVEX_API_KEY unset");
+    logger.info("[cron/livex-sync] skipped — LIVEX_API_KEY unset", { requestId });
     return NextResponse.json({ status: "skipped", reason: "not_configured" });
   }
 
@@ -97,89 +196,37 @@ export async function GET(req: NextRequest) {
   let skipped = 0;
   let failed = 0;
 
-  for (const wine of wines) {
-    let quote;
-    try {
-      quote = await fetchLivexPrice({
-        producer: wine.producer,
-        name: wine.name,
-        vintage: wine.vintage,
-      });
-    } catch (err) {
-      // fetchLivexPrice shouldn't throw, but belt-and-braces: a single
-      // bad wine must never poison the whole run.
-      failed += 1;
-      logger.warn("[cron/livex-sync] fetch threw", {
-        wineId: wine.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      continue;
+  // Bounded-concurrency worker pool: CONCURRENCY workers pull from a shared
+  // cursor. Keeps us below the Liv-ex rate ceiling without serializing the
+  // whole run.
+  let cursor = 0;
+  const workers = Array.from({ length: CONCURRENCY }, async () => {
+    while (cursor < wines.length) {
+      const idx = cursor++;
+      const wine = wines[idx];
+      const outcome = await syncOneWine(wine, requestId);
+      if (outcome === "updated") updated += 1;
+      else if (outcome === "skipped") skipped += 1;
+      else failed += 1;
     }
-
-    if (!quote) {
-      skipped += 1;
-      continue;
-    }
-
-    try {
-      const quoteDate = new Date(quote.quotedAt);
-      const priceDecimal = new Prisma.Decimal(quote.priceUsd);
-
-      await prisma.$transaction(async (tx) => {
-        // Upsert-style: the unique key on (wineId, date, source) lets us
-        // re-run the sync within the same day without duplicating rows.
-        await tx.wineValuation.upsert({
-          where: {
-            wineId_date_source: {
-              wineId: wine.id,
-              date: quoteDate,
-              source: "liv-ex",
-            },
-          },
-          create: {
-            wineId: wine.id,
-            date: quoteDate,
-            source: "liv-ex",
-            price: priceDecimal,
-          },
-          update: {
-            price: priceDecimal,
-          },
-        });
-
-        // Only overwrite currentValue when this quote is the latest row
-        // for the wine — mirrors the backdate guard in the manual
-        // valuation action in src/app/wine/[id]/page.tsx.
-        const latest = await tx.wineValuation.findFirst({
-          where: { wineId: wine.id },
-          orderBy: [{ date: "desc" }, { id: "desc" }],
-          select: { date: true, price: true },
-        });
-
-        const updates: { currentValue?: Prisma.Decimal; lastValuationSyncAt: Date } = {
-          lastValuationSyncAt: new Date(),
-        };
-        if (latest && latest.date.getTime() === quoteDate.getTime()) {
-          updates.currentValue = priceDecimal;
-        }
-
-        await tx.wine.update({
-          where: { id: wine.id },
-          data: updates,
-        });
-      });
-
-      updated += 1;
-    } catch (err) {
-      failed += 1;
-      logger.error("[cron/livex-sync] write failed", err, {
-        wineId: wine.id,
-      });
-    }
-  }
+  });
+  await Promise.all(workers);
 
   const durationMs = Date.now() - startedAt;
+  // If most wines came back empty, upstream likely isn't indexed against the
+  // catalog — log a warning so an operator notices before assuming "sync
+  // ran cleanly" means the price data is fresh.
+  if (wines.length > 0 && skipped > Math.max(updated, 1) * 2) {
+    logger.warn("[cron/livex-sync] high skip rate", {
+      requestId,
+      updated,
+      skipped,
+      failed,
+      total: wines.length,
+    });
+  }
   logger.info("[cron/livex-sync] complete", {
+    requestId,
     updated,
     skipped,
     failed,
