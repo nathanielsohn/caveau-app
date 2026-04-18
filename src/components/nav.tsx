@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
@@ -16,20 +16,29 @@ import {
   LineChart,
   Sparkles,
   CalendarDays,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 import { setCurrentFacility } from "@/app/facility-actions";
 
-const navItems = [
+// Mobile bottom bar shows the 4 primary items + a More button that opens a
+// sheet with the rest; desktop sidebar shows everything as a flat list.
+const primaryNavItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/advisor", label: "AI Advisor", icon: Sparkles },
   { href: "/collection", label: "Collection", icon: Wine },
   { href: "/portfolio", label: "Portfolio", icon: LineChart },
+  { href: "/advisor", label: "AI Advisor", icon: Sparkles },
+];
+
+const secondaryNavItems = [
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/facility", label: "Facility", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
+
+const navItems = [...primaryNavItems, ...secondaryNavItems];
 
 interface FacilityOption {
   id: string;
@@ -56,6 +65,21 @@ export default function Nav({
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const [isPending, startTransition] = useTransition();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Close the sheet whenever the route changes so a link tap dismisses it.
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moreOpen]);
 
   const hydrated = status === "authenticated";
   const displayName = hydrated
@@ -254,7 +278,7 @@ export default function Nav({
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-around h-16">
-          {navItems.map((item) => {
+          {primaryNavItems.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
@@ -272,8 +296,81 @@ export default function Nav({
               </Link>
             );
           })}
+          {(() => {
+            const moreActive = secondaryNavItems.some(
+              (item) =>
+                pathname === item.href || pathname.startsWith(item.href + "/")
+            );
+            return (
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-label="More navigation"
+                aria-expanded={moreOpen}
+                className={`flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] px-2 py-1.5 transition-colors duration-200 ${
+                  moreActive || moreOpen ? "text-gold" : "text-muted"
+                }`}
+              >
+                <MoreHorizontal size={20} strokeWidth={1.8} />
+                <span className="text-[10px] sm:text-xs font-medium tracking-wide">
+                  More
+                </span>
+              </button>
+            );
+          })()}
         </div>
       </nav>
+
+      {/* Mobile "More" sheet — slides up with the secondary routes. */}
+      {moreOpen && (
+        <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="More navigation">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setMoreOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-caveau-charcoal/95 backdrop-blur-xl border-t border-[#2A2A30]/50 rounded-t-2xl px-3 pt-3 pb-4"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+          >
+            <div className="flex items-center justify-between px-2 pb-2">
+              <span className="text-xs text-muted uppercase tracking-wider">
+                More
+              </span>
+              <button
+                type="button"
+                onClick={() => setMoreOpen(false)}
+                aria-label="Close"
+                className="text-muted hover:text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="flex flex-col">
+              {secondaryNavItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-colors duration-200 ${
+                      isActive
+                        ? "bg-gold/10 text-gold"
+                        : "text-secondary hover:text-primary hover:bg-[#1C1C20]/60"
+                    }`}
+                  >
+                    <item.icon size={18} strokeWidth={1.8} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      )}
     </>
   );
 }
