@@ -142,9 +142,7 @@ export default function SentinelPage() {
 
   // Current reading is the latest live reading or a fresh simulated one
   const currentReading =
-    liveReadings.length > 0
-      ? liveReadings[liveReadings.length - 1]
-      : simulateReading();
+    liveReadings[liveReadings.length - 1] ?? simulateReading();
 
   /* ── Fetch DB data ─────────────────────────────── */
   const loadDbData = useCallback(

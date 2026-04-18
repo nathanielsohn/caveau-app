@@ -65,7 +65,7 @@ describe("getUploadUrl — TTL clamping", () => {
     );
 
     expect(getSignedUrl).toHaveBeenCalledTimes(1);
-    const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
+    const [, , opts] = (getSignedUrl as Mock).mock.calls[0]!;
     expect(opts.expiresIn).toBe(60);
   });
 
@@ -79,7 +79,7 @@ describe("getUploadUrl — TTL clamping", () => {
       1024,
     );
 
-    const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
+    const [, , opts] = (getSignedUrl as Mock).mock.calls[0]!;
     expect(opts.expiresIn).toBe(900);
   });
 
@@ -93,7 +93,7 @@ describe("getUploadUrl — TTL clamping", () => {
       1024,
     );
 
-    const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
+    const [, , opts] = (getSignedUrl as Mock).mock.calls[0]!;
     expect(opts.expiresIn).toBe(420);
   });
 
@@ -106,7 +106,7 @@ describe("getUploadUrl — TTL clamping", () => {
       1024,
     );
 
-    const [, , opts] = (getSignedUrl as Mock).mock.calls[0];
+    const [, , opts] = (getSignedUrl as Mock).mock.calls[0]!;
     expect(opts.expiresIn).toBe(300);
   });
 });

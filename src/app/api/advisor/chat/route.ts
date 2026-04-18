@@ -253,7 +253,8 @@ export async function POST(req: NextRequest) {
           }),
         );
         const toolResults = settled.map((outcome, i) => {
-          const tu = toolUses[i];
+          // settled[i] and toolUses[i] are index-aligned by construction.
+          const tu = toolUses[i]!;
           if (outcome.status === "rejected") {
             toolErrors += 1;
             logger.error(

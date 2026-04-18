@@ -386,9 +386,11 @@ async function main() {
   const lockerIds = [locker7.id, locker12.id, locker19.id, locker24.id];
   for (let i = 0; i < alertData.length; i++) {
     const a = alertData[i];
+    const lockerId = lockerIds[i % lockerIds.length];
+    if (!a || !lockerId) continue;
     await prisma.alert.create({
       data: {
-        lockerId: lockerIds[i % lockerIds.length],
+        lockerId,
         type: a.type,
         severity: a.severity,
         message: a.message,
@@ -412,7 +414,9 @@ async function main() {
   ];
   let certCount = 0;
   for (let i = 0; i < certConfigs.length; i++) {
-    const { wine, lockerId } = certConfigs[i];
+    const cfg = certConfigs[i];
+    if (!cfg) continue;
+    const { wine, lockerId } = cfg;
     if (!wine) continue;
     const monitoringStart = new Date(Date.now() - (180 + i * 15) * 86400000);
     const monitoringEnd = new Date();
@@ -467,10 +471,11 @@ async function main() {
       date.setMonth(date.getMonth() - monthsAgo);
       date.setDate(1 + Math.floor(Math.random() * 27));
 
+      const source = valuationSources[j % valuationSources.length] ?? "manual";
       await prisma.wineValuation.create({
         data: {
           wineId: wine.id,
-          source: valuationSources[j % valuationSources.length],
+          source,
           price: Math.round(Math.max(price, basePrice * 0.95) * 100) / 100,
           date,
         },
@@ -641,10 +646,11 @@ async function main() {
       const monthsAgo = 12 - j * 4;
       const d = new Date();
       d.setMonth(d.getMonth() - monthsAgo);
+      const source = ['manual', 'liv-ex', 'wine-searcher'][j] ?? 'manual';
       await prisma.wineValuation.create({
         data: {
           wineId: wine.id,
-          source: ['manual', 'liv-ex', 'wine-searcher'][j],
+          source,
           price: Math.round(basePrice * (0.95 + j * 0.05) * 100) / 100,
           date: d,
         },

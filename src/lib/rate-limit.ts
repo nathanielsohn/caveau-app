@@ -72,7 +72,8 @@ function evictOldest(): void {
     }),
   );
   for (let i = 0; i < toEvict; i++) {
-    memStore.delete(entries[i][0]);
+    const entry = entries[i];
+    if (entry) memStore.delete(entry[0]);
   }
 }
 

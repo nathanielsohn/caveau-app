@@ -232,7 +232,7 @@ describe("POST /api/deliveries/by-token/[token]/id-scan", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.matchedRecipientName).toBe("Isabella Saenz");
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.data.status).toBe("id_scanned");
     expect(updateArgs.data.scannedRecipientName).toBe("isabel");
     expect(prisma.deliveryEvent.create).toHaveBeenCalledWith(
@@ -309,7 +309,7 @@ describe("POST /api/deliveries/by-token/[token]/id-scan", () => {
       params: Promise.resolve({ token: TOKEN_B }),
     });
     expect(loadDeliveryByDriverToken).toHaveBeenCalledWith(TOKEN_B);
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.where.id).toBe(DELIVERY_B);
   });
 
@@ -430,7 +430,7 @@ describe("POST /api/deliveries/by-token/[token]/complete", () => {
       params: Promise.resolve({ token: TOKEN_A }),
     });
     expect(res.status).toBe(200);
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.data.status).toBe("completed");
     expect(updateArgs.data.handoffPhotoKey).toBe(key);
     // Two events appended: photo_captured and completed.

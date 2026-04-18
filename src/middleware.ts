@@ -99,23 +99,44 @@ function buildCsp(): string {
     ? `'self' 'unsafe-inline' 'unsafe-eval'`
     : `'self' 'unsafe-inline'`;
 
-  // `connect-src` must include AWS S3 (and CloudFront, if used) so the
-  // wine-image upload form (#18) can PUT directly to a presigned URL from
-  // the browser. We allow the broad amazonaws.com / cloudfront.net domains
-  // rather than the specific bucket so the same CSP works in dev, staging,
-  // and prod without per-env wiring.
+  // `connect-src` must include the S3 bucket (presigned PUT uploads,
+  // feature #18) and the CloudFront distribution (public reads). We
+  // derive the exact hostnames from env so the policy doesn't wildcard
+  // *.amazonaws.com — an attacker who compromises any other service on
+  // the AWS shared domain shouldn't inherit our CSP. Dev and previews
+  // that don't have the bucket/CDN set still get a working 'self' policy.
+  const bucket = process.env.AWS_S3_BUCKET;
+  const region = process.env.AWS_REGION ?? "us-east-1";
+  const cfDomain = process.env.AWS_CLOUDFRONT_DOMAIN;
+  const awsConnectSources: string[] = [];
+  if (bucket) {
+    // Both virtual-hosted (`bucket.s3.region.amazonaws.com`) and
+    // path-style (`s3.region.amazonaws.com/bucket`) are accepted by the
+    // S3 API; presigned URLs we issue use virtual-hosted, so that's what
+    // the browser will dial — but we allow the path-style host too so a
+    // future SDK change doesn't silently break uploads.
+    awsConnectSources.push(
+      `https://${bucket}.s3.${region}.amazonaws.com`,
+      `https://s3.${region}.amazonaws.com`,
+    );
+  }
+  if (cfDomain) {
+    awsConnectSources.push(`https://${cfDomain}`);
+  }
+
   // `upgrade-insecure-requests` is production-only. Chrome and Firefox
   // special-case localhost and ignore the directive in dev, but Safari
   // honors it strictly — forcing every subresource to HTTPS against a
   // plain-HTTP dev server, which silently drops CSS/fonts/JS and renders
   // the whole app unstyled.
+  const connectSrc = ["'self'", ...awsConnectSources].join(" ");
   const directives = [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob: https:`,
     `font-src 'self' data:`,
-    `connect-src 'self' https://*.amazonaws.com https://*.cloudfront.net`,
+    `connect-src ${connectSrc}`,
     `form-action 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,

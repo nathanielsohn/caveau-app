@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Custody & Condition Reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 27 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, and the AI Advisor chat surface are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) is substantially complete; #51–54 round out P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 27 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, and the AI Advisor chat surface are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) is complete. #51 (Deliver Now) is **in progress** — member-side ladder, door-side ladder, and the wine-detail entry point have landed (commits `5303875`, `9285075`, `1bb372a`, `f46fd01`); OTP step-up verification for >$2K deliveries + Florida DABT ID-match flow completion still pending before strike-through. #52–54 round out remaining P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
 
 ## Stack
 
@@ -126,7 +126,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 prisma/
 ├── schema.prisma               # Data models (generates TypeScript types)
-├── migrations/                 # Flat SQL migrations (0001..0024)
+├── migrations/                 # Flat SQL migrations (0001..0029)
 ├── seed.ts                     # Seed data script
 └── seed-sensors.ts             # Sensor reading seed script
 src/
@@ -155,66 +155,54 @@ src/
 │   │   │   ├── latest/route.ts         # GET latest reading per locker
 │   │   │   └── history/route.ts        # GET historical readings (rate-limited)
 │   │   ├── alerts/route.ts             # GET recent alerts
-│   │   ├── certificates/[id]/route.ts  # GET certificate (ownership-checked)
+│   │   ├── advisor/chat/route.ts       # SSE streaming AI Advisor (#50)
+│   │   ├── certificates/[id]/          # GET certificate (ownership-checked) + provenance subroute
+│   │   ├── cron/
+│   │   │   ├── livex-sync/route.ts     # Daily Liv-ex price sync (#39)
+│   │   │   └── sensor-retention/route.ts # Nightly 90-day raw-reading purge
+│   │   ├── deliveries/                 # Deliver Now member + door-side APIs (#51)
+│   │   │   ├── [id]/{address,biometric,cancel,otp,otp/send,pin}/route.ts
+│   │   │   └── by-token/[token]/{complete,handoff-start,id-scan,upload-url}/route.ts
+│   │   ├── ingest/sensor/route.ts      # Sentinel device ingest (#21)
+│   │   ├── ses/webhook/route.ts        # SES bounce/complaint webhook (#19)
 │   │   └── health/route.ts             # Public uptime probe
-│   ├── auth/
-│   │   ├── layout.tsx                  # Minimal layout
-│   │   ├── login/page.tsx
-│   │   └── signup/page.tsx             # Auto-routes new members to /onboarding
-│   ├── onboarding/
-│   │   ├── page.tsx            # Wizard host (server — resume detection)
-│   │   ├── wizard.tsx          # 3-step client wizard (tier → locker → first bottle)
-│   │   ├── actions.ts          # Server actions (set tier, reserve locker, add wine, complete)
-│   │   ├── layout.tsx          # Minimal layout (no sidebar nav)
-│   │   └── loading.tsx
-│   ├── advisor/
-│   │   ├── page.tsx            # AI Advisor chat (server — auth + tier resolution)
-│   │   ├── chat-client.tsx     # SSE-streaming chat client (feature #50)
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── settings/
-│   │   ├── page.tsx            # Alert notification preferences (#19)
-│   │   └── actions.ts          # Preference update server action
-│   ├── collection/
-│   │   ├── page.tsx            # Wine inventory (server)
-│   │   ├── collection-client.tsx # Filtering/sorting/grid (client)
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── locker/
-│   │   ├── page.tsx            # Locker visualization (server)
-│   │   ├── locker-selector.tsx # Locker tab selector (client)
-│   │   ├── actions.ts          # Server actions (assign/remove wine from slot)
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── sentinel/
-│   │   ├── page.tsx            # IoT monitoring (client — live sim)
-│   │   ├── actions.ts          # Server actions for sensor history
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── wine/[id]/
-│   │   ├── page.tsx            # Wine detail
-│   │   ├── actions.ts          # Server actions (disposition, valuation, image upload)
-│   │   ├── disposition-button.tsx # Client button that opens the disposition dialog
-│   │   └── loading.tsx
-│   ├── report/[id]/
-│   │   ├── page.tsx            # Caveau Custody & Condition Report (with QR code)
-│   │   ├── error.tsx
-│   │   └── loading.tsx
-│   ├── certificate/[id]/
-│   │   └── page.tsx            # Legacy redirect → /report/[id]
-│   └── verify/
-│       ├── layout.tsx          # Minimal layout (no sidebar nav)
-│       └── [hash]/
-│           ├── page.tsx        # Public report verification
-│           ├── error.tsx
-│           └── loading.tsx
+│   ├── admin/                          # Admin RBAC surfaces (#28)
+│   │   ├── layout.tsx + page.tsx + error.tsx + loading.tsx
+│   │   ├── alerts/                     # Alert triage
+│   │   ├── hurricane/{new,[id]}/       # Hurricane protocol authoring (#46)
+│   │   ├── lockers/                    # Locker admin
+│   │   ├── members/                    # Member directory
+│   │   └── waitlist/                   # Founding-member waitlist + CSV export (#49)
+│   ├── advisor/                        # AI Advisor chat UI (#50)
+│   │   ├── page.tsx + chat-client.tsx + error.tsx + loading.tsx
+│   ├── auth/                           # login, signup
+│   ├── bottle/[tagId]/                 # NFC-tag landing (#43)
+│   ├── certificate/[id]/               # Legacy redirect → /report/[id]
+│   ├── collection/                     # Wine inventory (server + client + label-scan action)
+│   ├── deliveries/[id]/                # Deliver Now member ladder UI (#51)
+│   ├── facility/                       # Member-facing facility views (#16, #53)
+│   │   └── events/[id]/                # Events & tasting RSVP (#53, scaffolded)
+│   ├── handoff/                        # Vault-side handoff QR flow (#41)
+│   │   └── [token]/                    # Auction/transfer recipient scan
+│   ├── handoff-driver/[token]/         # Deliver Now driver portal (#51)
+│   ├── locker/                         # Locker visualization
+│   ├── onboarding/                     # 3-step tier → locker → first-bottle wizard (#20)
+│   ├── portfolio/                      # Investor view (#45, Portfolio vs. Liv-ex 100)
+│   ├── report/[id]/                    # Caveau Custody & Condition Report + QR
+│   ├── sentinel/                       # IoT monitoring (client — live sim)
+│   ├── settings/                       # Alert prefs (#19) + hurricane prefs (#46)
+│   ├── verify/[hash]/                  # Public report verification (#30)
+│   ├── waitlist/                       # Public founding-member waitlist (#49)
+│   └── wine/[id]/                      # Wine detail + disposition/valuation/upload actions
 ├── middleware.ts               # Auth + onboarding gate, per-route rate limiting, CSP
 ├── types/
 │   └── next-auth.d.ts          # NextAuth type augmentation (role, tier, onboarded on session)
 ├── components/
 │   ├── providers.tsx           # SessionProvider wrapper
 │   ├── nav.tsx                 # Sidebar (desktop) + bottom tabs (mobile) — shows session user
+│   ├── admin-nav.tsx           # Admin sub-nav (#28)
 │   ├── facility-context.tsx    # Client context for nav facility switcher (#16)
+│   ├── hurricane-banner.tsx    # Site-wide hurricane-protocol banner (#46)
 │   ├── metric-card.tsx         # Animated stat card (icon + value + label)
 │   ├── wine-card.tsx           # Wine card with drink window badges
 │   ├── wine-image-upload.tsx   # Presigned S3 upload UI (#18) — no-ops when bucket unset
@@ -224,6 +212,8 @@ src/
 │   ├── dashboard-charts.tsx    # Analytics (value trend, utilization, alert freq)
 │   ├── alert-list.tsx          # Alert history table
 │   ├── certificate-doc.tsx     # Caveau Custody & Condition Report layout + QR code
+│   ├── provenance-timeline.tsx # Bottle-level chain-of-custody timeline (#40)
+│   ├── handoff-package-button.tsx # Auction/transfer handoff QR trigger (#41)
 │   ├── add-wine-form.tsx       # Add wine modal/form
 │   ├── disposition-form.tsx    # Wine disposition modal (<dialog>)
 │   ├── valuation-chart.tsx     # Wine valuation price history chart
@@ -234,14 +224,31 @@ src/
     ├── prisma.ts               # Prisma client singleton
     ├── env.ts                  # Boot-time env validation
     ├── logger.ts               # Structured logging wrapper
-    ├── rate-limit.ts           # In-memory per-IP token bucket
+    ├── request-context.ts      # Request-ID propagation for log correlation
+    ├── rate-limit.ts           # Upstash-backed limiter with in-memory fallback
     ├── safe-callback.ts        # Open-redirect-safe callbackUrl validator
     ├── schemas.ts              # Zod request/body schemas + parseOr400 helper
     ├── current-facility.ts     # Facility cookie read/write for #16 switcher
+    ├── tiers.ts                # Tier slugs, copy, entitlement specs
     ├── email.ts                # AWS SES client + send() wrapper (no-op when unset)
     ├── notify-alert.ts         # Alert → email dispatch with cooldown tracking (#19)
+    ├── validate-live-alert.ts  # Guard for /sentinel live-sim alert writes
     ├── s3.ts                   # Presigned upload URLs + getPublicUrl (#18)
-    ├── certificate-hash.ts     # HMAC certificate hash generation/verification
+    ├── vision.ts               # Google Vision wine-label OCR (#24)
+    ├── label-parser.ts         # Post-OCR producer/vintage/region extraction (#24)
+    ├── certificate-hash.ts     # HMAC CCR hash generation/verification (#30)
+    ├── provenance.ts           # Provenance timeline aggregation (#40)
+    ├── provenance-pdf.ts       # Server-rendered CCR PDF export (#40)
+    ├── handoff.ts              # Handoff package tokens + state machine (#41)
+    ├── disposition-guard.ts    # Invariants for wine disposition transitions
+    ├── nfc.ts                  # NFC tag ID hashing + lookup (#43)
+    ├── hurricane.ts            # Hurricane protocol state + member opt-ins (#46)
+    ├── investment.ts           # Portfolio vs. Liv-ex 100 math (#45)
+    ├── delivery.ts             # Deliver Now state machine + PIN/OTP (#51)
+    ├── advisor-system-prompt.ts # Builds the AI Advisor system prompt (#50)
+    ├── advisor-tools.ts        # Portfolio/tier/alert tool implementations (#50)
+    ├── advisor-dispatch.ts     # Tool definitions + dispatch (#50)
+    ├── livex.ts                # Liv-ex HTTP client (#39)
     ├── use-body-scroll-lock.ts # Hook for locking background scroll behind modals
     ├── sensors.ts              # Sensor simulation algorithm + thresholds
     ├── utils.ts                # Currency, date, number formatters

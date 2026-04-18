@@ -37,6 +37,8 @@ vi.mock("@/lib/prisma", () => ({
     },
     sensorReading: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
+      groupBy: vi.fn(),
     },
     provenanceCertificate: {
       findMany: vi.fn(),
@@ -103,7 +105,7 @@ describe("cross-member scoping (jailbreak barrier)", () => {
       }),
     );
     // Sanity: no call leaked member B's id
-    const args = (prisma.wine.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const args = (prisma.wine.findMany as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(args.where.memberId).not.toBe(MEMBER_B);
   });
 
@@ -243,25 +245,25 @@ describe("happy paths against seeded-shape data", () => {
     expect(portfolio.totals.totalBasisUsd).toBeCloseTo(5920, 2);
 
     const petrus = portfolio.wines[0];
-    expect(petrus.id).toBe(WINE_A1);
-    expect(petrus.investmentGrade).toBe("investment");
-    expect(petrus.purchasePriceUsd).toBe(5800);
-    expect(petrus.currentValueUsd).toBe(6413);
-    expect(petrus.facilityName).toBe("Caveau Naples");
-    expect(petrus.lockerNumber).toBe(7);
+    expect(petrus!.id).toBe(WINE_A1);
+    expect(petrus!.investmentGrade).toBe("investment");
+    expect(petrus!.purchasePriceUsd).toBe(5800);
+    expect(petrus!.currentValueUsd).toBe(6413);
+    expect(petrus!.facilityName).toBe("Caveau Naples");
+    expect(petrus!.lockerNumber).toBe(7);
     // CAGR: (6413/5800)^(1/1.5) - 1 ≈ 7.0%; floor to 1y -> 10.6%
     // Elapsed is 18 months so no floor kicks in; annualized growth is
     // between 6% and 8% depending on rounding.
-    expect(petrus.cagrPct).not.toBeNull();
-    expect(petrus.cagrPct!).toBeGreaterThan(0);
-    expect(petrus.oneYearChangePct).not.toBeNull();
+    expect(petrus!.cagrPct).not.toBeNull();
+    expect(petrus!.cagrPct!).toBeGreaterThan(0);
+    expect(petrus!.oneYearChangePct).not.toBeNull();
 
     const everyday = portfolio.wines[1];
-    expect(everyday.investmentGrade).toBe("everyday");
-    expect(everyday.lockerNumber).toBeNull();
+    expect(everyday!.investmentGrade).toBe("everyday");
+    expect(everyday!.lockerNumber).toBeNull();
     // Single wine, single creation-time; CAGR should still be computable
     // because elapsed is floored at 1 year.
-    expect(everyday.cagrPct).not.toBeNull();
+    expect(everyday!.cagrPct).not.toBeNull();
   });
 
   it("getLivexPriceHistory returns coerced + sorted Liv-ex valuations", async () => {
@@ -306,21 +308,27 @@ describe("happy paths against seeded-shape data", () => {
         },
       },
     ]);
-    (prisma.sensorReading.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      lockerId: LOCKER_ID,
-      temperature: "55.1",
-      humidity: "53.2",
-      vibration: "0.12",
-      timestamp: new Date("2026-04-17T00:05:00Z"),
-    });
+    const latestTs = new Date("2026-04-17T00:05:00Z");
+    (prisma.sensorReading.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { lockerId: LOCKER_ID, _max: { timestamp: latestTs } },
+    ]);
+    (prisma.sensorReading.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        lockerId: LOCKER_ID,
+        temperature: "55.1",
+        humidity: "53.2",
+        vibration: "0.12",
+        timestamp: latestTs,
+      },
+    ]);
 
     const alerts = await getActiveAlerts();
 
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].lockerNumber).toBe(7);
-    expect(alerts[0].facilityName).toBe("Caveau Naples");
-    expect(alerts[0].latestReading?.humidity).toBe(53.2);
-    expect(alerts[0].thresholds.humidityMinPct).toBe(55);
+    expect(alerts[0]!.lockerNumber).toBe(7);
+    expect(alerts[0]!.facilityName).toBe("Caveau Naples");
+    expect(alerts[0]!.latestReading?.humidity).toBe(53.2);
+    expect(alerts[0]!.thresholds.humidityMinPct).toBe(55);
   });
 
   it("getCCRList composes verification URLs from NEXTAUTH_URL", async () => {
@@ -348,11 +356,11 @@ describe("happy paths against seeded-shape data", () => {
       const ccrs = await getCCRList();
 
       expect(ccrs).toHaveLength(1);
-      expect(ccrs[0].certificateNumber).toBe("CAV-2026-0001");
-      expect(ccrs[0].wineName).toBe("Pétrus");
-      expect(ccrs[0].lockerName).toBe("Caveau Naples — Locker #7 (A)");
-      expect(ccrs[0].verificationUrl).toBe("https://app.caveau.ai/verify/abc123");
-      expect(ccrs[0].revoked).toBe(false);
+      expect(ccrs[0]!.certificateNumber).toBe("CAV-2026-0001");
+      expect(ccrs[0]!.wineName).toBe("Pétrus");
+      expect(ccrs[0]!.lockerName).toBe("Caveau Naples — Locker #7 (A)");
+      expect(ccrs[0]!.verificationUrl).toBe("https://app.caveau.ai/verify/abc123");
+      expect(ccrs[0]!.revoked).toBe(false);
     } finally {
       process.env.NEXTAUTH_URL = priorNextAuthUrl;
     }
@@ -427,7 +435,7 @@ describe("happy paths against seeded-shape data", () => {
     expect(detail.facilityName).toBe("Caveau Naples");
     expect(detail.valuations).toHaveLength(1);
     expect(detail.certificates).toHaveLength(1);
-    expect(detail.certificates[0].certificateNumber).toBe("CAV-2026-0001");
+    expect(detail.certificates[0]!.certificateNumber).toBe("CAV-2026-0001");
     expect(detail.latestReading?.temperature).toBe(55.0);
   });
 

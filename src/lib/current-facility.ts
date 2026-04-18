@@ -92,7 +92,7 @@ export async function getCurrentFacility(
     const match = facilities.find((f) => f.id === cookieId);
     if (match) return match;
   }
-  return facilities[0];
+  return facilities[0] ?? null;
 }
 
 export { FACILITY_COOKIE };

@@ -80,10 +80,12 @@ const fetchSentinelDataForLocker = unstable_cache(
       const step = readings.length / TARGET_POINTS;
       sampled = [];
       for (let i = 0; i < TARGET_POINTS; i++) {
-        sampled.push(readings[Math.floor(i * step)]);
+        const r = readings[Math.floor(i * step)];
+        if (r) sampled.push(r);
       }
-      if (sampled[sampled.length - 1] !== readings[readings.length - 1]) {
-        sampled.push(readings[readings.length - 1]);
+      const last = readings[readings.length - 1];
+      if (last && sampled[sampled.length - 1] !== last) {
+        sampled.push(last);
       }
     }
 

@@ -173,7 +173,7 @@ describe("POST /api/deliveries", () => {
     expect(body.pin).toBe("1234");
 
     // Created with memberId from session, not the body.
-    const createArgs = (prisma.deliveryRequest.create as Mock).mock.calls[0][0];
+    const createArgs = (prisma.deliveryRequest.create as Mock).mock.calls[0]![0];
     expect(createArgs.data.memberId).toBe(MEMBER_ID);
     expect(createArgs.data.otpRequired).toBe(true);
     expect(createArgs.data.otpSalt).toBe("otp-salt");
@@ -246,7 +246,7 @@ describe("POST /api/deliveries/[id]/biometric", () => {
     expect(res.status).toBe(404);
     // The where-clause must include both id AND memberId — otherwise a
     // cross-member scan could leak existence.
-    const args = (prisma.deliveryRequest.findFirst as Mock).mock.calls[0][0];
+    const args = (prisma.deliveryRequest.findFirst as Mock).mock.calls[0]![0];
     expect(args.where.id).toBe(DELIVERY_ID);
     expect(args.where.memberId).toBe(MEMBER_ID);
   });
@@ -418,7 +418,7 @@ describe("POST /api/deliveries/[id]/pin", () => {
 
     const res = await callPin();
     expect(res.status).toBe(200);
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.data.status).toBe("pin_entered");
     expect(updateArgs.data.pinVerifiedAt).toBeInstanceOf(Date);
     expect(prisma.deliveryEvent.create).toHaveBeenCalledWith(
@@ -495,7 +495,7 @@ describe("POST /api/deliveries/[id]/otp/send", () => {
     expect(res.status).toBe(200);
 
     // OTP hash + salt were written onto the row.
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.data.otpSalt).toBe("otp-salt");
     expect(updateArgs.data.otpHash).toBe("otp-hash");
     expect(updateArgs.data.otpAttempts).toBe(0);
@@ -551,7 +551,7 @@ describe("POST /api/deliveries/[id]/otp", () => {
 
     const res = await callOtp();
     expect(res.status).toBe(200);
-    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0][0];
+    const updateArgs = (prisma.deliveryRequest.update as Mock).mock.calls[0]![0];
     expect(updateArgs.data.status).toBe("otp_verified");
     expect(updateArgs.data.otpVerifiedAt).toBeInstanceOf(Date);
   });

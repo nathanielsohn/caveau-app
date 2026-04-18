@@ -113,7 +113,9 @@ export default function WineCard({ wine }: { wine: WineCardData }) {
           <div className="aspect-[3/4] w-full rounded-xl overflow-hidden bg-[#0C0C0E] relative border border-transparent group-hover:border-gold/40 transition-colors duration-200">
             <Image
               src={wine.photoUrl}
-              alt={wine.name}
+              alt={[wine.producer, wine.name, wine.vintage, "label"]
+                .filter(Boolean)
+                .join(" ")}
               fill
               sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 22vw, (min-width: 640px) 30vw, 45vw"
               className="object-cover"

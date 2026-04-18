@@ -189,6 +189,14 @@ export async function GET(req: NextRequest) {
       producer: true,
       vintage: true,
     },
+    // Oldest sync first so a catalog that exceeds MAX_WINES_PER_RUN
+    // still sees every wine rotated through across consecutive runs.
+    // Prisma sorts NULLs last by default on Postgres, so unsync'd wines
+    // are prioritized via the `nulls: "first"` hint.
+    orderBy: [
+      { lastValuationSyncAt: { sort: "asc", nulls: "first" } },
+      { id: "asc" },
+    ],
     take: MAX_WINES_PER_RUN,
   });
 
@@ -204,6 +212,7 @@ export async function GET(req: NextRequest) {
     while (cursor < wines.length) {
       const idx = cursor++;
       const wine = wines[idx];
+      if (!wine) continue;
       const outcome = await syncOneWine(wine, requestId);
       if (outcome === "updated") updated += 1;
       else if (outcome === "skipped") skipped += 1;

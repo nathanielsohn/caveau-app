@@ -152,7 +152,7 @@ export async function getMemberPortfolio(): Promise<MemberPortfolio> {
     if (w.valuations.length >= 2) {
       const latestV = w.valuations[w.valuations.length - 1];
       const closest = findClosestValuation(w.valuations, oneYearAgo);
-      if (closest && closest !== latestV) {
+      if (latestV && closest && closest !== latestV) {
         oneYearChangePct = percentChange(closest.price, latestV.price);
       }
     }
@@ -208,10 +208,11 @@ function findClosestValuation<T extends { date: Date }>(
   valuations: T[],
   target: Date,
 ): T | null {
-  if (valuations.length === 0) return null;
+  const first = valuations[0];
+  if (!first) return null;
   const targetMs = target.getTime();
-  let closest = valuations[0];
-  let closestDelta = Math.abs(closest.date.getTime() - targetMs);
+  let closest: T = first;
+  let closestDelta = Math.abs(first.date.getTime() - targetMs);
   for (const v of valuations) {
     const delta = Math.abs(v.date.getTime() - targetMs);
     if (delta < closestDelta) {
@@ -323,22 +324,38 @@ export async function getActiveAlerts(): Promise<ActiveAlert[]> {
     string,
     { temperature: number; humidity: number; vibration: number; timestamp: Date }
   >();
-  await Promise.all(
-    lockerIds.map(async (lockerId) => {
-      const r = await prisma.sensorReading.findFirst({
-        where: { lockerId },
-        orderBy: { timestamp: "desc" },
+  if (lockerIds.length > 0) {
+    // One groupBy to find the latest timestamp per locker, then one
+    // findMany to hydrate the rows — O(1) DB round trips instead of O(N).
+    const latestTimestamps = await prisma.sensorReading.groupBy({
+      by: ["lockerId"],
+      where: { lockerId: { in: lockerIds } },
+      _max: { timestamp: true },
+    });
+    const timestampPairs = latestTimestamps
+      .map((g) => ({ lockerId: g.lockerId, timestamp: g._max.timestamp }))
+      .filter(
+        (p): p is { lockerId: string; timestamp: Date } => p.timestamp != null,
+      );
+    if (timestampPairs.length > 0) {
+      const readings = await prisma.sensorReading.findMany({
+        where: {
+          OR: timestampPairs.map((p) => ({
+            lockerId: p.lockerId,
+            timestamp: p.timestamp,
+          })),
+        },
       });
-      if (r) {
-        latestByLocker.set(lockerId, {
+      for (const r of readings) {
+        latestByLocker.set(r.lockerId, {
           temperature: toNumber(r.temperature),
           humidity: toNumber(r.humidity),
           vibration: toNumber(r.vibration),
           timestamp: r.timestamp,
         });
       }
-    }),
-  );
+    }
+  }
 
   return alerts.map((a) => {
     const latest = latestByLocker.get(a.lockerId) ?? null;
@@ -665,7 +682,7 @@ export async function getLivexBenchmark(
     };
   }
 
-  const latestValue = points[points.length - 1].indexValue;
+  const latestValue = points[points.length - 1]!.indexValue;
 
   const startOfYear = new Date(now.getFullYear(), 0, 1);
   const ytdAnchor = findClosestPointValue(points, startOfYear);
@@ -690,10 +707,11 @@ function findClosestPointValue(
   points: LivexBenchmarkPoint[],
   target: Date,
 ): number | null {
-  if (points.length === 0) return null;
+  const first = points[0];
+  if (!first) return null;
   const targetMs = target.getTime();
-  let closest = points[0];
-  let closestDelta = Math.abs(new Date(closest.date).getTime() - targetMs);
+  let closest: LivexBenchmarkPoint = first;
+  let closestDelta = Math.abs(new Date(first.date).getTime() - targetMs);
   for (const p of points) {
     const delta = Math.abs(new Date(p.date).getTime() - targetMs);
     if (delta < closestDelta) {

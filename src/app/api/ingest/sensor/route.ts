@@ -135,9 +135,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Idempotent ingest. The @@unique([lockerId, timestamp]) constraint
-  // makes a replayed Bearer-authenticated POST a no-op: the catch branch
-  // returns 200 without re-running threshold checks or emitting another
-  // alert row.
+  // makes a replayed Bearer-authenticated POST a no-op on the row itself,
+  // but we still run threshold checks on a replay — if the first request
+  // crashed between creating the reading and writing the alert, the
+  // retry needs to recover and emit the missing alert. The per-(locker,
+  // type) alert cooldown below makes the threshold block idempotent on
+  // its own, so running it twice for the same reading is safe.
   let readingId: number;
   let isNewReading = true;
   try {
@@ -176,15 +179,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isNewReading) {
-    logger.info("[ingest/sensor] duplicate reading ignored", {
+    logger.info("[ingest/sensor] duplicate reading replay", {
       requestId,
       lockerId: payload.lockerId,
       readingId,
     });
-    return NextResponse.json(
-      { status: "ok", readingId, alerts: [], duplicate: true },
-      { status: 200 },
-    );
   }
 
   // Evaluate thresholds against the normalized (number) reading — Decimal
@@ -197,8 +196,13 @@ export async function POST(req: NextRequest) {
     timestamp: payload.timestamp,
   });
 
+  // Dedup window has to include MAX_CLOCK_SKEW_MS on top of the cooldown:
+  // alerts are stamped with `payload.timestamp`, which can trail `Date.now()`
+  // by up to MAX_CLOCK_SKEW_MS when the device clock is behind. A retry
+  // arriving after the cooldown but within skew would otherwise miss the
+  // original alert and create a duplicate.
   const alertCooldownCutoff = new Date(
-    Date.now() - ALERT_COOLDOWN_MINUTES * 60_000,
+    Date.now() - ALERT_COOLDOWN_MINUTES * 60_000 - MAX_CLOCK_SKEW_MS,
   );
 
   const alertIds: string[] = [];
@@ -256,7 +260,8 @@ export async function POST(req: NextRequest) {
       status: "ok",
       readingId,
       alerts: alertIds,
+      ...(isNewReading ? {} : { duplicate: true }),
     },
-    { status: 201 },
+    { status: isNewReading ? 201 : 200 },
   );
 }

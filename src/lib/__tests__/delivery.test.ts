@@ -130,7 +130,7 @@ describe("isOtpRequired", () => {
   it("scopes the aggregate by memberId (defense in depth)", async () => {
     aggregateMock.mockResolvedValue({ _sum: { currentValue: 0 } });
     await isOtpRequired(["w1"], "member-under-test");
-    const call = aggregateMock.mock.calls[0][0];
+    const call = aggregateMock.mock.calls[0]![0];
     expect(call.where).toMatchObject({ memberId: "member-under-test" });
     expect(call.where.id).toEqual({ in: ["w1"] });
   });

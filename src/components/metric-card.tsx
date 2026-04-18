@@ -68,7 +68,7 @@ function replaceNumber(
 
   // Determine decimal places from original
   const decimalMatch = match[0].match(/\.(\d+)/);
-  const decimals = decimalMatch ? decimalMatch[1].length : 0;
+  const decimals = decimalMatch?.[1]?.length ?? 0;
 
   // Format with commas if the original had them
   const hasCommas = match[0].includes(",");

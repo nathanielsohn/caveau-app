@@ -125,7 +125,7 @@ describe("notifyAlert", () => {
     await notifyAlert(ALERT_ID);
 
     expect(prisma.alert.findFirst).toHaveBeenCalledTimes(1);
-    const whereArg = (prisma.alert.findFirst as Mock).mock.calls[0][0].where;
+    const whereArg = (prisma.alert.findFirst as Mock).mock.calls[0]![0].where;
     expect(whereArg.lockerId).toBe(LOCKER_ID);
     expect(whereArg.type).toBe("temperature");
     expect(whereArg.notifiedAt).toEqual({ gte: expect.any(Date) });
@@ -141,7 +141,7 @@ describe("notifyAlert", () => {
     await notifyAlert(ALERT_ID);
 
     expect(sendAlertEmail).toHaveBeenCalledTimes(1);
-    const [recipient, payload] = (sendAlertEmail as Mock).mock.calls[0];
+    const [recipient, payload] = (sendAlertEmail as Mock).mock.calls[0]!;
     expect(recipient).toEqual({
       name: "Robert Saenz",
       email: "robert@example.com",

@@ -41,5 +41,5 @@ export function isActiveStage(stage: HurricaneStage): boolean {
 export function nextStage(stage: HurricaneStage): HurricaneStage | null {
   const idx = STAGE_ORDER.indexOf(stage);
   if (idx === -1 || idx === STAGE_ORDER.length - 1) return null;
-  return STAGE_ORDER[idx + 1];
+  return STAGE_ORDER[idx + 1] ?? null;
 }

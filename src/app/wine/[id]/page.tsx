@@ -396,7 +396,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           </div>
 
           {/* Latest valuation source */}
-          {wine.valuations.length > 0 && (
+          {wine.valuations[0] && (
             <p className="text-xs text-muted">
               Last valued:{" "}
               {formatDate(wine.valuations[0].date)} via{" "}

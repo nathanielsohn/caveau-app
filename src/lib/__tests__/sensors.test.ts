@@ -103,57 +103,57 @@ describe("checkThresholds", () => {
   it("returns a warning for high temperature (59-62°F)", () => {
     const alerts = checkThresholds(makeReading({ temperature: 60 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("temperature");
-    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0]!.type).toBe("temperature");
+    expect(alerts[0]!.severity).toBe("warning");
   });
 
   it("returns a critical alert for very high temperature (>62°F)", () => {
     const alerts = checkThresholds(makeReading({ temperature: 63 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("temperature");
-    expect(alerts[0].severity).toBe("critical");
+    expect(alerts[0]!.type).toBe("temperature");
+    expect(alerts[0]!.severity).toBe("critical");
   });
 
   it("returns a warning for low temperature (47-50°F)", () => {
     const alerts = checkThresholds(makeReading({ temperature: 49 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("temperature");
-    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0]!.type).toBe("temperature");
+    expect(alerts[0]!.severity).toBe("warning");
   });
 
   it("returns a critical alert for very low temperature (<47°F)", () => {
     const alerts = checkThresholds(makeReading({ temperature: 46 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("temperature");
-    expect(alerts[0].severity).toBe("critical");
+    expect(alerts[0]!.type).toBe("temperature");
+    expect(alerts[0]!.severity).toBe("critical");
   });
 
   it("returns a warning for high humidity (>75%)", () => {
     const alerts = checkThresholds(makeReading({ humidity: 76 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("humidity");
-    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0]!.type).toBe("humidity");
+    expect(alerts[0]!.severity).toBe("warning");
   });
 
   it("returns a warning for low humidity (<55%)", () => {
     const alerts = checkThresholds(makeReading({ humidity: 54 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("humidity");
-    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0]!.type).toBe("humidity");
+    expect(alerts[0]!.severity).toBe("warning");
   });
 
   it("returns a warning for vibration (0.5-1.0 mm/s)", () => {
     const alerts = checkThresholds(makeReading({ vibration: 0.7 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("vibration");
-    expect(alerts[0].severity).toBe("warning");
+    expect(alerts[0]!.type).toBe("vibration");
+    expect(alerts[0]!.severity).toBe("warning");
   });
 
   it("returns a critical alert for high vibration (>1.0 mm/s)", () => {
     const alerts = checkThresholds(makeReading({ vibration: 1.5 }));
     expect(alerts).toHaveLength(1);
-    expect(alerts[0].type).toBe("vibration");
-    expect(alerts[0].severity).toBe("critical");
+    expect(alerts[0]!.type).toBe("vibration");
+    expect(alerts[0]!.severity).toBe("critical");
   });
 
   it("returns multiple alerts when multiple thresholds are exceeded", () => {
@@ -184,6 +184,6 @@ describe("checkThresholds", () => {
 
   it("includes descriptive messages with actual values", () => {
     const alerts = checkThresholds(makeReading({ temperature: 60.5 }));
-    expect(alerts[0].message).toContain("60.5");
+    expect(alerts[0]!.message).toContain("60.5");
   });
 });

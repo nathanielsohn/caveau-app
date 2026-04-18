@@ -40,7 +40,17 @@ export default function LockerSelector({
 }: LockerSelectorProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [addTrigger, setAddTrigger] = useState(0);
-  const locker = lockers[activeIndex];
+  const locker = lockers[activeIndex] ?? lockers[0];
+  if (!locker) {
+    return (
+      <div className="glass-card p-8 text-center">
+        <h1 className="font-serif text-2xl text-primary mb-2">No locker yet</h1>
+        <p className="text-secondary text-sm">
+          Reserve a locker to start storing wines.
+        </p>
+      </div>
+    );
+  }
   const hasEmptySlot = locker.slots.some((s) => !s.wine);
 
   return (

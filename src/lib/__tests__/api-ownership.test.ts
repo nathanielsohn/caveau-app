@@ -132,7 +132,7 @@ describe("GET /api/wines", () => {
     await GET(
       new NextRequest("http://localhost/api/wines?search=barolo&region=italy"),
     );
-    const args = (prisma.wine.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const args = (prisma.wine.findMany as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(args.where.memberId).toBe(MEMBER_ID);
     // Filter survived alongside the search predicates
     expect(args.where).toHaveProperty("name");
@@ -339,7 +339,7 @@ describe("GET /api/alerts", () => {
     (prisma.alert.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     const { GET } = await import("@/app/api/alerts/route");
     await GET(new NextRequest("http://localhost/api/alerts"));
-    const args = (prisma.alert.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const args = (prisma.alert.findMany as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(args.where.locker).toEqual(
       expect.objectContaining({
         memberId: MEMBER_ID,
@@ -360,7 +360,7 @@ describe("GET /api/certificates/[id]", () => {
       params: Promise.resolve({ id: CERT_ID }),
     });
     const args = (prisma.provenanceCertificate.findFirst as ReturnType<typeof vi.fn>)
-      .mock.calls[0][0];
+      .mock.calls[0]![0];
     expect(args.where.id).toBe(CERT_ID);
     expect(args.where.wine).toEqual(
       expect.objectContaining({ memberId: MEMBER_ID }),
