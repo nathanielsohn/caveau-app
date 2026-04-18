@@ -168,6 +168,38 @@ export function WineDetailSkeleton() {
   );
 }
 
+/** Skeleton for the AI Advisor page */
+export function AdvisorSkeleton() {
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem-env(safe-area-inset-bottom))] md:h-screen">
+      <div className="shrink-0 px-4 md:px-8 py-4 border-b border-[#2A2A30]/40">
+        <Skeleton className="w-32 h-6" />
+      </div>
+      <div className="flex-1 overflow-hidden px-4 md:px-8 py-6">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <div className="text-center space-y-3">
+            <Skeleton className="w-8 h-8 mx-auto rounded-lg" />
+            <Skeleton className="w-64 h-8 mx-auto" />
+            <Skeleton className="w-80 h-4 mx-auto" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <Skeleton className="h-14 rounded-xl" />
+            <Skeleton className="h-14 rounded-xl" />
+            <Skeleton className="h-14 rounded-xl" />
+            <Skeleton className="h-14 rounded-xl" />
+          </div>
+        </div>
+      </div>
+      <div className="shrink-0 px-4 md:px-8 py-3 border-t border-[#2A2A30]/40">
+        <div className="max-w-3xl mx-auto space-y-2">
+          <Skeleton className="w-full h-12 rounded-xl" />
+          <Skeleton className="w-3/4 h-3" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Skeleton for the certificate page */
 export function CertificateSkeleton() {
   return (

@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Custody & Condition Reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 26 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, and wine label scanning are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. Start with #50 AI Advisor chat. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 27 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, and the AI Advisor chat surface are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) is substantially complete; #51–54 round out P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
 
 ## Stack
 
@@ -166,6 +166,11 @@ src/
 │   │   ├── wizard.tsx          # 3-step client wizard (tier → locker → first bottle)
 │   │   ├── actions.ts          # Server actions (set tier, reserve locker, add wine, complete)
 │   │   ├── layout.tsx          # Minimal layout (no sidebar nav)
+│   │   └── loading.tsx
+│   ├── advisor/
+│   │   ├── page.tsx            # AI Advisor chat (server — auth + tier resolution)
+│   │   ├── chat-client.tsx     # SSE-streaming chat client (feature #50)
+│   │   ├── error.tsx
 │   │   └── loading.tsx
 │   ├── settings/
 │   │   ├── page.tsx            # Alert notification preferences (#19)

@@ -14,11 +14,13 @@ import {
   Building2,
   ShieldCheck,
   LineChart,
+  Sparkles,
 } from "lucide-react";
 import { setCurrentFacility } from "@/app/facility-actions";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/advisor", label: "AI Advisor", icon: Sparkles },
   { href: "/collection", label: "Collection", icon: Wine },
   { href: "/portfolio", label: "Portfolio", icon: LineChart },
   { href: "/locker", label: "Locker", icon: Lock },
