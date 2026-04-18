@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { isFoundingWindowOpen } from "@/lib/tiers";
 import OnboardingWizard from "./wizard";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,7 @@ export default async function OnboardingPage() {
       initialStep={initialStep}
       reservedLocker={reservedLocker}
       facilityName={facilityName}
+      foundingWindowOpen={isFoundingWindowOpen()}
     />
   );
 }

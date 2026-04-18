@@ -17,6 +17,7 @@ enum Role {
 
 enum Tier {
   gold
+  reserve
   platinum
   black
 }
@@ -202,6 +203,14 @@ model Member {
   hurricaneProtectionEnrolledAt DateTime?                 @map("hurricane_protection_enrolled_at")
   hurricaneInsurancePartner     String?                   @map("hurricane_insurance_partner")
   hurricaneInsuranceDiscountPct Decimal?                  @map("hurricane_insurance_discount_pct") @db.Decimal(5, 2)
+  // Founding Member pricing (feature #54). Set to true + timestamped at
+  // completeOnboarding() when the Q3 2027 founding window is still open.
+  // The price itself is NOT stored — it's derived from (tier, foundingMember)
+  // via src/lib/tiers.ts so a pricing-copy change doesn't require rewriting
+  // every row. The flag persists past the window so the "locked for life"
+  // promise survives post-launch tier changes.
+  foundingMember                Boolean                   @default(false) @map("founding_member")
+  foundingLockedAt              DateTime?                 @map("founding_locked_at")
   sessionVersion                Int                       @default(0) @map("session_version")
   createdAt                     DateTime                  @default(now()) @map("created_at")
   updatedAt                     DateTime                  @updatedAt @map("updated_at")

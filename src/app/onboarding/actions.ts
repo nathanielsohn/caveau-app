@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
+import { isFoundingWindowOpen } from "@/lib/tiers";
 
 const SLOTS_PER_LOCKER = 32;
 
@@ -227,14 +228,24 @@ export async function addFirstWine(
  * Final step — mark the member as onboarded. Atomic: only flips the column
  * when it's still null, so a replay can't reset onboardedAt or signal
  * "I just onboarded" twice.
+ *
+ * Also stamps the founding-member flag + lock timestamp here (#54) if the
+ * founding window is still open. Lock happens at completion rather than
+ * tier selection so a member who bounces mid-wizard doesn't consume the
+ * discount until they've committed.
  */
 export async function completeOnboarding(): Promise<ActionResult> {
   const session = await getServerAuth();
   if (!session?.user?.id) return unauthorized();
 
+  const now = new Date();
+  const foundingData = isFoundingWindowOpen(now)
+    ? { foundingMember: true, foundingLockedAt: now }
+    : {};
+
   const result = await prisma.member.updateMany({
     where: { id: session.user.id, onboardedAt: null },
-    data: { onboardedAt: new Date() },
+    data: { onboardedAt: now, ...foundingData },
   });
   if (result.count === 0) return alreadyOnboarded();
 

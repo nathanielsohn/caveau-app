@@ -4,8 +4,20 @@ import { useState, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Tier } from "@prisma/client";
-import { Check, ChevronRight, Lock, ShieldCheck, Sparkles, Wine } from "lucide-react";
-import { SELF_SERVE_TIERS, TIERS } from "@/lib/tiers";
+import {
+  Check,
+  ChevronRight,
+  Crown,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Wine,
+} from "lucide-react";
+import {
+  FOUNDING_BENEFITS,
+  SELF_SERVE_TIERS,
+  foundingSavingsUsd,
+} from "@/lib/tiers";
 import {
   setOnboardingTier,
   reserveOnboardingLocker,
@@ -22,10 +34,8 @@ interface Props {
   initialStep: 1 | 3;
   reservedLocker: ReservedLocker;
   facilityName: string;
+  foundingWindowOpen: boolean;
 }
-
-// Reserve is sales-gated and rendered separately below the self-serve grid.
-const RESERVE_TIER = TIERS.find((t) => t.slug === "reserve")!;
 
 export default function OnboardingWizard({
   memberName,
@@ -33,6 +43,7 @@ export default function OnboardingWizard({
   initialStep,
   reservedLocker: initialReservedLocker,
   facilityName,
+  foundingWindowOpen,
 }: Props) {
   const { update } = useSession();
   const prefersReducedMotion = useReducedMotion();
@@ -190,9 +201,38 @@ export default function OnboardingWizard({
                   </p>
                 </header>
 
+                {foundingWindowOpen && (
+                  <div className="mb-6 rounded-xl border border-gold/30 bg-gold/5 p-4 md:p-5">
+                    <div className="flex items-center gap-2 text-gold text-xs uppercase tracking-wider mb-2">
+                      <Crown size={14} /> Founding Member pricing
+                    </div>
+                    <p className="text-sm text-secondary mb-3">
+                      Join before our Q3 2027 launch and lock in founding
+                      rates on Reserve, Private Vault, and Estate — price
+                      held for life with continuous membership.
+                    </p>
+                    <ul className="grid gap-1.5">
+                      {FOUNDING_BENEFITS.map((b) => (
+                        <li
+                          key={b}
+                          className="flex items-start gap-2 text-xs text-secondary"
+                        >
+                          <Check
+                            size={12}
+                            className="text-gold shrink-0 mt-0.5"
+                          />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="grid gap-3 md:gap-4">
                   {SELF_SERVE_TIERS.map((opt) => {
                     const selected = tier === opt.dbTier;
+                    const showFounding =
+                      foundingWindowOpen && foundingSavingsUsd(opt) > 0;
                     return (
                       <button
                         type="button"
@@ -211,9 +251,23 @@ export default function OnboardingWizard({
                             <span className="font-serif text-lg text-primary block">
                               {opt.name}
                             </span>
-                            <span className="text-gold text-sm">
-                              {opt.priceDisplay}
-                            </span>
+                            {showFounding ? (
+                              <div className="flex items-baseline gap-2 flex-wrap">
+                                <span className="text-gold text-sm font-semibold">
+                                  {opt.foundingDisplay}
+                                </span>
+                                <span className="text-muted text-xs line-through">
+                                  {opt.priceDisplay}
+                                </span>
+                                <span className="text-[11px] text-gold bg-gold/10 border border-gold/20 rounded-full px-2 py-0.5">
+                                  Save ${foundingSavingsUsd(opt)}/mo
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-gold text-sm">
+                                {opt.priceDisplay}
+                              </span>
+                            )}
                           </div>
                           <span
                             className={[
@@ -252,42 +306,6 @@ export default function OnboardingWizard({
                       </button>
                     );
                   })}
-
-                  {/* Reserve — sales-gated. Not selectable; prompts a contact
-                      rather than self-serve enrollment because pricing is
-                      quoted per collection size. */}
-                  <div className="rounded-xl border border-dashed border-[#2A2A30] p-4 md:p-5 bg-[#1C1C20]/40">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="min-w-0">
-                        <span className="font-serif text-lg text-primary block">
-                          {RESERVE_TIER.name}
-                        </span>
-                        <span className="text-secondary text-sm">
-                          {RESERVE_TIER.priceDisplay}
-                        </span>
-                      </div>
-                      <span className="text-[11px] uppercase tracking-wider text-muted shrink-0 mt-1">
-                        By invitation
-                      </span>
-                    </div>
-                    <p className="text-secondary text-sm">
-                      {RESERVE_TIER.description}
-                    </p>
-                    <ul className="mt-3 space-y-1.5">
-                      {RESERVE_TIER.includedServices.map((s) => (
-                        <li
-                          key={s}
-                          className="flex items-start gap-2 text-xs text-secondary"
-                        >
-                          <Check
-                            size={12}
-                            className="text-muted shrink-0 mt-0.5"
-                          />
-                          <span>{s}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 </div>
 
                 <div className="mt-8 flex justify-end">

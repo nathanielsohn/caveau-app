@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, Check, Crown, Mail, ShieldCheck, ChevronRight } from "lucide-react";
+import { Bell, Check, Crown, Mail, ShieldCheck, Sparkles, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { tierSpecForDbTier } from "@/lib/tiers";
+import {
+  FOUNDING_BENEFITS,
+  effectivePriceForMember,
+  foundingSavingsUsd,
+  tierSpecForDbTier,
+} from "@/lib/tiers";
 import PreferencesForm from "./preferences-form";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +30,18 @@ export default async function SettingsPage() {
       emailBounced: true,
       emailComplained: true,
       hurricaneProtectionActive: true,
+      foundingMember: true,
+      foundingLockedAt: true,
     },
   });
   if (!member) redirect("/auth/login");
 
   const sesConfigured = Boolean(env.AWS_SES_FROM_EMAIL);
   const tierSpec = tierSpecForDbTier(member.tier);
+  const effectivePrice = effectivePriceForMember(tierSpec, member.foundingMember);
+  const foundingSavings = member.foundingMember
+    ? foundingSavingsUsd(tierSpec)
+    : 0;
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
@@ -54,7 +65,13 @@ export default async function SettingsPage() {
           </div>
           <div className="text-right shrink-0">
             <div className="font-serif text-xl text-primary">{tierSpec.name}</div>
-            <div className="text-sm text-gold">{tierSpec.priceDisplay}</div>
+            <div className="text-sm text-gold">{effectivePrice.priceDisplay}</div>
+            {member.foundingMember && foundingSavings > 0 && (
+              <div className="text-[11px] text-muted mt-0.5">
+                <span className="line-through">{tierSpec.priceDisplay}</span>{" "}
+                · founding rate
+              </div>
+            )}
           </div>
         </div>
         <p className="text-sm text-secondary mb-4">{tierSpec.description}</p>
@@ -70,6 +87,55 @@ export default async function SettingsPage() {
           ))}
         </ul>
       </div>
+
+      {/* Founding Member bundle (#54). Rendered only for members whose
+          foundingMember flag was set at onboarding. Copy lists the promise;
+          the welcome appraisal (#61) and allocation access (#60) are still
+          on the roadmap, so this surface is the pre-launch commitment — the
+          fulfillment UIs ship with those features. */}
+      {member.foundingMember && (
+        <div className="glass-card p-6 md:p-8 mb-6 border border-gold/30">
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-gold" />
+              <h2 className="font-serif text-lg text-primary">
+                Founding Member
+              </h2>
+            </div>
+            {member.foundingLockedAt && (
+              <div className="text-[11px] uppercase tracking-wider text-muted shrink-0 mt-1">
+                Locked{" "}
+                {member.foundingLockedAt.toLocaleDateString("en-US", {
+                  dateStyle: "medium",
+                })}
+              </div>
+            )}
+          </div>
+          {foundingSavings > 0 ? (
+            <p className="text-sm text-secondary mb-4">
+              Your rate of {effectivePrice.priceDisplay} is locked for life
+              with continuous membership — saving ${foundingSavings}/mo vs.
+              the {tierSpec.priceDisplay} list price.
+            </p>
+          ) : (
+            <p className="text-sm text-secondary mb-4">
+              Your Founding Circle status is locked for life with continuous
+              membership.
+            </p>
+          )}
+          <div className="text-xs uppercase tracking-wider text-muted mb-3">
+            Founding benefits
+          </div>
+          <ul className="space-y-2">
+            {FOUNDING_BENEFITS.map((b) => (
+              <li key={b} className="flex items-start gap-2 text-sm text-secondary">
+                <Check className="w-3.5 h-3.5 text-gold shrink-0 mt-1" />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Alert email preferences card */}
       <div className="glass-card p-6 md:p-8">

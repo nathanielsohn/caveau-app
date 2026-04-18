@@ -394,7 +394,7 @@ Priority: AI Advisor chat (#50) first — it's the single biggest gap and unlock
 | 51 | ~~Biometric-verified Deliver Now~~ | ~~Vault → member home delivery flow. App-side ladder: biometric re-auth (Face ID/Touch ID) → delivery PIN → address confirmation → step-up OTP for deliveries >$2K. Door-side ladder: government-ID scan → name + DOB match against authorized recipient registry → Florida DABT age gate (≥21) → photo + timestamp log. Member-side >$2K hint on the Deliver Now CTA; driver-side "Step-up OTP verified" badge for >$2K deliveries. Slide 7. Done.~~ |
 | 52 | Concierge migration | 48-hour white-glove import from CellarTracker and Vivino CSV exports. Column-mapping UI, admin-facing migration queue for staff fulfillment. Positioned as the churn-killer on slides 5, 10, 17. |
 | 53 | ~~Events & tasting module~~ | ~~Event model (date/location/capacity/price), member RSVP, admin event creation, per-event attendee roster, event-scoped non-member signup form. Seed Naples Winter Wine Festival (Jan 30–Feb 1 2027) as the first event. Projected largest Y3 revenue stream at $1.2M on slide 14. Done.~~ |
-| 54 | Founding Member pricing | Founding discount logic per tier ($119/$299/$849 vs. $149/$349/$999 list), price-locked-for-life flag, founding benefits bundle (90-day Private Vault trial, Welcome appraisal, Founding Circle status, Day 1 allocation access). Extends onboarding wizard. Slide 11. |
+| 54 | ~~Founding Member pricing~~ | ~~Founding discount logic per tier ($119/$299/$849 vs. $149/$349/$999 list), price-locked-for-life flag, founding benefits bundle (90-day Private Vault trial, Welcome appraisal, Founding Circle status, Day 1 allocation access). Extends onboarding wizard. Slide 11. Done.~~ |
 | 55 | Exit signals | AI-surfaced sell-window alerts per bottle, tied to Liv-ex momentum + drink-window intersection. Visible on dashboard, wine detail, AI Advisor. Pipeline from signal → #47 exit facilitation. Slides 5, 6. |
 | 56 | Insurance savings estimate | Dashboard / portfolio card: collection value × tier storage discipline → estimated 20–35% premium savings range with PURE / Chubb / AXA XL / Berkley One named. Static math, no carrier API required. Slide 9. |
 | 57 | Portfolio vs. Liv-ex 100 | YTD portfolio performance charted against the Liv-ex Fine Wine 100 index. Slide 5 dashboard tile; slide 6 canonical advisor question. |
@@ -406,7 +406,7 @@ Priority: AI Advisor chat (#50) first — it's the single biggest gap and unlock
 
 Demo talk track — not a feature but a deliverable Rob requested 2026-04-16. Draft after P0 items (#50–54) ship, not before — the walkthrough should reflect the shipped app, not the planned one.
 
-Small side-fix not counted as a feature: `src/lib/tiers.ts` Reserve tier currently displays "Contact us" and `priceMonthlyUsd: null`. Pitch deck slide 8 confirms Reserve = $149/mo self-serve. Update the tier spec and the onboarding flow when touching tier code.
+~~Small side-fix not counted as a feature: `src/lib/tiers.ts` Reserve tier currently displays "Contact us" and `priceMonthlyUsd: null`. Pitch deck slide 8 confirms Reserve = $149/mo self-serve. Update the tier spec and the onboarding flow when touching tier code.~~ **Done 2026-04-18** alongside #54: Reserve now maps to `Tier.reserve` (migration 0032) with `priceMonthlyUsd: 149` and is selectable in the onboarding wizard.
 
 ### Code Audit — Technical Debt Backlog (April 2026)
 
