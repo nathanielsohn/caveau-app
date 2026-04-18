@@ -14,9 +14,4 @@ BUILD_STATUS.json.bak
 *.tmp
 .vercel
 coverage/
-# Only ignore the local/machine-specific parts of .claude — settings.json
-# and hooks/ are checked in so every clone inherits the project's Claude
-# Code configuration.
-.claude/settings.local.json
-.claude/.session-start-sha
-.claude/worktrees/
+.claude/
