@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   LineChart,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
 import { setCurrentFacility } from "@/app/facility-actions";
 
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/portfolio", label: "Portfolio", icon: LineChart },
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
+  { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/facility", label: "Facility", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];

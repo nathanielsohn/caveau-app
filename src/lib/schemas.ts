@@ -239,6 +239,81 @@ export const DriverCompleteBodySchema = z.object({
   photoKey: z.string().trim().min(1).max(512),
 });
 
+// ── Events & tasting module (feature #53) ────────────────────────────────
+
+export const EventSlugSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(80)
+  .regex(/^[a-z0-9-]+$/, "Slug may only contain lowercase letters, digits, and dashes");
+
+export const RsvpBodySchema = z.object({
+  eventId: UuidSchema,
+  seats: z.coerce.number().int().min(1).max(4).default(1),
+  notes: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+      z.string().max(500).optional(),
+    )
+    .optional(),
+});
+
+export const EventSignupBodySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  email: EmailSchema,
+  phone: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+      z.string().max(40).optional(),
+    )
+    .optional(),
+  notes: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+      z.string().max(2000).optional(),
+    )
+    .optional(),
+});
+
+export const CreateEventBodySchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    slug: EventSlugSchema,
+    summary: z
+      .preprocess(
+        (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+        z.string().max(500).optional(),
+      )
+      .optional(),
+    description: z
+      .preprocess(
+        (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+        z.string().max(5000).optional(),
+      )
+      .optional(),
+    locationName: z.string().trim().min(1).max(200),
+    locationAddr: z
+      .preprocess(
+        (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+        z.string().max(300).optional(),
+      )
+      .optional(),
+    startsAt: DateSchema,
+    endsAt: DateSchema,
+    capacity: z.coerce.number().int().min(1).max(5000),
+    priceUsd: z.coerce.number().min(0).max(100_000),
+    memberOnly: z.preprocess(
+      (v) => v === "on" || v === "true" || v === true,
+      z.boolean(),
+    ),
+    status: z.enum(["draft", "published", "cancelled"]).default("published"),
+  })
+  .refine((v) => v.endsAt.getTime() >= v.startsAt.getTime(), {
+    message: "End time must be at or after the start time",
+    path: ["endsAt"],
+  });
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**

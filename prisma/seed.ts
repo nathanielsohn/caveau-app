@@ -167,6 +167,12 @@ async function main() {
     prisma.deliveryRequestItem.deleteMany(),
     prisma.deliveryRequest.deleteMany(),
     prisma.authorizedRecipient.deleteMany(),
+    // Events module (feature #53). Cascade-on-delete from `events` would
+    // cover rsvps and signups, but clearing children first matches the
+    // explicit style used for every other model in this block.
+    prisma.eventRsvp.deleteMany(),
+    prisma.eventSignup.deleteMany(),
+    prisma.event.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -849,6 +855,53 @@ async function main() {
     skipDuplicates: true,
   });
   console.log(`  ✓ Liv-ex benchmark points: ${benchmarkPoints.length}`);
+
+  // 12. Events & tasting module (feature #53). Naples Winter Wine Festival
+  // is the flagship demo event — it's the largest projected Y3 revenue
+  // stream on pitch deck slide 14 ($1.224M). The member-only Bordeaux
+  // tasting is scheduled three weeks out so Rob can demo the RSVP surface
+  // from a member session without waiting for seat data to build up.
+  const naplesWWF = await prisma.event.create({
+    data: {
+      facilityId: naples.id,
+      slug: 'naples-winter-wine-festival-2027',
+      title: 'Naples Winter Wine Festival',
+      summary:
+        'A three-day benefit weekend: chef vintner dinners, grand tasting, and the legendary live auction.',
+      description:
+        "Caveau hosts a private Founders' table at the Naples Winter Wine Festival — the nation's most profitable charity wine auction. The ticket covers the Friday vintner dinners at member estates, Saturday's Grand Tasting, and the Sunday closing brunch. Transportation and valet included. Seat placement reflects membership tier.",
+      locationName: 'The Ritz-Carlton, Naples',
+      locationAddr: '280 Vanderbilt Beach Rd, Naples, FL 34108',
+      startsAt: new Date('2027-01-30T23:00:00Z'),
+      endsAt: new Date('2027-02-02T03:00:00Z'),
+      capacity: 600,
+      priceUsd: 1200,
+      memberOnly: false,
+      status: 'published',
+    },
+  });
+  const bordeauxTasting = await prisma.event.create({
+    data: {
+      facilityId: naples.id,
+      slug: 'first-growth-bordeaux-tasting-2026-05',
+      title: 'First Growth Bordeaux · A Vertical Tasting',
+      summary:
+        "Six vintages of Château Latour and Château Margaux poured side-by-side, led by Samuel Whitfield.",
+      description:
+        'An intimate, seated tasting in the Naples vault. Twelve members + spouses. Paired amuse by Chef Arielle Keating. Formal dress requested.',
+      locationName: 'Caveau Naples · Tasting Room',
+      locationAddr: '7225 Pelican Bay Blvd, Naples, FL 34108',
+      startsAt: new Date('2026-05-15T23:00:00Z'),
+      endsAt: new Date('2026-05-16T02:30:00Z'),
+      capacity: 24,
+      priceUsd: 600,
+      memberOnly: true,
+      status: 'published',
+    },
+  });
+  console.log(
+    `  ✓ Events: ${naplesWWF.title}, ${bordeauxTasting.title}`,
+  );
 
   console.log('\n✅ Seed complete!');
 }

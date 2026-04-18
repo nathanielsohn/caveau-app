@@ -83,6 +83,15 @@ const POLICIES: Array<{
       req.method === "POST" && req.nextUrl.pathname === "/waitlist",
     policy: { limit: 5, windowMs: 60_000 },
   },
+  {
+    bucket: "event-signup",
+    // Public event signup POSTs (feature #53). Server actions from the
+    // /events/[slug] page arrive here as POSTs to the page path. Same
+    // tight cap as /waitlist so a scanner can't dupe-spam an event.
+    match: (req) =>
+      req.method === "POST" && req.nextUrl.pathname.startsWith("/events/"),
+    policy: { limit: 5, windowMs: 60_000 },
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -272,6 +281,12 @@ export async function middleware(req: NextRequest) {
     // Pre-launch founding-member waitlist landing page (feature #49). The
     // page + its server action POST are both unauthenticated by design.
     pathname === "/waitlist" ||
+    // Public events list + detail pages (feature #53). Non-members browse
+    // the list and submit a lead via the event-scoped signup form on the
+    // detail page; authenticated members get a richer RSVP UI on the same
+    // URL. Draft and cancelled events 404 at the page layer.
+    pathname === "/events" ||
+    pathname.startsWith("/events/") ||
     // Cron endpoints are auth'd via shared-secret Bearer token (CRON_SECRET),
     // not session cookies. Let them through the auth gate; the route handler
     // rejects unauthenticated invocations itself.

@@ -8,6 +8,7 @@ import {
   Users,
   Lock,
   Bell,
+  CalendarDays,
   LogOut,
   ArrowLeft,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const adminNavItems = [
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/lockers", label: "Lockers", icon: Lock },
   { href: "/admin/alerts", label: "Alerts", icon: Bell },
+  { href: "/admin/events", label: "Events", icon: CalendarDays },
 ];
 
 export default function AdminNav() {

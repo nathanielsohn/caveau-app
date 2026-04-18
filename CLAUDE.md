@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Custody & Condition Reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 28 of 47 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50, 51). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, the AI Advisor chat surface, and biometric-verified Deliver Now (with FL DABT age verification at handoff) are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) and #51 (Deliver Now) are complete. #52–54 round out remaining P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33. Total nominal feature count is 48 (#15–#62); 47 after excluding the deprioritized #33.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 29 of 47 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50, 51, 53). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, the AI Advisor chat surface, biometric-verified Deliver Now (with FL DABT age verification at handoff), and the events & tasting module (with Naples Winter Wine Festival seeded as the flagship demo event) are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat), #51 (Deliver Now), and #53 (Events & tasting module) are complete. #52 and #54 round out remaining P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33. Total nominal feature count is 48 (#15–#62); 47 after excluding the deprioritized #33.
 
 ## Stack
 
@@ -176,6 +176,7 @@ src/
 │   ├── admin/                          # Admin RBAC surfaces (#28)
 │   │   ├── layout.tsx + page.tsx + error.tsx + loading.tsx
 │   │   ├── alerts/                     # Alert triage
+│   │   ├── events/{new,[id]/export}/   # Event authoring + per-event CSV export (#53)
 │   │   ├── hurricane/{new,[id]}/       # Hurricane protocol authoring (#46)
 │   │   ├── lockers/                    # Locker admin
 │   │   ├── members/                    # Member directory
@@ -187,8 +188,10 @@ src/
 │   ├── certificate/[id]/               # Legacy redirect → /report/[id]
 │   ├── collection/                     # Wine inventory (server + client + label-scan action)
 │   ├── deliveries/[id]/                # Deliver Now member ladder UI (#51)
-│   ├── facility/                       # Member-facing facility views (#16, #53)
-│   │   └── events/[id]/                # Events & tasting RSVP (#53, scaffolded)
+│   ├── events/                         # Events & tastings — public list, detail, RSVP (#53)
+│   │   └── [slug]/                     # Event detail: member RSVP form + public signup form
+│   ├── facility/                       # Member-facing facility views (#16)
+│   │   └── events/[id]/                # Facility resilience post-event reports (#42) — NOT #53 tastings
 │   ├── handoff/                        # Vault-side handoff QR flow (#41)
 │   │   └── [token]/                    # Auction/transfer recipient scan
 │   ├── handoff-driver/[token]/         # Deliver Now driver portal (#51)
@@ -328,7 +331,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 **Phase 6 — Investor Demo Gap (see [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md)):**
 - Biometric-verified Deliver Now (#51) — _in progress_; data model + ladders live, OTP step-up for >$2K and FL DABT ID-match still pending.
 - Concierge migration from CellarTracker / Vivino (#52)
-- Events & tasting module (#53) — scaffold present at `/facility/events/[id]/`, full flow pending
+- ~~Events & tasting module (#53)~~ — done. Public `/events` list + `/events/[slug]` detail, member RSVP (1–4 seats, cancel), non-member signup form, admin authoring + per-event roster + CSV export. Naples Winter Wine Festival seeded.
 - Founding Member pricing (#54)
 - Exit signals (#55), Insurance savings estimate (#56), Portfolio vs. Liv-ex 100 (#57)
 - Sentinel fleet admin (#58), Sentinel inventory / tier assignment (#59)

@@ -7,7 +7,8 @@
 **Status as of 2026-04-18:**
 - ~~§1 AI Advisor~~ — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Persona expanded to dual-role investment advisor + sommelier.
 - ~~§2 Biometric-verified Deliver Now~~ — **shipped 2026-04-18.** Data model, member-side ladder, driver ladder, and wine-detail entry landed across `f46fd01`, `1bb372a`, `9285075`, `5303875`. Closing pass added Florida DABT age verification (name + DOB cross-check + ≥21 gate at `/id-scan`), member-side >$2K hint on the Deliver Now CTA, and a driver-side "Step-up OTP verified" badge for >$2K deliveries.
-- §3–§8 remain open — next up: §3 Concierge migration.
+- ~~§4 Events & tasting module~~ — **shipped 2026-04-18.** New `Event` / `EventRsvp` / `EventSignup` models (migration `0031`), public `/events` list + `/events/[slug]` detail with auth-aware rendering (members see RSVP form with seat count 1–4 and cancel; non-members see a signup form with 5/60s-per-IP rate limit mirroring `/waitlist`), admin `/admin/events` authoring + per-event attendee roster + CSV export of combined RSVPs + signups, member nav entry, Naples Winter Wine Festival + a member-only Bordeaux tasting seeded. Correction: the scaffold noted in the earlier CLAUDE.md at `/facility/events/[id]/` is actually the #42 facility resilience post-event report, not a #53 stub — the new module lives at `/events`.
+- §3 and §5–§8 remain open — next up: §3 Concierge migration.
 
 ## What the pitch deck promises
 

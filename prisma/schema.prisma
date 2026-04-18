@@ -121,33 +121,40 @@ enum DeliveryEventType {
   expired
 }
 
+enum EventStatus {
+  draft
+  published
+  cancelled
+}
+
 model Facility {
-  id                    String    @id @default(uuid())
+  id                    String              @id @default(uuid())
   name                  String
   location              String
-  elevationFt           Int?      @map("elevation_ft")
-  generatorStatus       String    @default("operational") @map("generator_status")
-  fireSuppressionStatus String    @default("operational") @map("fire_suppression_status")
-  lastInspectionAt      DateTime? @map("last_inspection_at")
-  createdAt             DateTime  @default(now()) @map("created_at")
+  elevationFt           Int?                @map("elevation_ft")
+  generatorStatus       String              @default("operational") @map("generator_status")
+  fireSuppressionStatus String              @default("operational") @map("fire_suppression_status")
+  lastInspectionAt      DateTime?           @map("last_inspection_at")
+  createdAt             DateTime            @default(now()) @map("created_at")
   lockers               Locker[]
   members               FacilityMember[]
   events                FacilityEvent[]
   hurricaneProtocols    HurricaneProtocol[]
+  tastingEvents         Event[]
 
   @@map("facilities")
 }
 
 model FacilityEvent {
-  id         String            @id @default(uuid())
-  facilityId String            @map("facility_id")
-  type       FacilityEventType
-  severity   Severity
-  startedAt  DateTime          @map("started_at")
-  endedAt    DateTime?         @map("ended_at")
-  notes      String?
-  createdAt  DateTime          @default(now()) @map("created_at")
-  facility   Facility          @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(uuid())
+  facilityId         String              @map("facility_id")
+  type               FacilityEventType
+  severity           Severity
+  startedAt          DateTime            @map("started_at")
+  endedAt            DateTime?           @map("ended_at")
+  notes              String?
+  createdAt          DateTime            @default(now()) @map("created_at")
+  facility           Facility            @relation(fields: [facilityId], references: [id], onDelete: Cascade)
   hurricaneProtocols HurricaneProtocol[]
 
   @@index([facilityId, startedAt(sort: Desc)])
@@ -167,23 +174,23 @@ model FacilityMember {
 }
 
 model Member {
-  id                    String   @id @default(uuid())
-  name                  String
-  email                 String   @unique
-  tier                  Tier
-  role                  Role     @default(member)
-  passwordHash          String?  @map("password_hash")
-  emailAlertsEnabled    Boolean  @default(true) @map("email_alerts_enabled")
-  emailAlertSeverity    String   @default("warning") @map("email_alert_severity")
-  emailAlertCooldownMin Int       @default(30) @map("email_alert_cooldown_min")
+  id                            String                    @id @default(uuid())
+  name                          String
+  email                         String                    @unique
+  tier                          Tier
+  role                          Role                      @default(member)
+  passwordHash                  String?                   @map("password_hash")
+  emailAlertsEnabled            Boolean                   @default(true) @map("email_alerts_enabled")
+  emailAlertSeverity            String                    @default("warning") @map("email_alert_severity")
+  emailAlertCooldownMin         Int                       @default(30) @map("email_alert_cooldown_min")
   // SES feedback (#19 follow-up). Set by `/api/ses/webhook` when SNS
   // forwards a bounce or complaint for this member's address. The same
   // route flips `emailAlertsEnabled` to false so we stop hammering a
   // dead/angry inbox; `/settings` reads these to explain why alerts went
   // quiet so the member can correct or appeal.
-  emailBounced          DateTime? @map("email_bounced")
-  emailComplained       DateTime? @map("email_complained")
-  onboardedAt           DateTime? @map("onboarded_at")
+  emailBounced                  DateTime?                 @map("email_bounced")
+  emailComplained               DateTime?                 @map("email_complained")
+  onboardedAt                   DateTime?                 @map("onboarded_at")
   // Hurricane Emergency Collection Protection (feature #46). Members opt
   // in via /settings/hurricane; when active, staff see them in the
   // roster for any new HurricaneProtocol activation and a
@@ -191,21 +198,22 @@ model Member {
   // insurance fields record the carrier partnership (#31) that grants
   // premium discounts to enrolled members — surfaced on the settings
   // card for the "why this matters" narrative.
-  hurricaneProtectionActive      Boolean   @default(false) @map("hurricane_protection_active")
-  hurricaneProtectionEnrolledAt  DateTime? @map("hurricane_protection_enrolled_at")
-  hurricaneInsurancePartner      String?   @map("hurricane_insurance_partner")
-  hurricaneInsuranceDiscountPct  Decimal?  @map("hurricane_insurance_discount_pct") @db.Decimal(5, 2)
-  sessionVersion        Int       @default(0) @map("session_version")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-  wines                 Wine[]
-  lockers               Locker[]
-  dispositions          WineDisposition[]
-  facilities            FacilityMember[]
-  handoffPackages       HandoffPackage[]
-  hurricaneProtocolMemberships HurricaneProtocolMember[]
-  deliveryRequests      DeliveryRequest[]
-  authorizedRecipients  AuthorizedRecipient[]
+  hurricaneProtectionActive     Boolean                   @default(false) @map("hurricane_protection_active")
+  hurricaneProtectionEnrolledAt DateTime?                 @map("hurricane_protection_enrolled_at")
+  hurricaneInsurancePartner     String?                   @map("hurricane_insurance_partner")
+  hurricaneInsuranceDiscountPct Decimal?                  @map("hurricane_insurance_discount_pct") @db.Decimal(5, 2)
+  sessionVersion                Int                       @default(0) @map("session_version")
+  createdAt                     DateTime                  @default(now()) @map("created_at")
+  updatedAt                     DateTime                  @updatedAt @map("updated_at")
+  wines                         Wine[]
+  lockers                       Locker[]
+  dispositions                  WineDisposition[]
+  facilities                    FacilityMember[]
+  handoffPackages               HandoffPackage[]
+  hurricaneProtocolMemberships  HurricaneProtocolMember[]
+  deliveryRequests              DeliveryRequest[]
+  authorizedRecipients          AuthorizedRecipient[]
+  eventRsvps                    EventRsvp[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -213,36 +221,36 @@ model Member {
 }
 
 model Wine {
-  id               String                @id @default(uuid())
-  name             String
-  vintage          Int
-  region           String
-  varietal         String
-  producer         String
-  purchasePrice    Decimal               @map("purchase_price") @db.Decimal(14, 2)
-  currentValue     Decimal               @map("current_value") @db.Decimal(14, 2)
-  tastingNotes     String?               @map("tasting_notes")
-  drinkWindowStart Int?                  @map("drink_window_start")
-  drinkWindowEnd   Int?                  @map("drink_window_end")
-  status           WineStatus            @default(in_cellar)
-  memberId         String                @map("member_id")
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
+  id                   String                  @id @default(uuid())
+  name                 String
+  vintage              Int
+  region               String
+  varietal             String
+  producer             String
+  purchasePrice        Decimal                 @map("purchase_price") @db.Decimal(14, 2)
+  currentValue         Decimal                 @map("current_value") @db.Decimal(14, 2)
+  tastingNotes         String?                 @map("tasting_notes")
+  drinkWindowStart     Int?                    @map("drink_window_start")
+  drinkWindowEnd       Int?                    @map("drink_window_end")
+  status               WineStatus              @default(in_cellar)
+  memberId             String                  @map("member_id")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
   // S3 object key for member-uploaded bottle photo (feature #18). The full
   // public URL is derived at read time via `getPublicUrl(imageKey)` so we
   // can swap CDN domains without rewriting rows.
-  imageKey         String?               @map("image_key")
+  imageKey             String?                 @map("image_key")
   // Timestamp of the last successful Liv-ex price sync for this bottle
   // (feature #39). Null for wines that have never been synced — the UI
   // falls back to the most recent WineValuation.date in that case.
-  lastValuationSyncAt DateTime?           @map("last_valuation_sync_at")
-  member           Member                @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  lockerSlots      LockerSlot[]
-  certificates     ProvenanceCertificate[]
-  valuations       WineValuation[]
-  dispositions     WineDisposition[]
-  handoffPackages  HandoffPackage[]
-  nfcTags          NfcTag[]
+  lastValuationSyncAt  DateTime?               @map("last_valuation_sync_at")
+  member               Member                  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  lockerSlots          LockerSlot[]
+  certificates         ProvenanceCertificate[]
+  valuations           WineValuation[]
+  dispositions         WineDisposition[]
+  handoffPackages      HandoffPackage[]
+  nfcTags              NfcTag[]
   deliveryRequestItems DeliveryRequestItem[]
 
   @@index([memberId, region, varietal])
@@ -279,15 +287,15 @@ model LivexBenchmark {
 }
 
 model Locker {
-  id           String                @id @default(uuid())
-  lockerNumber Int                   @map("locker_number")
+  id           String                  @id @default(uuid())
+  lockerNumber Int                     @map("locker_number")
   zone         String
-  facilityId   String                @map("facility_id")
-  memberId     String?               @map("member_id")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
-  facility     Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  member       Member?               @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  facilityId   String                  @map("facility_id")
+  memberId     String?                 @map("member_id")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+  facility     Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  member       Member?                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
   slots        LockerSlot[]
   readings     SensorReading[]
   alerts       Alert[]
@@ -356,21 +364,21 @@ model Alert {
 }
 
 model ProvenanceCertificate {
-  id                String   @id @default(uuid())
-  wineId            String   @map("wine_id")
-  lockerId          String   @map("locker_id")
-  monitoringStart   DateTime @map("monitoring_start")
-  monitoringEnd     DateTime @map("monitoring_end")
-  tempMean          Decimal? @map("temp_mean") @db.Decimal(5, 2)
-  tempMin           Decimal? @map("temp_min") @db.Decimal(5, 2)
-  tempMax           Decimal? @map("temp_max") @db.Decimal(5, 2)
-  humidityMean      Decimal? @map("humidity_mean") @db.Decimal(5, 2)
-  dataIntegrityHash String   @map("data_integrity_hash")
-  certificateNumber String   @unique @map("certificate_number")
+  id                String    @id @default(uuid())
+  wineId            String    @map("wine_id")
+  lockerId          String    @map("locker_id")
+  monitoringStart   DateTime  @map("monitoring_start")
+  monitoringEnd     DateTime  @map("monitoring_end")
+  tempMean          Decimal?  @map("temp_mean") @db.Decimal(5, 2)
+  tempMin           Decimal?  @map("temp_min") @db.Decimal(5, 2)
+  tempMax           Decimal?  @map("temp_max") @db.Decimal(5, 2)
+  humidityMean      Decimal?  @map("humidity_mean") @db.Decimal(5, 2)
+  dataIntegrityHash String    @map("data_integrity_hash")
+  certificateNumber String    @unique @map("certificate_number")
   revokedAt         DateTime? @map("revoked_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  wine              Wine     @relation(fields: [wineId], references: [id], onDelete: Cascade)
-  locker            Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  wine              Wine      @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  locker            Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
   @@index([wineId, lockerId])
   @@map("provenance_certificates")
@@ -465,12 +473,12 @@ model NfcTag {
 // 255 chars to bound row size; ipHash is SHA-256(ip + secret) so we can
 // distinguish unique viewers without storing raw IPs.
 model NfcScan {
-  id         String   @id @default(uuid())
-  nfcTagId   String   @map("nfc_tag_id")
-  ipHash     String   @map("ip_hash")
-  userAgent  String?  @map("user_agent")
-  scannedAt  DateTime @default(now()) @map("scanned_at")
-  tag        NfcTag   @relation(fields: [nfcTagId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  nfcTagId  String   @map("nfc_tag_id")
+  ipHash    String   @map("ip_hash")
+  userAgent String?  @map("user_agent")
+  scannedAt DateTime @default(now()) @map("scanned_at")
+  tag       NfcTag   @relation(fields: [nfcTagId], references: [id], onDelete: Cascade)
 
   @@index([nfcTagId, scannedAt(sort: Desc)])
   @@map("nfc_scans")
@@ -515,24 +523,24 @@ model Waitlist {
 // need a separate "hurricane protocol report" page because #42 already
 // tells the right story ("your cellar was safe during Hurricane X").
 model HurricaneProtocol {
-  id                    String         @id @default(uuid())
-  facilityId            String         @map("facility_id")
-  stormName             String         @map("storm_name")
-  nhcAdvisory           String?        @map("nhc_advisory")
+  id                    String                    @id @default(uuid())
+  facilityId            String                    @map("facility_id")
+  stormName             String                    @map("storm_name")
+  nhcAdvisory           String?                   @map("nhc_advisory")
   category              Int?
-  stage                 HurricaneStage @default(watch_issued)
-  watchIssuedAt         DateTime       @map("watch_issued_at")
-  transportDispatchedAt DateTime?      @map("transport_dispatched_at")
-  shelteredAt           DateTime?      @map("sheltered_at")
-  allClearAt            DateTime?      @map("all_clear_at")
-  returnedAt            DateTime?      @map("returned_at")
-  cancelledAt           DateTime?      @map("cancelled_at")
-  facilityEventId       String?        @unique @map("facility_event_id")
+  stage                 HurricaneStage            @default(watch_issued)
+  watchIssuedAt         DateTime                  @map("watch_issued_at")
+  transportDispatchedAt DateTime?                 @map("transport_dispatched_at")
+  shelteredAt           DateTime?                 @map("sheltered_at")
+  allClearAt            DateTime?                 @map("all_clear_at")
+  returnedAt            DateTime?                 @map("returned_at")
+  cancelledAt           DateTime?                 @map("cancelled_at")
+  facilityEventId       String?                   @unique @map("facility_event_id")
   notes                 String?
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
-  facility              Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  facilityEvent         FacilityEvent? @relation(fields: [facilityEventId], references: [id], onDelete: SetNull)
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+  facility              Facility                  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  facilityEvent         FacilityEvent?            @relation(fields: [facilityEventId], references: [id], onDelete: SetNull)
   members               HurricaneProtocolMember[]
 
   @@index([facilityId, watchIssuedAt(sort: Desc)])
@@ -573,52 +581,52 @@ model HurricaneProtocolMember {
 // src/lib/delivery.ts); rate-limiting caps attempts at 5/15min so the
 // fast-hash choice is safe versus bcrypt's ~100ms cost.
 model DeliveryRequest {
-  id                   String                 @id @default(uuid())
-  memberId             String                 @map("member_id")
-  status               DeliveryStatus         @default(requested)
-  isBiometricVerified  Boolean                @default(false) @map("is_biometric_verified")
+  id                  String         @id @default(uuid())
+  memberId            String         @map("member_id")
+  status              DeliveryStatus @default(requested)
+  isBiometricVerified Boolean        @default(false) @map("is_biometric_verified")
 
   // PIN is set on creation. OTP is set only when total currentValue of the
   // items crosses OTP_THRESHOLD_USD ($2K) — see isOtpRequired().
-  pinSalt              String                 @map("pin_salt")
-  pinHash              String                 @map("pin_hash")
-  otpRequired          Boolean                @default(false) @map("otp_required")
-  otpSalt              String?                @map("otp_salt")
-  otpHash              String?                @map("otp_hash")
+  pinSalt     String  @map("pin_salt")
+  pinHash     String  @map("pin_hash")
+  otpRequired Boolean @default(false) @map("otp_required")
+  otpSalt     String? @map("otp_salt")
+  otpHash     String? @map("otp_hash")
 
-  pinAttempts          Int                    @default(0) @map("pin_attempts")
-  otpAttempts          Int                    @default(0) @map("otp_attempts")
-  pinVerifiedAt        DateTime?              @map("pin_verified_at")
-  otpVerifiedAt        DateTime?              @map("otp_verified_at")
+  pinAttempts   Int       @default(0) @map("pin_attempts")
+  otpAttempts   Int       @default(0) @map("otp_attempts")
+  pinVerifiedAt DateTime? @map("pin_verified_at")
+  otpVerifiedAt DateTime? @map("otp_verified_at")
 
   // Address snapshot captured at delivery time. Keeping scalar columns
   // here (instead of a MemberAddress model) gives us an audit-trail
   // guarantee the recipient address can't drift after the fact.
-  deliveryAddressLine1 String                 @map("delivery_address_line1")
-  deliveryAddressLine2 String?                @map("delivery_address_line2")
-  deliveryCity         String                 @map("delivery_city")
-  deliveryState        String                 @map("delivery_state")
-  deliveryPostalCode   String                 @map("delivery_postal_code")
+  deliveryAddressLine1 String  @map("delivery_address_line1")
+  deliveryAddressLine2 String? @map("delivery_address_line2")
+  deliveryCity         String  @map("delivery_city")
+  deliveryState        String  @map("delivery_state")
+  deliveryPostalCode   String  @map("delivery_postal_code")
 
   // Door-side handoff log. Photo key is the S3 object key for the staff
   // handoff photo (same convention as NfcTag.intakeImageKey).
-  scannedRecipientName String?                @map("scanned_recipient_name")
-  handoffPhotoKey      String?                @map("handoff_photo_key")
+  scannedRecipientName String? @map("scanned_recipient_name")
+  handoffPhotoKey      String? @map("handoff_photo_key")
 
   // Unguessable token that keys the public driver URL at
   // /handoff-driver/[token]. Null until the member-side ladder finishes
   // (address_confirmed when !otpRequired, otp_verified when otpRequired).
-  driverToken          String?                @unique @map("driver_token")
+  driverToken String? @unique @map("driver_token")
 
-  expiresAt            DateTime               @map("expires_at")
-  completedAt          DateTime?              @map("completed_at")
-  cancelledAt          DateTime?              @map("cancelled_at")
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt       @map("updated_at")
+  expiresAt   DateTime  @map("expires_at")
+  completedAt DateTime? @map("completed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  member               Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  items                DeliveryRequestItem[]
-  events               DeliveryEvent[]
+  member Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items  DeliveryRequestItem[]
+  events DeliveryEvent[]
 
   @@index([memberId, createdAt(sort: Desc)])
   @@index([status])
@@ -627,15 +635,15 @@ model DeliveryRequest {
 }
 
 model DeliveryRequestItem {
-  id                String          @id @default(uuid())
-  deliveryRequestId String          @map("delivery_request_id")
-  wineId            String          @map("wine_id")
-  createdAt         DateTime        @default(now()) @map("created_at")
+  id                String   @id @default(uuid())
+  deliveryRequestId String   @map("delivery_request_id")
+  wineId            String   @map("wine_id")
+  createdAt         DateTime @default(now()) @map("created_at")
 
-  deliveryRequest   DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
   // Restrict — preserve the audit trail of what was delivered if a wine
   // row is ever removed. Matches WineDisposition's guarantee.
-  wine              Wine            @relation(fields: [wineId], references: [id], onDelete: Restrict)
+  wine            Wine            @relation(fields: [wineId], references: [id], onDelete: Restrict)
 
   @@unique([deliveryRequestId, wineId])
   @@index([wineId])
@@ -650,7 +658,7 @@ model DeliveryEvent {
   payload           Json?
   createdAt         DateTime           @default(now()) @map("created_at")
 
-  deliveryRequest   DeliveryRequest    @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+  deliveryRequest DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
 
   @@index([deliveryRequestId, createdAt(sort: Desc)])
   @@index([actor, createdAt(sort: Desc)])
@@ -673,9 +681,81 @@ model AuthorizedRecipient {
   dateOfBirth  DateTime @map("date_of_birth") @db.Date
   createdAt    DateTime @default(now()) @map("created_at")
 
-  member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, name])
   @@index([memberId])
   @@map("authorized_recipients")
+}
+
+// Events & tasting module (feature #53). `Event` is intentionally distinct
+// from the `FacilityEvent` model (which is bounded to resilience incidents
+// like hurricanes and inspections, #42). Pricing is captured for display
+// only until the payments feature (#27) lands; RSVP is treated as confirmed
+// without a charge. memberOnly events are hidden from the public `/events`
+// list for unauthenticated visitors.
+model Event {
+  id           String        @id @default(uuid())
+  facilityId   String?       @map("facility_id")
+  slug         String        @unique
+  title        String
+  summary      String?
+  description  String?
+  locationName String        @map("location_name")
+  locationAddr String?       @map("location_addr")
+  startsAt     DateTime      @map("starts_at")
+  endsAt       DateTime      @map("ends_at")
+  capacity     Int
+  priceUsd     Decimal       @default(0) @map("price_usd") @db.Decimal(10, 2)
+  memberOnly   Boolean       @default(false) @map("member_only")
+  status       EventStatus   @default(published)
+  heroImageKey String?       @map("hero_image_key")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  facility     Facility?     @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  rsvps        EventRsvp[]
+  signups      EventSignup[]
+
+  @@index([startsAt])
+  @@index([status, startsAt])
+  @@map("events")
+}
+
+// Authenticated-member RSVPs. One row per (event, member); `seats` covers
+// the +1 case without a second model (cap enforced at 4 in the Zod schema
+// so no one RSVPs the entire capacity on one click). `cancelledAt` is
+// nullable so backing out preserves the audit row — the roster filters it
+// out, but admins can still see who changed their mind.
+model EventRsvp {
+  id          String    @id @default(uuid())
+  eventId     String    @map("event_id")
+  memberId    String    @map("member_id")
+  seats       Int       @default(1)
+  notes       String?
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, memberId])
+  @@index([memberId, createdAt(sort: Desc)])
+  @@map("event_rsvps")
+}
+
+// Non-member public signups (lead capture). Kept separate from EventRsvp
+// so "member roster" vs "leads to follow up with" is unambiguous. Unique
+// on (eventId, email) so an accidental double-submit is idempotent.
+model EventSignup {
+  id        String   @id @default(uuid())
+  eventId   String   @map("event_id")
+  name      String
+  email     String
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, email])
+  @@index([eventId, createdAt(sort: Desc)])
+  @@map("event_signups")
 }
