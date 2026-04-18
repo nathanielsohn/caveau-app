@@ -112,6 +112,13 @@ CRON_SECRET=<random-base64-string>
 # simulation keeps working; staging and production MUST set it or every
 # request returns 401.
 SENTINEL_INGEST_SECRET=<random-base64-string>
+
+# Optional — enables the AI Advisor chat route (feature #50) at
+# `/api/advisor/chat`. When unset, the route returns 503 with
+# `{ error: "advisor_not_configured" }` and the rest of the app keeps
+# working — same graceful-failure pattern as LIVEX_API_KEY and
+# AWS_S3_BUCKET. Get a key from https://console.anthropic.com/.
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ## Project Structure

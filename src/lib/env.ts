@@ -28,7 +28,8 @@ type OptionalKey =
   | "LIVEX_API_KEY"
   | "LIVEX_BASE_URL"
   | "CRON_SECRET"
-  | "SENTINEL_INGEST_SECRET";
+  | "SENTINEL_INGEST_SECRET"
+  | "ANTHROPIC_API_KEY";
 
 const REQUIRED: RequiredKey[] = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 
@@ -159,5 +160,11 @@ export const env = {
   // local simulation; production MUST set it or the route rejects all
   // traffic.
   SENTINEL_INGEST_SECRET: read("SENTINEL_INGEST_SECRET"),
+  // AI Advisor chat (feature #50). When unset, /api/advisor/chat returns
+  // 503 with `{ error: "advisor_not_configured" }` and the rest of the app
+  // keeps working — same graceful-failure pattern as LIVEX_API_KEY and
+  // AWS_S3_BUCKET. Wire up in production once Rob resolves the budget
+  // open question in docs/AI-ADVISOR-SPEC.md.
+  ANTHROPIC_API_KEY: read("ANTHROPIC_API_KEY"),
   NODE_ENV: process.env.NODE_ENV ?? "development",
 } as const;

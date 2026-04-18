@@ -139,6 +139,22 @@ export const AdvisorBenchmarkParamSchema = z.object({
   since: DateSchema.optional(),
 });
 
+// Chat route body. 8000 chars per turn is roughly ~2000 tokens — enough
+// for a long question without letting a single message balloon the
+// prompt. 40 turns caps total transcript cost per request; the chat UI
+// should trim before sending when it exceeds that.
+export const AdvisorChatBodySchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(8000),
+      }),
+    )
+    .min(1)
+    .max(40),
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**
