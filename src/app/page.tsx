@@ -12,6 +12,7 @@ import {
   type PortfolioWineInput,
 } from "@/lib/investment";
 import { isActiveStage } from "@/lib/hurricane";
+import { reasonLabel } from "@/lib/exit-signals";
 import DashboardClient from "./dashboard-client";
 import HurricaneBanner from "@/components/hurricane-banner";
 
@@ -51,6 +52,8 @@ export default async function DashboardPage() {
       latestSyncRow,
       latestValuationRow,
       hurricaneMembership,
+      openExitSignals,
+      openExitSignalCount,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -124,6 +127,19 @@ export default async function DashboardPage() {
             },
           },
         },
+      }),
+      // Open exit signals (feature #55). Capped at 4 for the dashboard
+      // teaser card; the full list lives on each wine detail page.
+      prisma.exitSignal.findMany({
+        where: { memberId, closedAt: null },
+        orderBy: [{ strength: "desc" }, { openedAt: "desc" }],
+        take: 4,
+        include: {
+          wine: { select: { id: true, name: true, vintage: true } },
+        },
+      }),
+      prisma.exitSignal.count({
+        where: { memberId, closedAt: null },
       }),
     ]);
 
@@ -352,6 +368,22 @@ export default async function DashboardPage() {
         ? hurricaneMembership
         : null;
 
+    // Serialize exit signals for the client card (feature #55). Converts
+    // Prisma.Decimal into plain numbers so the card renders currency
+    // without each row re-coercing on click.
+    const exitSignalsForClient = openExitSignals.map((s) => ({
+      id: s.id,
+      wineId: s.wineId,
+      wineName: s.wine.name,
+      wineVintage: s.wine.vintage,
+      reason: s.reason,
+      reasonLabel: reasonLabel(s.reason),
+      strength: s.strength,
+      rationale: s.rationale,
+      targetPriceLow: formatCurrency(toNumber(s.targetPriceLow)),
+      targetPriceHigh: formatCurrency(toNumber(s.targetPriceHigh)),
+    }));
+
     return (
       <>
         {activeHurricane && (
@@ -372,6 +404,8 @@ export default async function DashboardPage() {
           topGainers={topGainers}
           topLosers={topLosers}
           portfolio={portfolioData}
+          exitSignals={exitSignalsForClient}
+          exitSignalTotal={openExitSignalCount}
           firstName={session.user.name?.split(" ")[0] ?? "Member"}
         />
       </>

@@ -721,3 +721,59 @@ function findClosestPointValue(
   }
   return closest.indexValue;
 }
+
+// ── getExitSignals ──────────────────────────────────────────────────────
+
+export interface AdvisorExitSignal {
+  id: string;
+  wineId: string;
+  wineName: string;
+  producer: string;
+  vintage: number;
+  reason: "drink_window_closing" | "peak_momentum" | "dual";
+  strength: "moderate" | "strong";
+  rationale: string;
+  priceSnapshotUsd: number;
+  targetPriceLowUsd: number;
+  targetPriceHighUsd: number;
+  momentum12moPct: number | null;
+  openedAt: string;
+}
+
+/**
+ * All open exit signals across the member's collection. Feeds slide-6 Q1
+ * ("what's my best exit opportunity right now?") — the advisor reads the
+ * rationale + target range verbatim instead of inventing numbers. Closed
+ * signals are excluded; the scoring pass in src/lib/exit-signals.ts is
+ * the authoritative source for which signals are open.
+ */
+export async function getExitSignals(): Promise<AdvisorExitSignal[]> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+
+  const signals = await prisma.exitSignal.findMany({
+    where: { memberId, closedAt: null },
+    orderBy: [{ strength: "desc" }, { openedAt: "desc" }],
+    include: {
+      wine: {
+        select: { id: true, name: true, producer: true, vintage: true },
+      },
+    },
+  });
+
+  return signals.map((s) => ({
+    id: s.id,
+    wineId: s.wine.id,
+    wineName: s.wine.name,
+    producer: s.wine.producer,
+    vintage: s.wine.vintage,
+    reason: s.reason,
+    strength: s.strength,
+    rationale: s.rationale,
+    priceSnapshotUsd: toNumber(s.priceSnapshot),
+    targetPriceLowUsd: toNumber(s.targetPriceLow),
+    targetPriceHighUsd: toNumber(s.targetPriceHigh),
+    momentum12moPct: s.momentum12moPct != null ? toNumber(s.momentum12moPct) : null,
+    openedAt: s.openedAt.toISOString(),
+  }));
+}

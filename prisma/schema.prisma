@@ -141,6 +141,21 @@ enum MigrationStatus {
   cancelled
 }
 
+// Exit signals (feature #55). `drink_window_closing` triggers when a
+// bottle is within its drink window and approaching the end; `peak_momentum`
+// when 12-month Liv-ex change crosses a threshold; `dual` when both hit
+// and the scoring pass wants to flag the stronger case.
+enum ExitSignalReason {
+  drink_window_closing
+  peak_momentum
+  dual
+}
+
+enum ExitSignalStrength {
+  moderate
+  strong
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -237,6 +252,7 @@ model Member {
   authorizedRecipients          AuthorizedRecipient[]
   eventRsvps                    EventRsvp[]
   migrationRequests             MigrationRequest[]
+  exitSignals                   ExitSignal[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -275,6 +291,7 @@ model Wine {
   handoffPackages      HandoffPackage[]
   nfcTags              NfcTag[]
   deliveryRequestItems DeliveryRequestItem[]
+  exitSignals          ExitSignal[]
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
@@ -813,4 +830,37 @@ model MigrationRequest {
   @@index([memberId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("migration_requests")
+}
+
+// Exit signals (feature #55). AI-surfaced sell-window alerts per bottle,
+// tied to drink-window timing plus 12-month price momentum. Visible on
+// the dashboard, the wine detail page, and the AI Advisor. "Open" =
+// `closedAt` is null; the scoring pass in `src/lib/exit-signals.ts` keeps
+// at most one open row per wine and a partial unique index in migration
+// 0034 enforces that invariant at the DB level. `targetPriceLow` and
+// `targetPriceHigh` frame the recommended ask in USD; `rationale` is the
+// one-sentence "why now" the member sees on the dashboard card and the
+// advisor surfaces verbatim.
+model ExitSignal {
+  id                 String             @id @default(uuid())
+  wineId             String             @map("wine_id")
+  memberId           String             @map("member_id")
+  reason             ExitSignalReason
+  strength           ExitSignalStrength
+  rationale          String
+  priceSnapshot      Decimal            @map("price_snapshot") @db.Decimal(14, 2)
+  targetPriceLow     Decimal            @map("target_price_low") @db.Decimal(14, 2)
+  targetPriceHigh    Decimal            @map("target_price_high") @db.Decimal(14, 2)
+  momentum12moPct    Decimal?           @map("momentum_12mo_pct") @db.Decimal(6, 2)
+  openedAt           DateTime           @default(now()) @map("opened_at")
+  closedAt           DateTime?          @map("closed_at")
+  closedReason       String?            @map("closed_reason")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  wine               Wine               @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  member             Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, closedAt, openedAt(sort: Desc)])
+  @@index([wineId, closedAt])
+  @@map("exit_signals")
 }

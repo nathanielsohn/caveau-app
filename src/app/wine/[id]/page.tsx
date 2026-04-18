@@ -29,13 +29,17 @@ import {
   Grape,
   Building2,
   LineChart,
+  Target,
 } from "lucide-react";
 import ValuationChart from "@/components/valuation-chart";
 import DispositionButton from "./disposition-button";
 import DeliverNowButton from "./deliver-now-button";
 import WineImageUpload from "@/components/wine-image-upload";
+import HandoffPackageButton from "@/components/handoff-package-button";
+import { createHandoffPackage } from "@/app/handoff/actions";
 import { getPublicUrl, isS3Configured } from "@/lib/s3";
 import { recordDisposition, requestWineUploadUrl, setWineImage } from "./actions";
+import { reasonLabel, strengthBadgeClass } from "@/lib/exit-signals";
 import NfcTagCard from "./nfc-tag-card";
 import {
   assignNfcTag,
@@ -98,6 +102,22 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           _count: { select: { scans: true } },
         },
       },
+      exitSignals: {
+        where: { closedAt: null },
+        orderBy: { openedAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          reason: true,
+          strength: true,
+          rationale: true,
+          priceSnapshot: true,
+          targetPriceLow: true,
+          targetPriceHigh: true,
+          momentum12moPct: true,
+          openedAt: true,
+        },
+      },
     },
   });
 
@@ -156,6 +176,9 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
 
   // First certificate (if any)
   const certificate = wine.certificates[0] ?? null;
+
+  // Open exit signal (feature #55). At most one per wine.
+  const exitSignal = wine.exitSignals[0] ?? null;
 
   // Serialize valuations for the client chart
   const serializedValuations = wine.valuations.map((v) => ({
@@ -278,6 +301,21 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                 {wine.name}
               </h1>
               <p className="text-secondary mt-2 text-lg">{wine.producer}</p>
+              {exitSignal && (
+                <div className="mt-3 inline-flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${strengthBadgeClass(exitSignal.strength)}`}
+                  >
+                    <Target size={12} />
+                    {exitSignal.strength === "strong"
+                      ? "Strong exit signal"
+                      : "Exit signal"}
+                  </span>
+                  <span className="text-[11px] text-muted uppercase tracking-wider">
+                    {reasonLabel(exitSignal.reason)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
@@ -538,6 +576,91 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                 at current CAGR
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit signal panel (feature #55) — renders only when the wine has
+          an open signal. Handoff CTA uses the same dialog as the global
+          handoff button so the scope of "what can a member do from here"
+          matches the rest of the app. */}
+      {exitSignal && wine.status === "in_cellar" && (
+        <div className="glass-card p-6 space-y-5 border border-burgundy/20">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-burgundy/10 border border-burgundy/30 flex items-center justify-center flex-shrink-0">
+              <Target className="w-5 h-5 text-burgundy" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-serif text-xl text-primary">
+                  Exit Signal
+                </h2>
+                <span
+                  className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${strengthBadgeClass(exitSignal.strength)}`}
+                >
+                  {exitSignal.strength === "strong" ? "Strong" : "Watch"}
+                </span>
+                <span className="text-[11px] text-muted uppercase tracking-wider">
+                  {reasonLabel(exitSignal.reason)}
+                </span>
+              </div>
+              <p className="text-sm text-secondary mt-2 leading-relaxed">
+                {exitSignal.rationale}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-[#2A2A30]/50">
+            <div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">
+                Current Value
+              </p>
+              <p className="text-lg font-semibold text-secondary tabular-nums mt-1">
+                {formatCurrency(toNumber(exitSignal.priceSnapshot))}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">
+                Target Range
+              </p>
+              <p className="text-lg font-semibold text-gold tabular-nums mt-1">
+                {formatCurrency(toNumber(exitSignal.targetPriceLow))}
+                {" – "}
+                {formatCurrency(toNumber(exitSignal.targetPriceHigh))}
+              </p>
+            </div>
+            {exitSignal.momentum12moPct != null && (
+              <div>
+                <p className="text-[11px] text-muted uppercase tracking-wider">
+                  12-mo Market
+                </p>
+                <p
+                  className={`text-lg font-semibold tabular-nums mt-1 ${
+                    toNumber(exitSignal.momentum12moPct) >= 0
+                      ? "text-ok"
+                      : "text-danger"
+                  }`}
+                >
+                  {toNumber(exitSignal.momentum12moPct) >= 0 ? "+" : ""}
+                  {toNumber(exitSignal.momentum12moPct).toFixed(1)}%
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <div className="inline-flex">
+              <HandoffPackageButton
+                wineId={wine.id}
+                wineName={wine.name}
+                createHandoffPackageAction={createHandoffPackage}
+                variant="list"
+              />
+            </div>
+            <p className="text-xs text-muted">
+              Start an auction / broker / private-sale handoff package to
+              act on this signal.
+            </p>
           </div>
         </div>
       )}

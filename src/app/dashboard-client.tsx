@@ -34,9 +34,16 @@ import {
   TrendingUp,
   Clock,
   LineChart,
+  Target,
+  ArrowRight,
 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { formatPercent } from "@/lib/investment";
+import {
+  strengthBadgeClass,
+  type ExitSignalReason,
+  type ExitSignalStrength,
+} from "@/lib/exit-signals";
 
 interface MetricsData {
   totalValue: string;
@@ -98,6 +105,19 @@ interface PortfolioSnapshot {
   vsSp500: number | null;
 }
 
+export interface ExitSignalCardItem {
+  id: string;
+  wineId: string;
+  wineName: string;
+  wineVintage: number;
+  reason: ExitSignalReason;
+  reasonLabel: string;
+  strength: ExitSignalStrength;
+  rationale: string;
+  targetPriceLow: string;
+  targetPriceHigh: string;
+}
+
 interface DashboardClientProps {
   metrics: MetricsData;
   topWines: TopWine[];
@@ -108,6 +128,12 @@ interface DashboardClientProps {
   topLosers: AppreciationWine[];
   /** Null when member has no investment-grade bottles. */
   portfolio: PortfolioSnapshot | null;
+  /** Top open exit signals (#55) — up to 4, ordered by strength then
+   *  freshness. Empty array when nothing has tripped. */
+  exitSignals: ExitSignalCardItem[];
+  /** Total open-signal count across the portfolio; drives the "View all
+   *  N" affordance next to the card header. */
+  exitSignalTotal: number;
   /** First name resolved server-side so the welcome line doesn't flash
    *  "Member" before the client session hydrates. */
   firstName: string;
@@ -135,6 +161,8 @@ export default function DashboardClient({
   topGainers,
   topLosers,
   portfolio,
+  exitSignals,
+  exitSignalTotal,
   firstName: serverFirstName,
 }: DashboardClientProps) {
   const { data: session, status } = useSession();
@@ -432,6 +460,77 @@ export default function DashboardClient({
             </div>
           </div>
         </Link>
+      )}
+
+      {/* Exit Signals (feature #55) — AI-surfaced sell-window alerts.
+          Renders only when at least one signal is open so the card doesn't
+          take dashboard real estate for an empty state. */}
+      {exitSignals.length > 0 && (
+        <div className="glass-card p-5 md:p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-burgundy/10 border border-burgundy/30 flex items-center justify-center flex-shrink-0">
+              <Target className="w-5 h-5 text-burgundy" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-serif text-lg text-primary">
+                  Exit Signals
+                </h2>
+                <span className="text-xs text-muted">
+                  {exitSignalTotal} open signal
+                  {exitSignalTotal === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">
+                Drink-window timing and 12-month market momentum flagged these
+                bottles for a consignment window.
+              </p>
+              <div className="mt-4 space-y-2">
+                {exitSignals.map((signal) => (
+                  <Link
+                    key={signal.id}
+                    href={`/wine/${signal.wineId}`}
+                    className="flex items-start gap-3 p-3 rounded-xl bg-caveau-graphite/30 hover:bg-caveau-graphite/50 transition-colors group"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-serif text-sm text-primary truncate group-hover:text-gold transition-colors">
+                          {signal.wineName}
+                        </p>
+                        <span className="text-xs text-muted">
+                          {signal.wineVintage}
+                        </span>
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${strengthBadgeClass(signal.strength)}`}
+                        >
+                          {signal.strength === "strong" ? "Strong" : "Watch"}
+                        </span>
+                        <span className="text-[10px] text-muted uppercase tracking-wider">
+                          {signal.reasonLabel}
+                        </span>
+                      </div>
+                      <p className="text-xs text-secondary mt-1 line-clamp-2">
+                        {signal.rationale}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0 self-center">
+                      <p className="text-xs text-muted">Target</p>
+                      <p className="text-sm font-semibold text-gold tabular-nums">
+                        {signal.targetPriceLow === signal.targetPriceHigh
+                          ? signal.targetPriceLow
+                          : `${signal.targetPriceLow} – ${signal.targetPriceHigh}`}
+                      </p>
+                    </div>
+                    <ArrowRight
+                      size={14}
+                      className="text-muted self-center flex-shrink-0 group-hover:text-gold transition-colors"
+                    />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Portfolio Appreciation */}

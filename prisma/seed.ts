@@ -16,6 +16,7 @@ import {
   defaultExpiresAt,
   generateDriverToken,
 } from '../src/lib/delivery';
+import { reconcileMemberExitSignals } from '../src/lib/exit-signals';
 
 const prisma = new PrismaClient();
 
@@ -1028,6 +1029,16 @@ async function main() {
   });
   console.log(
     `  ✓ Migration request: ${migrationRequest.rowCount} rows (status: ${migrationRequest.status})`,
+  );
+
+  // 18. Exit signals (feature #55). Runs the same scoring pass the app
+  // uses in production so the demo state reflects real rules — drink
+  // window closing within 5 years and/or 12-month momentum >= +12%.
+  // Safe to re-run: the reconciler upserts in place and closes stale
+  // signals.
+  const exitStats = await reconcileMemberExitSignals(member.id);
+  console.log(
+    `  ✓ Exit signals: opened ${exitStats.opened}, updated ${exitStats.updated}, closed ${exitStats.closed}`,
   );
 
   console.log('\n✅ Seed complete!');

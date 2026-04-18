@@ -37,6 +37,7 @@ import {
   getTierDetails,
   getWineDetail,
   getLivexBenchmark,
+  getExitSignals,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
@@ -147,6 +148,16 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getExitSignals",
+    description:
+      "Return all open exit signals across the member's collection. Each signal contains a rationale, a reason ('drink_window_closing' | 'peak_momentum' | 'dual'), a strength ('moderate' | 'strong'), a price snapshot, and a recommended consignment target range. Use this as the first call for 'what's my best exit opportunity right now?' — surface the rationale verbatim instead of inventing reasoning. Takes no arguments.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -186,6 +197,9 @@ export async function dispatchTool(
         const params = AdvisorBenchmarkParamSchema.parse(input ?? {});
         return { ok: true, result: await getLivexBenchmark(params) };
       }
+
+      case "getExitSignals":
+        return { ok: true, result: await getExitSignals() };
 
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
