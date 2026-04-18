@@ -128,6 +128,19 @@ enum EventStatus {
   cancelled
 }
 
+enum MigrationSource {
+  cellartracker
+  vivino
+  other
+}
+
+enum MigrationStatus {
+  submitted
+  fulfilled
+  failed
+  cancelled
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -223,6 +236,7 @@ model Member {
   deliveryRequests              DeliveryRequest[]
   authorizedRecipients          AuthorizedRecipient[]
   eventRsvps                    EventRsvp[]
+  migrationRequests             MigrationRequest[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -767,4 +781,36 @@ model EventSignup {
   @@unique([eventId, email])
   @@index([eventId, createdAt(sort: Desc)])
   @@map("event_signups")
+}
+
+// Concierge migration request (feature #52). Members upload a CellarTracker
+// or Vivino CSV export; staff fulfill within 48 hours by creating Wine rows
+// from the mapped payload. `rows` and `columnMapping` are stored as JSON
+// instead of a child table because typical exports are <500 rows and staff
+// edits the mapping (not per-row data) before fulfillment — a
+// MigrationRow model would double the write cost with no payoff at demo
+// scale. `onDelete: Cascade` matches intake-artifact semantics (unlike
+// Wine/Locker Restrict); fulfilled Wine rows have their own protection.
+model MigrationRequest {
+  id                 String          @id @default(uuid())
+  memberId           String          @map("member_id")
+  source             MigrationSource
+  originalFilename   String          @map("original_filename")
+  status             MigrationStatus @default(submitted)
+  columnMapping      Json            @map("column_mapping")
+  rows               Json
+  rowCount           Int             @map("row_count")
+  note               String?
+  failureReason      String?         @map("failure_reason")
+  fulfilledWineCount Int?            @map("fulfilled_wine_count")
+  fulfilledAt        DateTime?       @map("fulfilled_at")
+  fulfilledById      String?         @map("fulfilled_by_id")
+  cancelledAt        DateTime?       @map("cancelled_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  member             Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("migration_requests")
 }

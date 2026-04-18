@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { z, ZodError, type ZodTypeAny, type ZodTypeDef, type ZodType } from "zod";
+import { CAVEAU_FIELDS } from "./migration-mapping";
 
 // ── Primitives ────────────────────────────────────────────────────────────
 
@@ -313,6 +314,46 @@ export const CreateEventBodySchema = z
     message: "End time must be at or after the start time",
     path: ["endsAt"],
   });
+
+// ── Concierge migration (feature #52) ─────────────────────────────────────
+
+const CaveauFieldSchema = z.enum(
+  CAVEAU_FIELDS as unknown as [string, ...string[]],
+);
+
+const ColumnMappingSchema = z.record(
+  CaveauFieldSchema,
+  z.union([z.string().trim().min(1).max(200), z.null()]),
+);
+
+// One CSV row after client-side parsing. Limit per-field length to keep
+// a malicious client from ballooning the row payload; also cap the
+// number of columns so a header row can't fabricate 1000 fake keys.
+const MigrationRowSchema = z
+  .record(z.string().min(1).max(200), z.string().max(5000))
+  .refine((o) => Object.keys(o).length <= 100, "Too many columns");
+
+export const SubmitMigrationBodySchema = z.object({
+  source: z.enum(["cellartracker", "vivino", "other"]),
+  originalFilename: z.string().trim().min(1).max(200),
+  columnMapping: ColumnMappingSchema,
+  rows: z.array(MigrationRowSchema).min(1).max(500),
+  note: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
+});
+
+export const MigrationUpdateMappingBodySchema = z.object({
+  columnMapping: ColumnMappingSchema,
+});
+
+export const MigrationFailBodySchema = z.object({
+  failureReason: z.string().trim().min(1).max(500),
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 

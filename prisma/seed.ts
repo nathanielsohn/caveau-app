@@ -903,6 +903,133 @@ async function main() {
     `  ✓ Events: ${naplesWWF.title}, ${bordeauxTasting.title}`,
   );
 
+  // 17. Concierge migration queue (feature #52). One pending Vivino import
+  // from Robert so /admin/migrations opens on work-to-do during demos.
+  const vivinoRows: Record<string, string>[] = [
+    {
+      Winery: 'Clos des Papes',
+      'Wine name': 'Châteauneuf-du-Pape',
+      Vintage: '2019',
+      Region: 'Châteauneuf-du-Pape',
+      Country: 'France',
+      Style: 'Grenache Blend',
+      'Purchase price': '165.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Dense kirsch, garrigue, black olive — power with precision. Cellar 5+ years.',
+    },
+    {
+      Winery: 'Sassicaia',
+      'Wine name': 'Tenuta San Guido Sassicaia',
+      Vintage: '2019',
+      Region: 'Bolgheri',
+      Country: 'Italy',
+      Style: 'Cabernet Blend',
+      'Purchase price': '310.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Blackcurrant, cedar, graphite. The original Super Tuscan — absolutely classical.',
+    },
+    {
+      Winery: 'Bollinger',
+      'Wine name': 'La Grande Année',
+      Vintage: '2014',
+      Region: 'Champagne',
+      Country: 'France',
+      Style: 'Champagne Blend',
+      'Purchase price': '210.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Brioche, toasted hazelnut, stone fruit. A deeply serious Champagne, not a sparkler.',
+    },
+    {
+      Winery: 'Quilceda Creek',
+      'Wine name': 'Columbia Valley Cabernet Sauvignon',
+      Vintage: '2019',
+      Region: 'Columbia Valley',
+      Country: 'United States',
+      Style: 'Cabernet Sauvignon',
+      'Purchase price': '220.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Washington State’s Napa-equivalent. Dense, structured, 25+ year wine.',
+    },
+    {
+      Winery: 'Château Rayas',
+      'Wine name': 'Châteauneuf-du-Pape',
+      Vintage: '2018',
+      Region: 'Châteauneuf-du-Pape',
+      Country: 'France',
+      Style: 'Grenache',
+      'Purchase price': '1250.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Ethereal, translucent, floral. 100% Grenache from Rayas’s cold sandy parcels.',
+    },
+    {
+      Winery: 'Egon Müller',
+      'Wine name': 'Scharzhofberger Riesling Spätlese',
+      Vintage: '2020',
+      Region: 'Mosel',
+      Country: 'Germany',
+      Style: 'Riesling',
+      'Purchase price': '295.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Slate, white peach, racing acidity. A Mosel legend — 50-year ager.',
+    },
+    {
+      Winery: 'Alvaro Palacios',
+      'Wine name': "L'Ermita",
+      Vintage: '2018',
+      Region: 'Priorat',
+      Country: 'Spain',
+      Style: 'Garnacha',
+      'Purchase price': '980.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Old-vine Garnacha from Priorat’s llicorella slopes. Intense, mineral, haunting.',
+    },
+    {
+      Winery: 'Henschke',
+      'Wine name': 'Hill of Grace',
+      Vintage: '2016',
+      Region: 'Eden Valley',
+      Country: 'Australia',
+      Style: 'Shiraz',
+      'Purchase price': '720.00',
+      'Bottle size': '750 ml',
+      Review:
+        'Australia’s grand cru Shiraz — spice, dark fruit, perfume. Worth the price.',
+    },
+  ];
+  const vivinoMapping = {
+    name: 'Wine name',
+    vintage: 'Vintage',
+    region: 'Region',
+    varietal: 'Style',
+    producer: 'Winery',
+    purchasePrice: 'Purchase price',
+    tastingNotes: 'Review',
+  };
+  const migrationRequest = await prisma.migrationRequest.create({
+    data: {
+      memberId: member.id,
+      source: 'vivino',
+      originalFilename: 'vivino-export-2026-04-15.csv',
+      status: 'submitted',
+      columnMapping: vivinoMapping,
+      rows: vivinoRows,
+      rowCount: vivinoRows.length,
+      note:
+        'Last 8 bottles I bought through Vivino — would love these in Caveau alongside my vault collection. Thanks!',
+      createdAt: new Date(Date.now() - 6 * 3600 * 1000), // 6 hours ago
+    },
+  });
+  console.log(
+    `  ✓ Migration request: ${migrationRequest.rowCount} rows (status: ${migrationRequest.status})`,
+  );
+
   console.log('\n✅ Seed complete!');
 }
 

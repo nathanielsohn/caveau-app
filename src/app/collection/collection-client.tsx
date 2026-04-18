@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History, ArrowUpDown, SlidersHorizontal } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, Wine as WineIcon, ChevronDown, TrendingUp, Package, History, ArrowUpDown, SlidersHorizontal, FileInput } from "lucide-react";
 import WineCard, { type WineCardData } from "@/components/wine-card";
 import AddWineForm from "@/components/add-wine-form";
 import HandoffPackageButton from "@/components/handoff-package-button";
@@ -204,6 +204,13 @@ export default function CollectionClient({
             <History size={16} />
             History
           </button>
+          <Link
+            href="/migrations/new"
+            className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium border bg-caveau-graphite text-secondary border-[#2A2A30] hover:border-gold/30 hover:text-primary transition-colors"
+          >
+            <FileInput size={16} />
+            Import collection
+          </Link>
           <button
             onClick={() => setShowAddForm(true)}
             className="btn-gold flex items-center gap-2"
