@@ -19,19 +19,20 @@ import { toNumber } from "@/lib/utils";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-// Demo-tuned thresholds. "Peak momentum moderate" at +12% gives Rob's
-// portfolio a handful of meaningful signals without spamming every wine
-// that appreciated a bit. "Strong" at +22% picks up the trophies that have
-// actually run hard over the last year. See the seed valuation curve in
-// prisma/seed.ts §8 — most wines come out at (current - basis)/basis * 100
-// because the curve interpolates smoothly from purchase to current.
-const MOMENTUM_MODERATE_PCT = 12;
-const MOMENTUM_STRONG_PCT = 22;
+// Thresholds are tuned so a typical Estate-tier portfolio produces a
+// handful of meaningful signals, not a wall of them. Moderate fires at
+// +20% because below that we'd pick up any wine that drifted up with the
+// broader market; strong at +30% isolates the trophies that actually ran.
+// See the seed valuation curve in prisma/seed.ts §8 — most wines come
+// out at (current - basis)/basis * 100 because the curve interpolates
+// smoothly from purchase to current.
+const MOMENTUM_MODERATE_PCT = 20;
+const MOMENTUM_STRONG_PCT = 30;
 
-// Drink-window reason. "Strong" is the last year or past peak; "moderate"
-// is within five years of end. Wines whose drink window hasn't yet opened
+// Drink-window reason. "Strong" is this year or past peak; "moderate" is
+// within three years of end. Wines whose drink window hasn't yet opened
 // are never flagged — aging-under-window is not an exit signal.
-const DRINK_WINDOW_MODERATE_YEARS = 5;
+const DRINK_WINDOW_MODERATE_YEARS = 3;
 const DRINK_WINDOW_STRONG_YEARS = 1;
 
 export type ExitSignalReason =

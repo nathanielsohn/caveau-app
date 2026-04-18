@@ -459,17 +459,26 @@ async function main() {
   }
   console.log(`  ✓ Caveau Custody & Condition Reports: ${certCount}`);
 
-  // 8. Wine valuations — multiple entries per wine over 12 months, varied sources
+  // 8. Wine valuations — multiple entries per wine over 18 months, varied
+  // sources. 18 months (not 12) so exit-signal scoring (#55) sees a
+  // realistic 12-month momentum — with a 12-month-only window, the
+  // "12 months ago" anchor lands at purchase price and every
+  // appreciating wine trips the momentum threshold. 18 months puts the
+  // anchor at ~33% of total lifetime gain so only bottles actually
+  // running hot hit the moderate/strong thresholds.
   const valuationSources = ['manual', 'liv-ex', 'wine-searcher', 'auction', 'liv-ex', 'manual'];
+  const VALUATION_HISTORY_MONTHS = 18;
   let valCount = 0;
   for (const wine of createdWines) {
     const basePrice = Number(wine.purchasePrice);
     const currentPrice = Number(wine.currentValue);
     const priceGrowth = currentPrice - basePrice;
-    // Generate 4-6 valuation entries over 12 months
-    const numEntries = 4 + Math.floor(Math.random() * 3);
+    // Generate 5-7 valuation entries over 18 months
+    const numEntries = 5 + Math.floor(Math.random() * 3);
     for (let j = 0; j < numEntries; j++) {
-      const monthsAgo = Math.round((12 / (numEntries - 1)) * (numEntries - 1 - j));
+      const monthsAgo = Math.round(
+        (VALUATION_HISTORY_MONTHS / (numEntries - 1)) * (numEntries - 1 - j),
+      );
       const progress = j / (numEntries - 1); // 0 to 1
       // Price follows a smooth curve from purchase to current with slight noise
       const noise = (Math.random() - 0.5) * priceGrowth * 0.05;

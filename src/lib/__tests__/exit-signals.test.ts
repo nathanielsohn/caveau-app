@@ -65,10 +65,10 @@ describe("scoreWineForExit", () => {
     expect(result!.targetPriceHigh).toBeCloseTo(240, 2);
   });
 
-  it("opens a moderate drink-window signal when end is 3–5 years out", () => {
+  it("opens a moderate drink-window signal when end is within 3 years", () => {
     const result = scoreWineForExit({
       drinkWindowStart: 2023,
-      drinkWindowEnd: 2030,
+      drinkWindowEnd: 2029,
       currentValue: 200,
       valuations: [
         { date: daysAgo(400), price: 195 },
@@ -83,7 +83,39 @@ describe("scoreWineForExit", () => {
     expect(result!.targetPriceHigh).toBeCloseTo(220, 2);
   });
 
-  it("opens a strong momentum signal when 12-month change exceeds +22%", () => {
+  it("does not open a drink-window signal when end is more than 3 years out", () => {
+    const result = scoreWineForExit({
+      drinkWindowStart: 2023,
+      drinkWindowEnd: 2032,
+      currentValue: 200,
+      valuations: [
+        { date: daysAgo(400), price: 195 },
+        { date: daysAgo(30), price: 200 },
+      ],
+      now: NOW,
+    });
+    // +2.6% momentum, drink-window end is 6 years out → no signal
+    expect(result).toBeNull();
+  });
+
+  it("opens a strong momentum signal when 12-month change exceeds +30%", () => {
+    const result = scoreWineForExit({
+      drinkWindowStart: 2030,
+      drinkWindowEnd: 2050,
+      currentValue: 500,
+      valuations: [
+        { date: daysAgo(365), price: 380 },
+        { date: daysAgo(30), price: 500 },
+      ],
+      now: NOW,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.reason).toBe("peak_momentum");
+    expect(result!.strength).toBe("strong");
+    expect(result!.momentum12moPct).toBeGreaterThan(30);
+  });
+
+  it("opens a moderate momentum signal when 12-month change is between +20% and +30%", () => {
     const result = scoreWineForExit({
       drinkWindowStart: 2030,
       drinkWindowEnd: 2050,
@@ -96,35 +128,18 @@ describe("scoreWineForExit", () => {
     });
     expect(result).not.toBeNull();
     expect(result!.reason).toBe("peak_momentum");
-    expect(result!.strength).toBe("strong");
-    expect(result!.momentum12moPct).toBeCloseTo(25, 1);
-  });
-
-  it("opens a moderate momentum signal when 12-month change is between +12% and +22%", () => {
-    const result = scoreWineForExit({
-      drinkWindowStart: 2030,
-      drinkWindowEnd: 2050,
-      currentValue: 500,
-      valuations: [
-        { date: daysAgo(365), price: 440 },
-        { date: daysAgo(30), price: 500 },
-      ],
-      now: NOW,
-    });
-    expect(result).not.toBeNull();
-    expect(result!.reason).toBe("peak_momentum");
     expect(result!.strength).toBe("moderate");
-    expect(result!.momentum12moPct).toBeGreaterThan(13);
-    expect(result!.momentum12moPct).toBeLessThan(15);
+    expect(result!.momentum12moPct).toBeGreaterThan(20);
+    expect(result!.momentum12moPct).toBeLessThan(30);
   });
 
   it("combines drink-window + momentum into a dual signal", () => {
     const result = scoreWineForExit({
       drinkWindowStart: 2023,
-      drinkWindowEnd: 2029,
+      drinkWindowEnd: 2029, // within 3yr → moderate
       currentValue: 500,
       valuations: [
-        { date: daysAgo(365), price: 440 },
+        { date: daysAgo(365), price: 400 }, // +25% → moderate
         { date: daysAgo(30), price: 500 },
       ],
       now: NOW,
@@ -141,7 +156,7 @@ describe("scoreWineForExit", () => {
       drinkWindowEnd: 2027, // within 1yr → strong
       currentValue: 500,
       valuations: [
-        { date: daysAgo(365), price: 440 },
+        { date: daysAgo(365), price: 400 }, // +25% → moderate
         { date: daysAgo(30), price: 500 },
       ],
       now: NOW,
