@@ -96,7 +96,12 @@ function buildCsp(): string {
   // the browser. We allow the broad amazonaws.com / cloudfront.net domains
   // rather than the specific bucket so the same CSP works in dev, staging,
   // and prod without per-env wiring.
-  return [
+  // `upgrade-insecure-requests` is production-only. Chrome and Firefox
+  // special-case localhost and ignore the directive in dev, but Safari
+  // honors it strictly — forcing every subresource to HTTPS against a
+  // plain-HTTP dev server, which silently drops CSS/fonts/JS and renders
+  // the whole app unstyled.
+  const directives = [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
@@ -106,8 +111,9 @@ function buildCsp(): string {
     `form-action 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
-    `upgrade-insecure-requests`,
-  ].join("; ");
+  ];
+  if (!isDev) directives.push(`upgrade-insecure-requests`);
+  return directives.join("; ");
 }
 
 /**
