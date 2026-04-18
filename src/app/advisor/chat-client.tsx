@@ -22,8 +22,8 @@ type ChatError = { kind: "config" | "rate" | "network"; text: string };
 const STARTER_PROMPTS = [
   "What's my best exit opportunity right now?",
   "How am I tracking vs the Liv-ex 100?",
-  "Anything I should worry about in my current Sentinel alerts?",
-  "What would full insurance cost for my collection?",
+  "I'm grilling ribeye tonight — what should I open?",
+  "Which bottles are closest to peak right now?",
 ];
 
 // Matches the seven tools exposed by src/lib/advisor-dispatch.ts. A future
@@ -287,7 +287,8 @@ export default function ChatClient({ memberName, tierSlug }: ChatClientProps) {
               </h2>
               <p className="text-secondary text-sm md:text-base max-w-xl mx-auto mb-8">
                 I&apos;m your Caveau AI Advisor — ask me anything about your
-                collection, pricing, alerts, or tier.
+                collection, pricing, alerts, tier, pairings, or what to pour
+                tonight.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
                 {STARTER_PROMPTS.map((prompt) => (
