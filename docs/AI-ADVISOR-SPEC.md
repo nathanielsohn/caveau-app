@@ -1,6 +1,6 @@
 # AI Advisor — System Prompt + Tool Spec
 
-> Last updated: 2026-04-16 | Phase 6 feature #50 | **Spec only — no code yet**
+> Last updated: 2026-04-18 | Phase 6 feature #50 — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Live code under `src/lib/advisor-*.ts`, `src/app/api/advisor/chat/route.ts`, `src/app/advisor/`.
 
 ## Purpose
 
@@ -40,6 +40,7 @@ All tools are scoped to the authenticated member's session — the advisor canno
 |------|---------|
 | `getMemberPortfolio` | Return the member's full holdings: every wine with current value, purchase basis, CAGR, drink window, locker assignment, investment-grade tier label, active disposition state. One call covers the bulk of portfolio questions. |
 | `getLivexPriceHistory` | Return historical Liv-ex price points for a specific wine (by internal wine ID): price, date, source. Powers momentum and benchmark questions. |
+| `getLivexBenchmark` | Return the Liv-ex 100 fine-wine index history from the seeded `LivexBenchmark` table. Powers Q2 "How am I positioned vs. the Liv-ex 100?" — pairs with `getMemberPortfolio` to compute portfolio-vs-index performance. |
 | `getActiveAlerts` | Return currently-active Sentinel alerts across the member's lockers: alert type (temp / humidity / vibration / access), locker, current reading, threshold, duration, severity. Powers alert-interpretation questions. |
 | `getCCRList` | Return the list of Caveau Custody & Condition Reports issued for the member's bottles: CCR number, bottle, issue date, verification URL, HMAC hash status. Powers "which bottles have a CCR ready for consignment" questions. |
 | `getTierDetails` | Return the member's current tier spec: monthly price, included services, hurricane coverage, locker allowance, included devices. Powers tier-benefit and pricing-comparison questions. |
@@ -63,7 +64,7 @@ For each: which tools should fire, what a correct answer looks like, and what a 
 
 ### Q2. *"How am I positioned vs the Liv-ex 100?"*
 
-**Tools that should fire:** `getMemberPortfolio` (total value + YTD cost basis) → `getLivexPriceHistory` for each holding to reconstruct portfolio YTD performance → the Liv-ex 100 benchmark itself (this is the open data dependency — see Open Questions).
+**Tools that should fire:** `getMemberPortfolio` (total value + YTD cost basis) → `getLivexPriceHistory` for each holding to reconstruct portfolio YTD performance → `getLivexBenchmark` for the Liv-ex 100 YTD index value (served from the seeded `LivexBenchmark` Prisma table).
 
 **Correct answer shape:** portfolio YTD percentage vs. Liv-ex 100 YTD percentage, both stated as of the same date. One-sentence narrative on what's driving the delta (concentration in a specific region, trophy tilt, etc.), grounded in the actual holdings. Optionally names the 1–2 biggest contributors to outperformance or underperformance.
 
@@ -108,16 +109,14 @@ The advisor **does not**:
 
 **Claude (Anthropic).** Fits the "trained on every market move" framing in the deck. Tool-use reliability and refusal quality — both load-bearing for an advisor that must decline rather than hallucinate — are strengths vs. alternatives. Predictable pricing tier. Same vendor as the Claude Code workflow already shipping the product, so no second API relationship to stand up.
 
-**Budget:** TBD — flagged for Rob. See Open Questions.
-
-Claude model tier pick (Opus vs. Sonnet vs. Haiku) deferred until we have an opinion from a first prototype. Default working assumption: Sonnet for production turns, Haiku for any background summarization (e.g., conversation titles) if those surface. Opus if Sonnet's reasoning on the four canonical questions turns out to be uneven.
+**Model locked in (2026-04-17):** `claude-sonnet-4-6` for production turns. Pinned in `src/app/api/advisor/chat/route.ts`. Bump to Opus only if Sonnet's reasoning on the five canonical questions turns out to be uneven under load.
 
 ## Open Questions for Rob
 
-These need Rob's call before implementation starts. Each gets written back to `~/Desktop/caveau-docs/decisions/` once resolved.
+These need Rob's call. Resolved items move to `~/Desktop/caveau-docs/decisions/`.
 
-1. **AI budget.** What's the monthly Claude API ceiling for the advisor in the seed-round period? Needed to choose model tier (Opus vs. Sonnet), set per-conversation token caps, and decide whether to rate-limit chat per member or per tier.
-2. **Liv-ex 100 benchmark source.** Q2 of the canonical questions depends on the Liv-ex 100 index being available to the advisor. Does our Liv-ex API contract cover the Liv-ex 100 benchmark, or do we need to source it separately? If separately: is there a daily-snapshot source that's acceptable to cite publicly?
+1. ~~**AI budget.**~~ Resolved provisionally — Sonnet 4.6 pinned, per-member rate limiting deferred until chat traffic warrants it. Revisit if monthly Anthropic spend jumps.
+2. ~~**Liv-ex 100 benchmark source.**~~ Resolved — seeded `LivexBenchmark` table (migration `0026_livex_benchmark.sql`) exposed via `getLivexBenchmark` tool. Swap to a live Liv-ex index feed when the contract covers it.
 3. **Cross-tier boundaries in answers.** When a Collector member asks about a feature that's Estate-only (e.g., home cellar program, bonded courier), should the advisor describe it plainly (it informs an upgrade conversation) or deflect ("that's not part of your current tier")? Recommend: describe it plainly, treat the advisor as the member's trusted guide to the full Caveau platform.
 4. **Chat transcript retention.** How long do we retain advisor conversations? Default working assumption: 90 days for support / quality review, then soft-delete. Confirm this works for Rob's privacy posture, especially given advisor answers reference portfolio valuations and active alerts.
 5. **Disclaimer surface.** Where does the "estimates only / not financial advice / consult your advisor" disclaimer live — a persistent footer under every advisor turn, a one-time banner on first chat open, or both? This is a Rob-taste call more than a product call.
@@ -125,4 +124,4 @@ These need Rob's call before implementation starts. Each gets written back to `~
 
 ---
 
-**Next step:** once Rob resolves #1 (budget) and #2 (Liv-ex 100 access) at minimum, we can prototype the chat surface and wire the six tools against the four canonical questions. #3–#6 can be decided during or after the first prototype.
+**Next step:** the chat surface is live. Open items #3–#6 shape polish (disclaimer, escalation copy, cross-tier phrasing, retention) and can be resolved based on the first real member feedback.

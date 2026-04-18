@@ -1,6 +1,8 @@
 # Architecture
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
+> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
+
+For the authoritative `src/` tree, see CLAUDE.md — the "Project Structure" block there is kept in lockstep with the code. The directory overview below is a conceptual map of the major surfaces and may not list every nested file.
 
 ## Overview
 
@@ -24,83 +26,59 @@ Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend 
 
 ```
 caveau-app/
-├── prisma/                     # Database layer
-│   ├── schema.prisma           # Data models → generates TypeScript types
-│   ├── migrations/             # SQL migration baseline
-│   ├── seed.ts                 # Core seed data
-│   └── seed-sensors.ts         # Sensor reading history
+├── prisma/                     # Database layer (24 models, 14 enums)
+│   ├── schema.prisma
+│   ├── migrations/             # Flat SQL migrations 0001..0029
+│   ├── seed.ts
+│   └── seed-sensors.ts
 ├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── layout.tsx          # Root layout (fonts, dark bg, SessionProvider)
-│   │   ├── globals.css         # Tailwind base + glass-card utilities
-│   │   ├── error.tsx           # Global error boundary
-│   │   ├── not-found.tsx       # 404 page
-│   │   ├── loading.tsx         # Root loading skeleton
-│   │   ├── page.tsx            # Dashboard (server component)
-│   │   ├── dashboard-client.tsx
-│   │   ├── facility-actions.ts # Server actions for nav facility switcher (#16)
-│   │   ├── auth/
-│   │   │   ├── layout.tsx      # Minimal layout
-│   │   │   ├── login/page.tsx  # Login screen
-│   │   │   └── signup/page.tsx # Signup screen (auto-routes to /onboarding)
-│   │   ├── onboarding/         # Guided 3-step wizard for new members (#20)
-│   │   ├── settings/           # Alert notification preferences (#19)
-│   │   ├── collection/         # Wine inventory (server + client hybrid)
-│   │   ├── locker/             # Locker visualization + server actions
-│   │   ├── sentinel/           # IoT monitoring + server actions
+│   ├── app/                    # Next.js App Router
+│   │   ├── (root)              # layout.tsx, page.tsx, dashboard-client.tsx, globals.css, error.tsx, not-found.tsx, loading.tsx, facility-actions.ts
+│   │   ├── admin/              # RBAC-gated admin shell (#28): members, lockers, alerts, waitlist, hurricane authoring (#46)
+│   │   ├── advisor/            # AI Advisor chat UI (#50)
+│   │   ├── auth/               # login, signup
+│   │   ├── bottle/[tagId]/     # NFC tap-to-verify landing (#43) — public
+│   │   ├── certificate/[id]/   # Legacy redirect → /report/[id]
+│   │   ├── collection/         # Wine inventory + label-scan action
+│   │   ├── deliveries/[id]/    # Deliver Now member ladder (#51)
+│   │   ├── facility/           # Facility views (#16), events/[id]/ scaffold (#53)
+│   │   ├── handoff/[token]/    # Auction/broker recipient scan (#41) — public
+│   │   ├── handoff-driver/[token]/ # Deliver Now driver portal (#51) — public
+│   │   ├── locker/             # 4×8 slot grid + server actions
+│   │   ├── onboarding/         # 3-step wizard (#20)
+│   │   ├── portfolio/          # Portfolio vs. Liv-ex 100 investor view (#45)
+│   │   ├── report/[id]/        # Caveau Custody & Condition Report + QR (#30, #40)
+│   │   ├── sentinel/           # IoT monitoring + live sim
+│   │   ├── settings/           # Alert prefs (#19), hurricane prefs (#46)
+│   │   ├── verify/[hash]/      # Public CCR verification (#30)
+│   │   ├── waitlist/           # Public founding-member waitlist (#49)
 │   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
-│   │   ├── certificate/[id]/   # Caveau Custody & Condition Report (legacy redirect)
-│   │   ├── verify/[hash]/      # Public certificate verification
 │   │   └── api/                # REST endpoints
-│   │       ├── auth/
-│   │       │   ├── [...nextauth]/route.ts
-│   │       │   └── signup/route.ts
-│   │       ├── wines/          # GET list + POST create, [id] GET, [id]/valuations GET+POST
-│   │       ├── lockers/        # GET list, [id]/slots GET
-│   │       ├── sensors/        # latest GET, history GET (rate-limited)
-│   │       ├── alerts/         # GET recent
-│   │       ├── certificates/[id]/route.ts  # GET (ownership-checked)
-│   │       └── health/route.ts # Public uptime probe
-│   ├── middleware.ts            # Auth gate, onboarding gate, per-route rate limiting, CSP headers
-│   ├── types/
-│   │   └── next-auth.d.ts      # Session augmentation (role, tier, onboarded)
-│   ├── components/             # Shared UI components
-│   │   ├── providers.tsx       # SessionProvider wrapper
-│   │   ├── nav.tsx             # Sidebar (desktop) + bottom tabs (mobile) + facility switcher
-│   │   ├── facility-context.tsx # Client context powering the facility switcher (#16)
-│   │   ├── metric-card.tsx     # Stat card (icon + value + label)
-│   │   ├── wine-card.tsx       # Wine card for grid/list views
-│   │   ├── wine-image-upload.tsx # Presigned S3 upload UI (#18) — no-ops when bucket unset
-│   │   ├── scan-label-button.tsx # Wine label OCR button (#24) — disabled when Vision key unset
-│   │   ├── locker-grid.tsx     # 4×8 slot grid + detail panel + filter bar (#38)
-│   │   ├── sensor-charts.tsx   # Temp/humidity/vibration charts + access log
-│   │   ├── dashboard-charts.tsx # Analytics (value trend, utilization, alerts)
-│   │   ├── alert-list.tsx      # Alert history table
-│   │   ├── certificate-doc.tsx # Custody & Condition Report layout + QR code
-│   │   ├── add-wine-form.tsx   # Add wine modal
-│   │   ├── disposition-form.tsx # Wine disposition dialog
-│   │   ├── valuation-chart.tsx # Wine price history chart
-│   │   ├── toast.tsx           # Global toast system (showToast + <Toaster />)
-│   │   └── skeleton.tsx        # Loading skeleton primitives
-│   └── lib/                    # Shared utilities
-│       ├── auth.ts             # NextAuth config + getServerAuth() helper
-│       ├── prisma.ts           # Prisma client singleton
-│       ├── env.ts              # Boot-time env validation
-│       ├── logger.ts           # Structured logging
-│       ├── rate-limit.ts       # In-memory per-IP token bucket
-│       ├── safe-callback.ts    # Open-redirect-safe callbackUrl validator
-│       ├── schemas.ts          # Zod request/body schemas + parseOr400 helper
-│       ├── current-facility.ts # Facility cookie read/write for #16 switcher
-│       ├── email.ts            # AWS SES client + send() wrapper (no-op when unset)
-│       ├── notify-alert.ts     # Alert → email dispatch with cooldown tracking (#19)
-│       ├── s3.ts               # Presigned upload URLs + getPublicUrl (#18)
-│       ├── certificate-hash.ts # HMAC certificate hash generation/verification
-│       ├── use-body-scroll-lock.ts # Hook for locking background scroll behind modals
-│       ├── utils.ts            # Formatters (currency, date, sensors)
-│       ├── sensors.ts          # Sensor simulation + threshold checks
-│       └── __tests__/          # Vitest unit tests for lib helpers
+│   │       ├── advisor/chat/   # SSE streaming AI Advisor (#50)
+│   │       ├── alerts/
+│   │       ├── auth/           # [...nextauth], signup
+│   │       ├── certificates/[id]/ # ownership-checked GET + provenance subroute (#40)
+│   │       ├── cron/           # livex-sync (#39), sensor-retention (#22 interim)
+│   │       ├── deliveries/     # member [id]/* and public by-token/[token]/* (#51)
+│   │       ├── health/
+│   │       ├── ingest/sensor/  # Sentinel device ingest (#21) — bearer-guarded
+│   │       ├── lockers/
+│   │       ├── sensors/        # latest, history (rate-limited)
+│   │       ├── ses/webhook/    # SES bounce/complaint webhook (#19)
+│   │       └── wines/
+│   ├── middleware.ts           # Auth + onboarding gate, admin gate, per-route rate limits, CSP
+│   ├── types/next-auth.d.ts    # Session augmentation (role, tier, onboarded)
+│   ├── components/             # 21 shared components — see COMPONENT_GUIDE.md
+│   └── lib/                    # Shared utilities — auth, prisma, env, logger, request-context,
+│                               # rate-limit, safe-callback, schemas, current-facility, tiers,
+│                               # email, notify-alert, validate-live-alert, s3, vision,
+│                               # label-parser, certificate-hash, provenance, provenance-pdf,
+│                               # handoff, disposition-guard, nfc, hurricane, investment,
+│                               # delivery, advisor-system-prompt, advisor-tools,
+│                               # advisor-dispatch, livex, sensors, use-body-scroll-lock,
+│                               # utils, __tests__/
 ├── docs/                       # Developer documentation (you are here)
-└── [config files]              # package.json, tailwind.config.ts, etc.
+└── [config files]              # package.json, tailwind.config.ts, vercel.json, etc.
 ```
 
 ## Data Flow
@@ -211,9 +189,17 @@ See [DECISIONS.md](./DECISIONS.md) for the full decision log.
 | Collection (`/collection`) | Server + Client hybrid | Required | Prisma fetch → client-side filter/sort + add-wine action |
 | Locker (`/locker`) | Server + Client hybrid | Required | Prisma fetch → client-side interaction + slot actions |
 | Sentinel (`/sentinel`) | Client Component | Required | Server Actions + 5s live simulation |
-| Wine Detail (`/wine/[id]`) | Server Component | Required | Prisma (wine + valuations + dispositions) |
-| Custody & Condition Report (`/report/[id]`, `/certificate/[id]` redirect) | Server Component | Required (ownership-checked) | Prisma (report + stats) |
+| Wine Detail (`/wine/[id]`) | Server Component | Required | Prisma (wine + valuations + dispositions + provenance) |
+| Custody & Condition Report (`/report/[id]`, `/certificate/[id]` redirect) | Server Component | Required (ownership-checked) | Prisma (report + stats + provenance) |
 | Verify (`/verify/[hash]`) | Server Component | **Public** | Prisma (hash lookup, rate-limited) |
+| Bottle tap (`/bottle/[tagId]`, #43) | Server Component | **Public** | Prisma (NFC tag → CCR, rate-limited) |
+| Handoff recipient (`/handoff/[token]`, #41) | Server Component | **Public** | Prisma (token lookup + access log, rate-limited) |
+| Handoff driver (`/handoff-driver/[token]`, #51) | Server + Client hybrid | **Public** (token-scoped) | Prisma (delivery token → ladder, rate-limited) |
+| Advisor (`/advisor`, #50) | Client Component | Required | SSE streaming `/api/advisor/chat` |
+| Portfolio (`/portfolio`, #45) | Server Component | Required | Prisma (portfolio + Liv-ex benchmark) |
 | Onboarding (`/onboarding`) | Server + Client hybrid | Required (un-onboarded only) | Prisma fetch → 3-step wizard server actions |
-| Settings (`/settings`) | Server Component | Required | Prisma (member preferences + form action) |
+| Settings (`/settings`) | Server Component | Required | Prisma (alert + hurricane prefs + form actions) |
+| Waitlist (`/waitlist`, #49) | Server + Client hybrid | **Public** | Prisma POST action, rate-limited |
+| Admin (`/admin/*`, #28) | Server + Client hybrid | Required + role=admin | Prisma (members, lockers, alerts, waitlist, hurricane) |
+| Deliveries (`/deliveries/[id]`, #51) | Client Component | Required (owner only) | Delivery ladder + biometric/PIN/OTP actions |
 | Login / Signup (`/auth/*`) | Client Component | **Public** | NextAuth + signup API |

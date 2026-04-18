@@ -155,8 +155,8 @@ When seeding `ProvenanceCertificate` records, calculate `tempMean`, `tempMin`, `
 
 See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
-- The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#38 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
-- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0013.sql).
+- The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#62 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
+- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0029.sql).
 - Config files: package.json, next.config.mjs, tailwind.config.ts, .env, vitest.config.ts.
 
 ---
@@ -237,7 +237,7 @@ Custom domain (optional): Add in Vercel Dashboard → Settings → Domains.
 
 ## What to Skip
 
-See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth is now implemented. Still excluded: real API integrations (Liv-ex, Wine-Searcher), real IoT devices, payments, POS, admin panel.
+See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth (#15), the admin panel (#28), Liv-ex live pricing (#39), and Sentinel device ingest (#21) are all now implemented. Still excluded from the demo path: Wine-Searcher integration, payments / Stripe (#27), the mobile app (#29), and carrier-API integrations for insurance (#31).
 
 ---
 
@@ -268,7 +268,7 @@ After each session:
 
 Features 01–14 deliver a demo. The phases below are what turns it into a product. Schema groundwork (Facility, WineValuation, Member.role) is already in place from the demo build to minimize future migrations.
 
-> **Note:** The feature numbers below (15–33) are a conceptual roadmap and are independent from the build pipeline's stretch goal numbers (15–17 in BUILD.md/BUILD_STATUS.json).
+> **Note:** The feature numbers below (15–62) are a conceptual roadmap and are independent from the build pipeline's stretch goal numbers (15–17 in BUILD.md/BUILD_STATUS.json). The range grew from the original 15–33 as Phases 4, 5, and 6 were added after the April 2026 investor review; the original numbers are preserved for commit-history stability.
 
 ```mermaid
 gantt

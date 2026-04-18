@@ -26,6 +26,13 @@ Open [http://localhost:3000](http://localhost:3000).
 | Wine Detail | `/wine/:id` | Full bottle profile with valuation |
 | Report | `/report/:id` | Caveau Custody & Condition Report (CCR) with data integrity proof |
 | Verify | `/verify/:hash` | Public CCR verification (no auth) |
+| Advisor | `/advisor` | AI Advisor chat with portfolio + pricing tool access (#50) |
+| Portfolio | `/portfolio` | Investor view vs. Liv-ex 100 (#45) |
+| Onboarding | `/onboarding` | 3-step tier → locker → first-bottle wizard (#20) |
+| Admin | `/admin/*` | Members, lockers, alerts, hurricane protocol, waitlist (#28) |
+| Bottle tap | `/bottle/:tagId` | NFC tap-to-verify public CCR landing (#43) |
+| Handoff | `/handoff/:token` | Auction/broker handoff recipient scan (#41) |
+| Waitlist | `/waitlist` | Founding-member waitlist public form (#49) |
 
 See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature status.
 
@@ -36,7 +43,15 @@ See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature s
 - **Recharts v2** (sensor data visualization)
 - **Framer Motion** (animations)
 - **PostgreSQL** via **Prisma** (AWS RDS)
-- **Vercel** (hosting)
+- **NextAuth.js v4** + **bcryptjs** (credentials auth, JWT sessions)
+- **Zod** (request validation)
+- **AWS SDK v3** (S3 wine images, SES alert email)
+- **Anthropic SDK** (AI Advisor chat, Claude Sonnet 4.6)
+- **Google Cloud Vision** (wine label OCR)
+- **Upstash Redis** (distributed rate limits, optional)
+- **pdf-lib** + **qrcode.react** (CCR PDF + QR)
+- **Vitest** (unit tests)
+- **Vercel** (hosting + cron)
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 # Data Model
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
+> Last updated: 2026-04-18 | 24 Prisma models, 14 Postgres enums, 29 SQL migrations (0001..0029). Post-demo roadmap features #16–#51 added 14 new models on top of the original 10; diagram below is the original demo core — new roadmap models are listed after it.
 
 ## Entity Relationship Diagram
 
@@ -142,11 +142,19 @@ All enums below are real Postgres enum types (not string columns):
 | Enum | Values |
 |------|--------|
 | `Role` | `admin`, `staff`, `member` |
-| `Tier` | `gold`, `platinum`, `black` |
+| `Tier` | `gold`, `platinum`, `black` — DB values; UI renders as Collector / Reserve / Private Vault / Estate via `src/lib/tiers.ts` |
 | `AlertType` | `temperature`, `humidity`, `vibration`, `light`, `door`, `access` |
 | `Severity` | `info`, `warning`, `critical` |
+| `AlertSource` | `seed`, `sentinel`, `simulation`, `manual` (#23-style provenance on alert origin) |
 | `WineStatus` | `in_cellar`, `sold`, `transferred`, `consumed`, `gifted`, `removed` |
 | `DispositionType` | `sold`, `transferred`, `consumed`, `gifted`, `removed` |
+| `FacilityEventType` | Facility resilience events — inspection, generator test, storm, fire-system test (#42/#46) |
+| `HandoffChannel` | `auction_christies`, `auction_sothebys`, `auction_acker`, `private_broker`, `member_transfer` (#41) |
+| `NfcTagTier` | `trophy` (invisible capsule under foil), `standard` (navy collar) (#43) |
+| `HurricaneStage` | `watch`, `activation`, `transit`, `hold`, `all_clear` (#46) |
+| `DeliveryStatus` | Deliver Now state machine: `requested`, `biometric_verified`, `pin_verified`, `address_confirmed`, `otp_verified`, `dispatched`, `in_transit`, `id_checked`, `delivered`, `cancelled` (#51) |
+| `DeliveryEventActor` | `member`, `staff`, `driver`, `system` (who triggered a delivery event, #51) |
+| `DeliveryEventType` | Event types tracked on the delivery timeline (#51) |
 
 ## Entity Descriptions
 
@@ -184,6 +192,44 @@ A document certifying storage conditions for a wine. Includes aggregated sensor 
 
 ### WineDisposition
 Audit trail for wines leaving the collection. `type: DispositionType` is one of: `sold`, `transferred`, `consumed`, `gifted`, `removed`. The wine FK uses `onDelete: Restrict` — a wine cannot be deleted while it has disposition records. The member FK uses `onDelete: Cascade` because a deleted member's audit records have no meaningful owner. Unique `(wineId, type, date)` prevents duplicate entries. Optional `salePrice` (for sold), `recipient` (for transferred/gifted), and `notes` fields.
+
+## Post-demo roadmap entities
+
+These models were added across Phases 1–6. They are not in the ERD above to keep it legible — refer to `prisma/schema.prisma` for exact fields and relations.
+
+### FacilityEvent (#42)
+Facility-level resilience log: inspections, generator tests, storms, fire-system tests. Powers the post-event "your cellar was safe during Hurricane X" member report.
+
+### LivexBenchmark (#39 + #50)
+Daily Liv-ex 100 index snapshots seeded via migration `0026_livex_benchmark.sql`. Consumed by the AI Advisor's `getLivexBenchmark` tool and the Portfolio vs. Liv-ex 100 view (#45).
+
+### HandoffPackage / HandoffAccess (#41)
+Tokenized auction/broker handoff bundle (CCR + Sentinel history + valuation + photos). `HandoffPackage.token` is the 256-bit public URL segment; `HandoffAccess` logs each recipient open with IP + user-agent fingerprints.
+
+### NfcTag / NfcScan (#43)
+Per-bottle NFC tag registry. `NfcTag.tagIdHash` stores a salted SHA-256 of the tag serial so a leak of the table doesn't let an attacker enumerate tags. `tier: NfcTagTier` differentiates trophy-capsule vs. standard-collar tags. `NfcScan` logs every `/bottle/[tagId]` tap with coarse location + timestamp.
+
+### Waitlist (#49)
+Founding-member waitlist + LOI tracking. Fields: name, email, tier interest, estimated collection value, source (how they heard), consented-to-contact flag. Populated from the public `/waitlist` page and exported as CSV from `/admin/waitlist`.
+
+### HurricaneProtocol / HurricaneProtocolMember (#46)
+`HurricaneProtocol` tracks the current stage (watch / activation / transit / hold / all-clear), the triggering storm, projected landfall, and admin-authored member-facing copy. `HurricaneProtocolMember` is the per-member opt-in/opt-out and carrier-discount enrollment state.
+
+### DeliveryRequest / DeliveryRequestItem / DeliveryEvent / AuthorizedRecipient (#51)
+Deliver Now state machine. `DeliveryRequest.status: DeliveryStatus` walks the biometric → PIN → address → OTP → dispatched → id-checked → delivered ladder. `DeliveryRequestItem` links the specific bottles in the request. `DeliveryEvent` is an append-only timeline of actor+type+timestamp entries (member biometric, staff dispatch, driver ID scan, system OTP). `AuthorizedRecipient` is the per-member registry of household members who may legally accept delivery under Florida DABT.
+
+## Additional fields added since demo
+
+Key field additions not covered in the core entity descriptions above:
+
+- **Member:** `emailBounced`, `emailComplained` (SES feedback, #19), `hurricaneProtectionActive`, `hurricaneProtectionEnrolledAt`, `hurricaneInsurancePartner`, `hurricaneInsuranceDiscountPct` (#46), `sessionVersion` (forces session invalidation on role changes).
+- **Facility:** `elevationFt`, `generatorStatus`, `fireSuppressionStatus`, `lastInspectionAt` (#42).
+- **Wine:** `lastValuationSyncAt` (#39 Liv-ex sync bookkeeping).
+- **Alert:** `source: AlertSource` (seed / sentinel / simulation / manual, migration 0023).
+- **ProvenanceCertificate:** `revokedAt` (migration 0021 — supports revoking a CCR when chain of custody breaks).
+- **LockerSlot:** `@@unique([wineId])` (migration 0018 — a wine can only be in one slot at a time).
+- **SensorReading:** `@@unique([lockerId, timestamp])` (migration 0019 — idempotent device ingest dedup).
+- **Member.email:** case-insensitive unique index (migration 0028).
 
 ## Important: Prisma Decimal Fields
 

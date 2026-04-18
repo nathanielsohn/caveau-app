@@ -1,10 +1,10 @@
 # Authentication
 
-> Last updated: 2026-04-12 | NextAuth v4, JWT sessions, Credentials provider
+> Last updated: 2026-04-18 | NextAuth v4, JWT sessions, Credentials provider
 
 ## Overview
 
-Caveau uses [NextAuth.js v4](https://next-auth.js.org/) with the Credentials provider. Sessions are JWTs, signed with `NEXTAUTH_SECRET` and stored in an httpOnly cookie. There is no refresh token — sessions expire after 4 hours and the user logs in again.
+Caveau uses [NextAuth.js v4](https://next-auth.js.org/) with the Credentials provider. Sessions are JWTs, signed with `NEXTAUTH_SECRET` and stored in an httpOnly cookie. There is no refresh token — sessions expire after 1 hour absolute (`maxAge: 3600`) with a 15-minute sliding refresh (`updateAge: 900`), so an active user is not kicked mid-session but an idle tab goes cold quickly.
 
 All application data is scoped to the authenticated member: every Prisma query in a Server Component, Server Action, or API route reads `getServerAuth()` and filters by `memberId`.
 
@@ -36,7 +36,7 @@ session.user = {
 }
 ```
 
-`role`, `tier`, and `onboarded` are copied into the JWT during the `jwt` callback and surfaced on the session via the `session` callback. RBAC guards are wired but the admin panel (#28) is not yet built.
+`role`, `tier`, and `onboarded` are copied into the JWT during the `jwt` callback and surfaced on the session via the `session` callback. RBAC guards are wired and the admin panel (#28) is live at `/admin/*`; middleware gates the route tree to `role === "admin"` with a layout-level re-check.
 
 The `jwt` callback also handles `trigger === "update"`: when the onboarding wizard finishes it calls `useSession().update()`, which re-runs the callback and re-reads `tier` + `onboardedAt` from the DB so middleware sees the new state without forcing a re-login.
 
@@ -59,7 +59,7 @@ sequenceDiagram
     DB-->>NA: Member row (incl. passwordHash)
     NA->>NA: bcrypt.compare(password, passwordHash)
     alt Password matches
-        NA->>NA: Sign JWT { id, role, tier } — 4h expiry
+        NA->>NA: Sign JWT { id, role, tier } — 1h absolute (15m sliding)
         NA-->>U: Set-Cookie: next-auth.session-token (httpOnly)
         NA-->>U: 302 → callbackUrl (validated) or /
     else Password mismatch / no member
@@ -128,7 +128,7 @@ flowchart TD
     RL -->|Yes — over limit| TL[429 Too Many Requests]
     RL -->|Yes — under limit| PB{Public path?}
     RL -->|No| PB
-    PB -->|/auth/*<br/>/verify/*<br/>/api/auth/*<br/>/api/health| OK[Forward + CSP]
+    PB -->|/auth/*<br/>/verify/*<br/>/bottle/*<br/>/handoff/*<br/>/handoff-driver/*<br/>/waitlist<br/>/api/auth/*<br/>/api/health<br/>/api/ingest/sensor<br/>/api/ses/webhook<br/>/api/cron/*<br/>/api/deliveries/by-token/*| OK[Forward + CSP]
     PB -->|Anything else| TK{JWT cookie<br/>present + valid?}
     TK -->|No| RD[302 → /auth/login<br/>?callbackUrl=validated]
     TK -->|Yes| OB{token.onboarded?}
@@ -137,7 +137,7 @@ flowchart TD
     OB -->|otherwise| OK2[Forward + CSP]
 ```
 
-Public paths bypass auth entirely. Everything else — including `/certificate/*` — requires a valid session cookie. The certificate **page** then performs an ownership check (`session.user.id == certificate.wine.memberId`) before rendering, and the `/api/certificates/[id]` route applies the same guard.
+Public paths bypass auth entirely. The public tree has grown since the original demo — NFC tap-to-verify at `/bottle/:tagId` (#43), auction-broker handoff at `/handoff/:token` (#41), delivery driver portal at `/handoff-driver/:token` (#51), the founding-member waitlist page and POST endpoint (#49), the public Sentinel ingest route (#21, guarded by `SENTINEL_INGEST_SECRET` bearer instead of session), the SES bounce/complaint webhook (#19, SNS-signed), cron endpoints (`/api/cron/*`, guarded by `CRON_SECRET` bearer), and the delivery by-token API for drivers (`/api/deliveries/by-token/*`). Everything else — including `/report/*` and the legacy `/certificate/*` redirect — requires a valid session cookie. The report **page** then performs an ownership check (`session.user.id == certificate.wine.memberId`) before rendering, and the `/api/certificates/[id]` route applies the same guard. Admin routes (`/admin/*`) additionally require `role === "admin"` in middleware with a layout-level re-check.
 
 The onboarding gate runs after the auth check: members whose `onboardedAt` is null are pinned to `/onboarding` until the wizard finishes, and members who have already finished are redirected away if they revisit the wizard URL. This is enforced in middleware against the JWT, not against the database, so the gate is effectively free per request.
 
@@ -181,12 +181,16 @@ sequenceDiagram
 
 | Bucket | Trigger | Limit |
 |--------|---------|-------|
-| `auth-signup` | `POST /api/auth/signup` | 5 / 60s per IP |
-| `auth-login` | `POST /api/auth/callback/*` | 10 / 60s per IP |
+| `auth-signup` | `POST /api/auth/signup` | 5 / 60s per IP (fail-closed) |
+| `auth-login` | `POST /api/auth/callback/*` | 10 / 60s per IP (fail-closed) |
 | `verify` | Any `/verify/*` request | 20 / 60s per IP |
 | `sensors-history` | `GET /api/sensors/history` | 30 / 60s per IP |
+| `handoff` | Any `/handoff/*` request (#41) | 30 / 60s per IP |
+| `handoff-driver` | Any `/handoff-driver/*` request (#51) | 30 / 60s per IP |
+| `bottle-tap` | Any `/bottle/*` request (#43) | 30 / 60s per IP |
+| `waitlist-submit` | `POST /waitlist` (#49) | 5 / 60s per IP |
 
-Limits are tracked in process memory (`src/lib/rate-limit.ts`). They reset on deploy and do not span serverless instances — adequate for a demo, replace with Upstash/KV before relying on them as a real defense.
+Limiter backend is Upstash Redis when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set; otherwise `src/lib/rate-limit.ts` falls back to per-Lambda in-memory tracking that resets on cold start (adequate for dev, not a real ceiling in prod). Signup and login are configured `failMode: "closed"` — if Upstash is unreachable we reject rather than silently disable brute-force protection.
 
 ## Server-side vs client-side access
 
@@ -208,5 +212,5 @@ This block is gated by `process.env.NEXT_PUBLIC_SHOW_DEMO_CREDS === "true"`, whi
 - No email verification on signup — the address is trusted as soon as it parses.
 - No password reset flow.
 - No account lockout after N failed login attempts (rate limit is per IP, not per account).
-- Rate limiter is in-memory; an attacker can spread attempts across serverless cold starts.
-- Admin and staff RBAC checks are wired into `getServerAuth()` consumers but the admin panel itself (#28) is not built yet.
+- When Upstash is not configured the rate limiter falls back to per-Lambda memory; an attacker can spread attempts across cold starts. Wire Upstash in prod.
+- Role downgrades (admin → member) invalidate existing sessions by bumping `Member.sessionVersion` (migration 0020), checked in the `jwt` callback. Role upgrades still require a relogin until the sliding-refresh window repulls the row.

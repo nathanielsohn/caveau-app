@@ -1,6 +1,6 @@
 # Getting Started
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
+> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
 
 ## Prerequisites
 
@@ -68,6 +68,33 @@ AWS_CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
 # disabled with a tooltip. Restrict the key to the Vision API only in
 # Google Cloud Console.
 GOOGLE_CLOUD_VISION_API_KEY=AIzaSy...
+
+# Optional — presigned upload URL TTL in seconds. Default 300, clamped to
+# [60, 900] in src/lib/env.ts.
+S3_UPLOAD_URL_TTL_SECONDS=300
+
+# Optional — enables live Liv-ex pricing (feature #39). When unset,
+# /api/cron/livex-sync no-ops and seeded valuation data renders unchanged.
+LIVEX_API_KEY=livex_live_...
+LIVEX_BASE_URL=https://api.liv-ex.com/v1
+
+# Optional — shared Bearer secret that guards /api/cron/* in production.
+# Vercel Cron sends it automatically when set. Dev requests without auth
+# are allowed when unset so local testing doesn't need extra wiring.
+CRON_SECRET=<random-base64-string>
+
+# Optional — shared Bearer secret that guards /api/ingest/sensor (feature
+# #21). Staging and production MUST set this or every request returns 401.
+SENTINEL_INGEST_SECRET=<random-base64-string>
+
+# Optional — enables AI Advisor chat (feature #50). When unset, the route
+# returns 503 { error: "advisor_not_configured" } and the rest of the app
+# keeps working.
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional — Sentry DSN for error tracking. When unset the app runs without
+# Sentry instrumentation.
+SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project>
 ```
 
 ### 3. Set up database
@@ -130,6 +157,13 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full directory tree and data fl
 | `AWS_S3_BUCKET` | No | Enables wine image upload (#18). UI shows disabled state when unset. |
 | `AWS_CLOUDFRONT_DOMAIN` | No | Routes image URLs through CloudFront instead of S3. |
 | `GOOGLE_CLOUD_VISION_API_KEY` | No | Enables wine label OCR (#24). Scan Label button renders disabled when unset. |
+| `S3_UPLOAD_URL_TTL_SECONDS` | No | Presigned upload TTL in seconds. Default 300, clamped to `[60, 900]`. |
+| `LIVEX_API_KEY` | No | Enables live Liv-ex price sync (#39). |
+| `LIVEX_BASE_URL` | No | Override Liv-ex API base URL (sandbox/non-default). |
+| `CRON_SECRET` | No | Bearer secret for `/api/cron/*`. Dev requests allowed when unset. |
+| `SENTINEL_INGEST_SECRET` | No | Bearer secret for `/api/ingest/sensor` (#21). **Required in staging/prod.** |
+| `ANTHROPIC_API_KEY` | No | Enables AI Advisor chat (#50). Route returns 503 when unset. |
+| `SENTRY_DSN` | No | Enables Sentry error tracking. |
 
 ## Common Issues
 
@@ -143,4 +177,4 @@ Check that your DATABASE_URL is correct and the database is accessible. For RDS,
 Prisma returns `Decimal` fields as objects, not numbers. Use `Number()` or the `toNumber()` helper from `src/lib/utils.ts` before arithmetic or comparisons.
 
 ### Seed script is slow
-The sensor seed creates ~17K rows. It batches `createMany` in chunks of 5,000 to stay under PostgreSQL's parameter limit. This is normal and should complete in under 30 seconds.
+The sensor seed creates ~34K rows (30 days × 4 lockers, one reading every ~5 minutes). It batches `createMany` in chunks of 5,000 to stay under PostgreSQL's parameter limit. This is normal and should complete in under 60 seconds.

@@ -1,6 +1,6 @@
 # Design System
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
+> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
 
 ## Brand
 
@@ -28,8 +28,8 @@ All colors are defined in `tailwind.config.ts`.
 | Token | Hex | Usage |
 |-------|-----|-------|
 | `primary` | `#E8E6E1` | Body text, headings |
-| `secondary` | `#9B9A97` | Labels, metadata |
-| `muted` | `#8B8B96` | Disabled, placeholder (lightened from `#6B6B76` for WCAG AA contrast) |
+| `secondary` | `#ADABA6` | Labels, metadata (bumped from `#9B9A97` for WCAG AA) |
+| `muted` | `#A0A0AA` | Disabled, placeholder (bumped from `#8B8B96` to clear AA at 12px on graphite — see `tailwind.config.ts`) |
 
 ### Accents
 | Token | Hex | Usage |
@@ -76,7 +76,7 @@ The signature Caveau card style. Use everywhere.
 </div>
 ```
 
-Expands to: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 rounded-2xl`
+Expands to: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/80 rounded-2xl` (border opacity was bumped from `/50` for a sharper edge against the dark background).
 
 ### Buttons
 
@@ -109,7 +109,7 @@ Expands to: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/50 rounded
 
 ## Image Fallback
 
-When `Wine.imageUrl` is null, display a placeholder:
+When `Wine.imageKey` is null (the S3 object key persisted on the row; the public URL is derived from the key + `AWS_CLOUDFRONT_DOMAIN` or the bucket fallback), display a placeholder:
 - Centered Lucide `Wine` icon
 - Dark background: `bg-caveau-graphite`
 - Muted label: "No image"

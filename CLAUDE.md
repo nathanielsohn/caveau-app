@@ -4,7 +4,7 @@
 
 A luxury wine cellar management web app. Demonstrates the full Caveau value chain: wine inventory → storage lockers → Sentinel environmental monitoring → Caveau Custody & Condition Reports → valuations.
 
-**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 27 of 41 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, and the AI Advisor chat surface are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) is complete. #51 (Deliver Now) is **in progress** — member-side ladder, door-side ladder, and the wine-detail entry point have landed (commits `5303875`, `9285075`, `1bb372a`, `f46fd01`); OTP step-up verification for >$2K deliveries + Florida DABT ID-match flow completion still pending before strike-through. #52–54 round out remaining P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33.
+**Current state:** All 14 core demo features + 3 stretch goals are complete. Post-demo roadmap is in progress — 27 of 47 roadmap features are done (15, 16, 17, 18, 19, 20, 21, 23, 24, 26, 28, 30, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 49, 50). Auth, API routes, valuation engine, analytics, certificates, disposition tracking, locker self-service, collection/locker filtering, alert email notifications, member onboarding, multi-facility support, wine image upload, wine label scanning, and the AI Advisor chat surface are all live. Phase 4 (vault business — Liv-ex live pricing, provenance timeline, auction handoff, facility resilience) was added after the April 2026 investor review. Phase 5 (investor-ready — NFC tracking, membership tiers, investment portfolio view, hurricane protection protocol, exit facilitation, home cellar program, founding member waitlist) was added after Rob's April 15 business docs. **Phase 6 (investor demo gap, features #50–62) was added 2026-04-16 after skimming the pitch deck — it's the current "what's next" priority. #50 (AI Advisor chat) is complete. #51 (Deliver Now) is **in progress** — member-side ladder, door-side ladder, and the wine-detail entry point have landed (commits `5303875`, `9285075`, `1bb372a`, `f46fd01`); OTP step-up verification for >$2K deliveries + Florida DABT ID-match flow completion still pending before strike-through. #52–54 round out remaining P0. Full gap analysis at [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md).** See SPEC.md "Post-Demo Roadmap" for full status. Note: SPEC.md uses ~~strikethrough~~ for both "done" and "deprioritized" (#33 Wine marketplace is killed, not built) — the count above excludes #33. Total nominal feature count is 48 (#15–#62); 47 after excluding the deprioritized #33.
 
 ## Stack
 
@@ -17,7 +17,14 @@ A luxury wine cellar management web app. Demonstrates the full Caveau value chai
 - **Prisma** (ORM, type-safe queries, migrations)
 - **NextAuth.js v4** (auth, JWT sessions, Credentials provider)
 - **bcryptjs** (password hashing)
-- **Vercel** (hosting)
+- **Zod** (request/body validation via `src/lib/schemas.ts`)
+- **AWS SDK v3** — S3 + presigner (wine image upload, #18), SES (alert email, #19)
+- **Anthropic SDK** (AI Advisor chat streaming, #50 — Claude Sonnet 4.6)
+- **Google Cloud Vision** (wine label OCR via REST, #24)
+- **Upstash Redis** (distributed rate limiting; in-memory fallback when unset)
+- **pdf-lib** + **qrcode.react** (Custody & Condition Report PDF + QR)
+- **Vitest** (unit tests in `src/lib/__tests__/`)
+- **Vercel** (hosting + cron)
 
 ## How to Run
 
@@ -300,7 +307,7 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 - **Onboarding wizard** (`/onboarding`, feature #20): three steps — pick tier, reserve a fresh 32-slot locker, add an optional first bottle. The wizard runs server actions for each step and calls `useSession().update()` on completion to refresh the JWT. The `jwt` callback re-reads `tier` and `onboardedAt` from the DB when `trigger === "update"` so middleware sees the new state without a relogin.
 - **Password hashing**: bcrypt with 13 rounds (on signup). Login uses `bcrypt.compare` which has no cost parameter.
 - **Session timeout**: 1 hour absolute (`maxAge: 3600`) with a 15-minute sliding refresh (`updateAge: 900`) so an active user isn't kicked mid-session but an idle tab goes cold quickly. JWT strategy, no refresh token. See `src/lib/auth.ts` for the config.
-- **Rate limiting**: in-memory per-IP limiter on auth endpoints (5 requests / 60s window). Note: resets on deploy, does not persist across serverless instances.
+- **Rate limiting**: per-IP limits applied in middleware — signup 5/60s (fail-closed), login 10/60s (fail-closed), `/verify/*` and `/bottle/*` and `/handoff/*` and `/handoff-driver/*` 30/60s, `/api/sensors/history` 30/60s, `/waitlist` POST 5/60s. Upstash Redis backend when `UPSTASH_REDIS_REST_*` env vars are set; otherwise an in-memory per-Lambda fallback (fine for dev, resets on cold start in prod).
 - **Role values**: `admin`, `staff`, `member` — RBAC guards are live; `/admin/*` is gated to role `admin` in middleware with a layout-level re-check (feature #28).
 
 ## Not Yet Implemented (on roadmap)
@@ -317,6 +324,15 @@ Historical data (30 days) is pre-seeded in the database using the same algorithm
 **Phase 5 — Investor-Ready (from Rob's April 2026 business docs):**
 - Exit facilitation workflow (#47)
 - Home Cellar Program (#48)
+
+**Phase 6 — Investor Demo Gap (see [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md)):**
+- Biometric-verified Deliver Now (#51) — _in progress_; data model + ladders live, OTP step-up for >$2K and FL DABT ID-match still pending.
+- Concierge migration from CellarTracker / Vivino (#52)
+- Events & tasting module (#53) — scaffold present at `/facility/events/[id]/`, full flow pending
+- Founding Member pricing (#54)
+- Exit signals (#55), Insurance savings estimate (#56), Portfolio vs. Liv-ex 100 (#57)
+- Sentinel fleet admin (#58), Sentinel inventory / tier assignment (#59)
+- Allocation access (#60), Welcome appraisal (#61), Acquisition sourcing (#62)
 
 See SPEC.md "Post-Demo Roadmap" for full details. Done features are marked ~~strikethrough~~ in the tables.
 

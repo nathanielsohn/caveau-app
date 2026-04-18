@@ -1,6 +1,6 @@
 # Deployment
 
-> Last updated: 2026-04-13 | 14 core + 3 stretch features complete; 15 of 24 roadmap features done
+> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
 
 ## Infrastructure
 
@@ -67,6 +67,8 @@ Copy the RDS endpoint from the console. Your `DATABASE_URL` will be:
 postgresql://<username>:<password>@<endpoint>.rds.amazonaws.com:5432/caveau
 ```
 
+**Production note:** in Vercel, append `?connection_limit=5&pool_timeout=10` so each Lambda caps its Prisma pool and can't exhaust the RDS connection budget on a traffic spike. Migrate to RDS Proxy once steady-state traffic justifies it.
+
 ### 4. Initialize the database
 
 ```bash
@@ -104,8 +106,30 @@ Add in Vercel Dashboard → Settings → Environment Variables. **Only two vars 
 | `AWS_S3_BUCKET` | No | Enables feature #18 wine image upload. If unset, the upload UI shows a friendly "disabled" state and the rest of the app keeps working. |
 | `AWS_CLOUDFRONT_DOMAIN` | No | When set, public image URLs go through the CDN instead of S3 directly. |
 | `GOOGLE_CLOUD_VISION_API_KEY` | No | Enables wine label OCR (feature #24). If unset, the Scan Label button renders disabled with a tooltip. Restrict the key to the Vision API only in Google Cloud Console. |
+| `S3_UPLOAD_URL_TTL_SECONDS` | No | Presigned upload URL TTL. Defaults to `300`, clamped to `[60, 900]` in `src/lib/env.ts`. |
+| `LIVEX_API_KEY` | No | Enables live Liv-ex price sync (feature #39). When unset, `/api/cron/livex-sync` no-ops and seeded `WineValuation` data renders unchanged. |
+| `LIVEX_BASE_URL` | No | Override the Liv-ex API base URL (sandbox or non-default endpoint). |
+| `CRON_SECRET` | No | Shared Bearer token that guards `/api/cron/*` in production. Vercel Cron sends it automatically when set in the project env. Dev requests are allowed when unset. |
+| `SENTINEL_INGEST_SECRET` | No | Shared Bearer token that guards `/api/ingest/sensor` (feature #21). Devices send `Authorization: Bearer <secret>`. Staging and production **must** set this or every request returns 401. |
+| `ANTHROPIC_API_KEY` | No | Enables the AI Advisor chat route (feature #50). When unset, `/api/advisor/chat` returns 503 `{ error: "advisor_not_configured" }`. |
+| `SENTRY_DSN` | No | Error tracking. When unset, the app runs without Sentry instrumentation. |
 
-The AWS, Google, and Upstash vars degrade gracefully — the app boots and runs without them, features #18 / #19 / #24 and distributed rate limiting just become no-ops or disabled UI.
+The AWS, Google, Upstash, Liv-ex, Sentinel, and Anthropic vars all degrade gracefully — the app boots and runs without them; the corresponding features just become no-ops or disabled UI.
+
+### 3. Scheduled cron jobs (`vercel.json`)
+
+Two cron jobs are declared in `vercel.json` and execute via Vercel Cron:
+
+| Schedule | Route | Purpose |
+|---------|-------|---------|
+| `0 9 * * *` (daily 09:00 UTC) | `/api/cron/livex-sync` | Refreshes `WineValuation` rows from Liv-ex (feature #39). No-ops if `LIVEX_API_KEY` is unset. |
+| `0 3 * * *` (daily 03:00 UTC) | `/api/cron/sensor-retention` | Deletes raw `SensorReading` rows older than 90 days. Interim retention policy until full partitioning + rollups (#22). |
+
+Both routes are guarded by `CRON_SECRET` in production via timing-safe Bearer comparison. In development they are reachable without auth so local testing doesn't need extra wiring.
+
+### 4. SES webhook (feature #19)
+
+When SES is live the operator must subscribe an SNS topic to `https://<host>/api/ses/webhook` and attach Bounce + Complaint event destinations on the SES Configuration Set / Identity. Without this wiring, hard-bounced and complaining members silently keep failing to receive alerts because SES drops them.
 
 ### 3. Deploy
 
@@ -119,9 +143,9 @@ Add via Vercel Dashboard → Settings → Domains.
 
 The app's `src/middleware.ts` applies security controls to every request:
 
-- **Auth protection**: all routes require a valid JWT token, with these exceptions: `/auth/*` (login, signup), `/verify/*` (public certificate verification), `/api/auth/*` (NextAuth handlers), and `/api/health` (uptime probe). `/certificate/*` pages are auth-protected and the page enforces an ownership check before rendering.
-- **Rate limiting** (per-IP, in-memory): `POST /api/auth/signup` 5/60s, `POST /api/auth/callback/*` 10/60s, `/verify/*` 20/60s, `GET /api/sensors/history` 30/60s. The limiter resets on deploy and doesn't persist across serverless instances. For production hardening, migrate to Upstash Redis or Vercel KV.
-- **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support).
+- **Auth protection**: all routes require a valid JWT, with these exceptions: `/auth/*`, `/verify/*`, `/bottle/*` (#43), `/handoff/*` (#41), `/handoff-driver/*` (#51), `/waitlist` (#49), `/api/auth/*`, `/api/health`, `/api/ingest/sensor` (bearer-guarded, #21), `/api/ses/webhook` (SNS-signed, #19), `/api/cron/*` (bearer-guarded), and `/api/deliveries/by-token/*` (driver-facing). `/report/*` pages are auth-protected and enforce an ownership check before rendering. `/admin/*` additionally requires `role === "admin"`.
+- **Rate limiting** (per-IP): signup 5/60s fail-closed, login 10/60s fail-closed, `/verify/*` 20/60s, `/handoff/*` 30/60s, `/handoff-driver/*` 30/60s, `/bottle/*` 30/60s, `/waitlist` POST 5/60s, `/api/sensors/history` 30/60s. Upstash Redis backend when configured; in-memory fallback otherwise.
+- **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support). `connect-src` is derived from `AWS_S3_BUCKET` + `AWS_CLOUDFRONT_DOMAIN` at request time so the policy never wildcards `*.amazonaws.com`.
 - **Static security headers** (in `next.config.mjs`): HSTS (2 years + preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo), X-Permitted-Cross-Domain-Policies none.
 
 ## Troubleshooting

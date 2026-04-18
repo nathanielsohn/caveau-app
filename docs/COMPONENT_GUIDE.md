@@ -1,10 +1,12 @@
 # Component Guide
 
-> Last updated: 2026-04-13 | All components built
+> Last updated: 2026-04-18 | All components built
 
 ## Overview
 
-Caveau uses 17 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses 21 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+
+Components added since the original demo cohort: `admin-nav.tsx` (#28), `handoff-package-button.tsx` (#41), `provenance-timeline.tsx` (#40), and `hurricane-banner.tsx` (#46) — each documented below.
 
 ## Components
 
@@ -202,16 +204,52 @@ Loading skeleton primitives used by route-level `loading.tsx` files. Exports a b
 
 ---
 
+### admin-nav.tsx
+**Status:** Complete (Feature #28 — admin panel)
+
+Sub-navigation rail for `/admin/*` surfaces. Four tabs: Members, Lockers, Alerts, Waitlist; Hurricane authoring lives under Alerts. Highlights the active segment against the admin layout's darker chrome so staff can tell they're in the admin shell vs. the member-facing app.
+
+**Used in:** `src/app/admin/layout.tsx`
+
+---
+
+### hurricane-banner.tsx
+**Status:** Complete (Feature #46 — hurricane protection protocol)
+
+Site-wide banner shown when a `HurricaneProtocol` is active. Renders above the nav with stage-specific copy (Watch / Activation / Transit / Hold / All-Clear) and a link to the member's current protocol status. Members opted out via `HurricaneProtocolMember` never see the banner.
+
+**Used in:** `src/app/layout.tsx`
+
+---
+
+### provenance-timeline.tsx
+**Status:** Complete (Feature #40 — chain-of-custody timeline)
+
+Per-bottle timeline rendering the unbroken Sentinel history: environmental envelope (temp/humidity min/mean/max), access events, facility moves, disposition. Reads from `src/lib/provenance.ts` aggregator. Used in the Custody & Condition Report and the wine detail page.
+
+**Used in:** `src/components/certificate-doc.tsx`, `src/app/wine/[id]/page.tsx`
+
+---
+
+### handoff-package-button.tsx
+**Status:** Complete (Feature #41 — auction/broker handoff)
+
+Button that mints a `HandoffPackage` token via a server action and copies the shareable `/handoff/[token]` URL to the clipboard. Channel picker (Christie's / Sotheby's / Acker / private broker / transfer). Logs access events to `HandoffAccess` once the recipient opens the link.
+
+**Used in:** `src/app/wine/[id]/page.tsx`
+
+---
+
 ## Lib Utilities
 
 ### auth.ts
-NextAuth v4 configuration: Credentials provider (email + bcrypt), JWT strategy, 4-hour session, role/tier copied into the token. Exports `getServerAuth()` for Server Components and Server Actions.
+NextAuth v4 configuration: Credentials provider (email + bcrypt), JWT strategy, **1-hour absolute session with 15-minute sliding refresh** (`maxAge: 3600`, `updateAge: 900`), role/tier/onboarded/sessionVersion copied into the token. Exports `getServerAuth()` for Server Components and Server Actions.
 
 ### env.ts
-Boot-time environment validation. Throws if `DATABASE_URL` or `NEXTAUTH_SECRET` is missing — fail fast at startup, not on the first request. All other vars (`NEXTAUTH_URL`, AWS/Google/Upstash keys, `CERTIFICATE_HMAC_SECRET`, `FACILITY_COOKIE_SECRET`, `NEXT_PUBLIC_SHOW_DEMO_CREDS`) are optional and surface as `string | undefined` so call sites have to handle the missing case explicitly.
+Boot-time environment validation. Throws if `DATABASE_URL` or `NEXTAUTH_SECRET` is missing — fail fast at startup, not on the first request. All other vars are optional and surface as `string | undefined` so call sites handle the missing case explicitly. Current optional vars: `NEXTAUTH_URL`, `NEXT_PUBLIC_SHOW_DEMO_CREDS`, `SENTRY_DSN`, `CERTIFICATE_HMAC_SECRET`, `FACILITY_COOKIE_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `AWS_REGION`, `AWS_SES_FROM_EMAIL`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DOMAIN`, `S3_UPLOAD_URL_TTL_SECONDS`, `GOOGLE_CLOUD_VISION_API_KEY`, `LIVEX_API_KEY`, `LIVEX_BASE_URL`, `CRON_SECRET`, `SENTINEL_INGEST_SECRET`, `ANTHROPIC_API_KEY`.
 
 ### rate-limit.ts
-In-memory per-IP token bucket. Used by `middleware.ts` for auth and verify endpoints. Resets on deploy and does not persist across serverless instances — adequate for the demo, replace with Upstash/KV for production hardening.
+Per-IP token bucket with Upstash Redis backend when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set, otherwise an in-memory fallback that resets on Lambda cold start. Used by `middleware.ts` across auth, verify, sensors-history, handoff, handoff-driver, bottle-tap, and waitlist-submit buckets. Signup and login are configured fail-closed.
 
 ### safe-callback.ts
 Whitelists `callbackUrl` query params so the login page can't be turned into an open redirect. Only same-origin pathnames pass.

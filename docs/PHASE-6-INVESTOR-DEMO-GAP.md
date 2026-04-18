@@ -1,8 +1,13 @@
 # Investor Demo — Feature Gap List
 
-**Date:** 2026-04-16 (revised after pitch deck skim)
+**Date:** 2026-04-16 (revised after pitch deck skim); progress update 2026-04-18
 **Author:** Nathaniel Sohn (CTO)
 **Purpose:** Inventory of features the app needs so Rob + Samuel can demo the full investor narrative solo.
+
+**Status as of 2026-04-18:**
+- ~~§1 AI Advisor~~ — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Persona expanded to dual-role investment advisor + sommelier.
+- §2 Biometric-verified Deliver Now — **in progress.** Data model, member-side ladder (`/deliveries/[id]/`), door-side driver ladder (`/handoff-driver/[token]/`), and wine-detail entry point landed (commits `f46fd01`, `1bb372a`, `9285075`, `5303875`). Still pending before strike-through: OTP step-up for deliveries >$2K, Florida DABT ID-match completion flow, end-to-end verification.
+- §3–§8 remain open — next up after #51 closes.
 
 ## What the pitch deck promises
 

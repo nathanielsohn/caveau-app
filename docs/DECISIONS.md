@@ -156,3 +156,121 @@ light = rare_spike_or_near_zero
 - Hosting and database are on different providers (Vercel + AWS) — not single-cloud
 - Vercel serverless functions use dynamic IPs, complicating RDS security group rules
 - Future backend workloads (IoT ingestion, background jobs) will live on AWS separately
+
+---
+
+## ADR-009: Kill the wine marketplace (#33)
+
+**Date:** 2026-04-14
+**Status:** Accepted
+
+**Context:** Original roadmap included feature #33, a member-to-member wine marketplace. The April 2026 investor review with Robert Saenz reframed Caveau's positioning around being the software layer of a trusted private vault operator, with chain-of-custody and provenance as the core differentiator.
+
+**Decision:** Deprioritize #33 indefinitely. Revisit post-pilot only.
+
+**Why:**
+- A marketplace dilutes the "custodian" framing the rest of the product depends on. A vault operator that trades the inventory it stores is closer to a broker than a bank.
+- Auction / broker handoff (#41) covers the "I want to sell" use case with a more credible positioning — Caveau prepares the member for a Christie's / Sotheby's / Acker consignment rather than running a trading venue.
+- Compliance footprint (state-by-state alcohol shipping, marketplace operator obligations) is enormous relative to revenue upside in the seed-round window.
+
+**Trade-offs:**
+- Gives up a potential network-effect moat against CellarTracker / Vivino
+- Members who want to sell peer-to-peer will route around Caveau — acceptable because exit facilitation (#47) channels them into the auction-house flow
+
+---
+
+## ADR-010: "Caveau Custody & Condition Report" (CCR) terminology
+
+**Date:** 2026-04-16
+**Status:** Accepted
+
+**Context:** The document attached to each bottle had multiple names across the codebase and business docs: "certificate", "provenance certificate", "Caveau certificate". Robert's April 2026 business docs settled on "Caveau Custody & Condition Report" to align with how auction houses and insurers think about the document's role.
+
+**Decision:** Rename to **Caveau Custody & Condition Report** (abbreviated **CCR**) everywhere user-facing. Keep the Prisma model name `ProvenanceCertificate` and the HMAC secret `CERTIFICATE_HMAC_SECRET` — code-level renames would be churn without business value. Route `/certificate/[id]` → legacy redirect to `/report/[id]`.
+
+**Why:**
+- Matches the language auction houses, insurers, and estate planners use in the vault-custodian framing.
+- "Report" (not "certificate") signals a continuously-updated, time-bounded document — correct for a chain-of-custody artifact that accumulates new sensor data.
+- AI Advisor and all member-facing UI use CCR consistently (see `feedback_advisor_scope.md` memory + `AI-ADVISOR-SPEC.md` terminology discipline section).
+
+**Trade-offs:**
+- Codebase drift between user-facing term (CCR) and internal model name (`ProvenanceCertificate`). Documented, accepted.
+
+---
+
+## ADR-011: NFC bottle tracking over QR codes
+
+**Date:** 2026-04-16
+**Status:** Accepted
+
+**Context:** Need per-bottle identity tracking for tap-to-verify at auction houses, insurers, and member homes. Options: QR stickers, NFC tags, RFID.
+
+**Decision:** NFC tags in two tiers — invisible capsule under foil for trophy bottles ($1,000+), branded navy/gold neck collar for standard bottles. No QR stickers anywhere.
+
+**Why:**
+- Auction houses notice post-production label modification. A QR sticker is a red flag at Christie's. A tag under the capsule foil is invisible and non-destructive.
+- NFC taps work from any modern phone without an app install. QR requires camera + deliberate framing; NFC is one second of proximity.
+- Tier-based visibility lets the branded collar double as packaging for standard bottles while preserving the collector aesthetic on trophy bottles.
+
+**Trade-offs:**
+- NFC tag unit cost > QR sticker cost (~$0.50 vs. $0.001). Acceptable — average bottle value makes the math trivial.
+- Requires `/bottle/[tagId]` public page and NFC tag data model (#43). Landed in migration `0016_nfc_tracking.sql`.
+
+---
+
+## ADR-012: AI Advisor as dual-role investment advisor + sommelier
+
+**Date:** 2026-04-17
+**Status:** Accepted (supersedes the institutional-only scope framing in the original AI-ADVISOR-SPEC.md)
+
+**Context:** Phase 6 #50 AI Advisor was initially scoped to investment-advisor questions only — the four canonical pitch-deck questions (exit opportunity, Liv-ex 100 benchmark, alert interpretation, insurance estimate). First implementation exposed that members also ask sommelier-grade questions ("what should I open with ribeye tonight?") and a "can't help with that" response felt broken.
+
+**Decision:** Expand advisor persona to dual-role: investment advisor (tool-grounded, hallucination-intolerant on prices/CAGR/alerts/CCRs) + sommelier (training-grounded on pairings/serving/decant, anchored to bottles the member actually owns via `getMemberPortfolio`).
+
+**Why:**
+- Members experience Caveau as one relationship, not two. A bifurcated advisor shipping them to "ask a sommelier elsewhere" undermines the trusted-guide framing.
+- Sommelier questions naturally route through the portfolio tool (recommendations must name bottles the member owns), which keeps the answer grounded even when it draws on wine training.
+- Speculative market calls stay off-limits — the refusal boundary is "don't invent facts", not "don't answer pairing questions".
+
+**Trade-offs:**
+- Wider surface area for hallucination. Mitigated by the "must name a bottle the member actually owns" rule for pairing recommendations.
+- Requires a Q5 canonical acceptance test (the ribeye question) alongside the four original. Added to `AI-ADVISOR-SPEC.md`.
+
+---
+
+## ADR-013: Deliver Now — biometric ladder as a web-only flow (#51)
+
+**Date:** 2026-04-17
+**Status:** Accepted (in progress — data model and ladders live; OTP step-up + FL DABT ID-match pending)
+
+**Context:** Phase 6 #51 Deliver Now promises pitch-deck slide 7's 4+4 verification ladder: app-side biometric → PIN → address → OTP, and door-side ID scan → name match → authorized recipient → photo log. Native apps would be the obvious choice for biometric re-auth, but Caveau has no mobile app yet (#29 deferred).
+
+**Decision:** Build Deliver Now as two web surfaces — `/deliveries/[id]` for the member-side ladder (WebAuthn platform authenticator for biometric re-auth), `/handoff-driver/[token]` for the driver-side ladder with a tokenized URL. No native app required.
+
+**Why:**
+- WebAuthn platform authenticators (Face ID / Touch ID via Safari on iOS) satisfy the biometric-reauth step without shipping a native binary.
+- A tokenized driver URL means any driver's phone is the hardware — no allocation, no app installs, no device management.
+- Ships in weeks, not quarters. The mobile app (#29) remains deferred until payments (#27) land.
+
+**Trade-offs:**
+- WebAuthn UX is fussier than a native `SecKey` prompt. Acceptable for the investor-demo surface area.
+- Driver portal is phishable if a driver's phone is compromised — compensating control is the photo + timestamp log and the 256-bit token entropy.
+
+---
+
+## ADR-014: Upstash Redis for rate limiting
+
+**Date:** 2026-04-12 (initial), 2026-04-18 (confirmed)
+**Status:** Accepted
+
+**Context:** The original rate limiter was a per-Lambda in-memory token bucket. Acceptable for the demo but every cold start resets the counter, so a distributed attacker could drive effective request rates much higher than the documented limits.
+
+**Decision:** Upstash Redis (REST API, not TCP) for production rate limiting, with the in-memory limiter as a graceful fallback when `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are unset.
+
+**Why:**
+- REST API works natively from Vercel Edge without connection pooling pain.
+- Pay-per-request pricing is negligible at the current traffic levels.
+- Signup and login are configured `failMode: "closed"` — if Upstash is unreachable we reject rather than silently disable protection.
+
+**Trade-offs:**
+- One more production dependency. Mitigated by the in-memory fallback keeping dev/test unaffected.
