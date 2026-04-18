@@ -27,7 +27,9 @@ BEGIN;
 CREATE UNIQUE INDEX "members_email_lower_idx"
   ON "members" (LOWER(email));
 
+-- `waitlist` model is mapped to table `waitlist_entries` in schema.prisma
+-- (@@map); reference the physical table name here.
 CREATE UNIQUE INDEX "waitlist_email_lower_idx"
-  ON "waitlist" (LOWER(email));
+  ON "waitlist_entries" (LOWER(email));
 
 COMMIT;
