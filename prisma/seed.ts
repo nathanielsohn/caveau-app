@@ -713,8 +713,18 @@ async function main() {
   // /deliveries step-2 UI can verify them end-to-end.
   await prisma.authorizedRecipient.createMany({
     data: [
-      { memberId: member.id, name: 'Isabella Saenz', relationship: 'Spouse' },
-      { memberId: member.id, name: 'Marcus Whitfield', relationship: 'Business partner' },
+      {
+        memberId: member.id,
+        name: 'Isabella Saenz',
+        relationship: 'Spouse',
+        dateOfBirth: new Date('1988-03-14'),
+      },
+      {
+        memberId: member.id,
+        name: 'Marcus Whitfield',
+        relationship: 'Business partner',
+        dateOfBirth: new Date('1975-07-22'),
+      },
     ],
     skipDuplicates: true,
   });

@@ -56,6 +56,10 @@ export interface DriverBundle {
     id: string;
     name: string;
     relationship: string | null;
+    /** ISO YYYY-MM-DD. Kept server-side only; never rendered in driver UI
+     *  so the driver can't read it back off the screen and defeat the
+     *  DOB-on-ID verification. */
+    dateOfBirth: string;
   }>;
 }
 
@@ -98,7 +102,7 @@ export async function loadDeliveryByDriverToken(
   const recipients = await prisma.authorizedRecipient.findMany({
     where: { memberId: row.memberId },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, relationship: true },
+    select: { id: true, name: true, relationship: true, dateOfBirth: true },
   });
 
   return {
@@ -123,8 +127,20 @@ export async function loadDeliveryByDriverToken(
       vintage: it.wine.vintage,
       producer: it.wine.producer,
     })),
-    recipients,
+    recipients: recipients.map((r) => ({
+      id: r.id,
+      name: r.name,
+      relationship: r.relationship,
+      dateOfBirth: toIsoDate(r.dateOfBirth),
+    })),
   };
+}
+
+/** Format a `@db.Date` column (stored as midnight UTC) as YYYY-MM-DD in UTC
+ *  so the string survives a round-trip to the driver and back without TZ
+ *  drift. Used by loadDeliveryByDriverToken + the id-scan route. */
+export function toIsoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
 // ── PIN / OTP generation ──────────────────────────────────────────────────
@@ -219,6 +235,28 @@ export async function isOtpRequired(
     _sum: { currentValue: true },
   });
   return toNumber(aggregate._sum.currentValue) >= OTP_THRESHOLD_USD;
+}
+
+// ── Age verification (Florida DABT) ───────────────────────────────────────
+
+export const MIN_LEGAL_AGE_YEARS = 21;
+
+/**
+ * Returns true when the person with the given DOB has reached
+ * MIN_LEGAL_AGE_YEARS on `asOf`. Compares calendar components (y/m/d)
+ * rather than subtracting ms so leap-day and across-midnight edge cases
+ * behave the same as a human reading the ID would expect.
+ */
+export function isLegalAge(dob: Date, asOf: Date = new Date()): boolean {
+  const dy = dob.getUTCFullYear();
+  const dm = dob.getUTCMonth();
+  const dd = dob.getUTCDate();
+  const ay = asOf.getUTCFullYear();
+  const am = asOf.getUTCMonth();
+  const ad = asOf.getUTCDate();
+  let age = ay - dy;
+  if (am < dm || (am === dm && ad < dd)) age -= 1;
+  return age >= MIN_LEGAL_AGE_YEARS;
 }
 
 // ── State machine ─────────────────────────────────────────────────────────

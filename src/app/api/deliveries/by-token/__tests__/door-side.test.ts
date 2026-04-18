@@ -61,8 +61,15 @@ interface BundleOverrides {
   status?: string;
   otpRequired?: boolean;
   expiresAt?: Date;
-  recipients?: Array<{ id: string; name: string; relationship: string | null }>;
+  recipients?: Array<{
+    id: string;
+    name: string;
+    relationship: string | null;
+    dateOfBirth: string;
+  }>;
 }
+
+const ISABELLA_DOB = "1988-03-14";
 
 function bundleFor(overrides: BundleOverrides = {}) {
   return {
@@ -90,7 +97,12 @@ function bundleFor(overrides: BundleOverrides = {}) {
       },
     ],
     recipients: overrides.recipients ?? [
-      { id: RECIP_ID, name: "Isabella Saenz", relationship: "Spouse" },
+      {
+        id: RECIP_ID,
+        name: "Isabella Saenz",
+        relationship: "Spouse",
+        dateOfBirth: ISABELLA_DOB,
+      },
     ],
   };
 }
@@ -211,14 +223,14 @@ describe("POST /api/deliveries/by-token/[token]/handoff-start", () => {
 // ── id-scan ──────────────────────────────────────────────────────────────
 
 describe("POST /api/deliveries/by-token/[token]/id-scan", () => {
-  const body = (name: string) =>
+  const body = (name: string, dateOfBirth: string = ISABELLA_DOB) =>
     new NextRequest("http://localhost/api/deliveries/by-token/x/id-scan", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, dateOfBirth }),
     });
 
-  it("case-insensitive substring match advances to id_scanned", async () => {
+  it("name + DOB match (age >= 21) advances to id_scanned", async () => {
     allowRateLimit();
     (loadDeliveryByDriverToken as Mock).mockResolvedValue(
       bundleFor({ status: "handoff_started" }),
@@ -274,6 +286,73 @@ describe("POST /api/deliveries/by-token/[token]/id-scan", () => {
     const data = await res.json();
     expect(data.error).toBe("no_recipient_match");
     expect(prisma.deliveryRequest.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 no_recipient_match when the DOB doesn't match", async () => {
+    allowRateLimit();
+    (loadDeliveryByDriverToken as Mock).mockResolvedValue(
+      bundleFor({ status: "handoff_started" }),
+    );
+    const { POST } = await import(
+      "@/app/api/deliveries/by-token/[token]/id-scan/route"
+    );
+    const res = await POST(body("Isabella", "1990-01-01"), {
+      params: Promise.resolve({ token: TOKEN_A }),
+    });
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe("no_recipient_match");
+    expect(prisma.deliveryRequest.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 underage when the matched recipient is under 21", async () => {
+    allowRateLimit();
+    const underageDob = new Date();
+    underageDob.setUTCFullYear(underageDob.getUTCFullYear() - 20);
+    const dobStr = underageDob.toISOString().slice(0, 10);
+    (loadDeliveryByDriverToken as Mock).mockResolvedValue(
+      bundleFor({
+        status: "handoff_started",
+        recipients: [
+          {
+            id: RECIP_ID,
+            name: "Jamie Young",
+            relationship: "Cousin",
+            dateOfBirth: dobStr,
+          },
+        ],
+      }),
+    );
+    const { POST } = await import(
+      "@/app/api/deliveries/by-token/[token]/id-scan/route"
+    );
+    const res = await POST(body("Jamie Young", dobStr), {
+      params: Promise.resolve({ token: TOKEN_A }),
+    });
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("underage");
+    expect(prisma.deliveryRequest.update).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when dateOfBirth is missing or malformed", async () => {
+    allowRateLimit();
+    (loadDeliveryByDriverToken as Mock).mockResolvedValue(
+      bundleFor({ status: "handoff_started" }),
+    );
+    const { POST } = await import(
+      "@/app/api/deliveries/by-token/[token]/id-scan/route"
+    );
+    const req = new NextRequest(
+      "http://localhost/api/deliveries/by-token/x/id-scan",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Isabella" }),
+      },
+    );
+    const res = await POST(req, { params: Promise.resolve({ token: TOKEN_A }) });
+    expect(res.status).toBe(400);
   });
 
   it("trips 429 when the rate limiter refuses", async () => {

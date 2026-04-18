@@ -1,16 +1,22 @@
 /**
  * POST /api/deliveries/by-token/[token]/id-scan (feature #51)
  *
- * Driver-side. Driver enters the name read off the recipient's ID.
- * Server does a case-insensitive substring match against the member's
- * AuthorizedRecipient registry. On hit → `handoff_started → id_scanned`.
- * On miss → 401 with `{ error: "no_recipient_match" }`.
+ * Driver-side. Driver enters the name + DOB read off the recipient's ID.
+ * Server matches the name case-insensitively against the member's
+ * AuthorizedRecipient registry, cross-checks the DOB exactly against the
+ * registered value, and enforces the Florida DABT >= 21 age floor before
+ * advancing `handoff_started → id_scanned`.
+ *
+ * Failure modes:
+ *   - name or DOB mismatch → 401 `{ error: "no_recipient_match" }`
+ *     (same error for both so a probe can't tell which field failed)
+ *   - registered recipient under 21 → 403 `{ error: "underage" }`
  *
  * Rate-limited 5/15min per delivery, failClosed — same shape as the PIN
  * attempt limiter, keyed on delivery id so rotating driver tokens can't
  * dodge the ceiling.
  *
- * We intentionally do NOT persist a `id_scan_failed` event on miss: the
+ * We intentionally do NOT persist an `id_scan_failed` event on miss: the
  * rate-limiter already caps abuse, and flooding the audit log with
  * typo-driven misses creates noise without signal.
  */
@@ -23,6 +29,7 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   DRIVER_TOKEN_PATTERN,
+  isLegalAge,
   loadDeliveryByDriverToken,
 } from "@/lib/delivery";
 import { logger } from "@/lib/logger";
@@ -81,15 +88,22 @@ export async function POST(
   const body = await request.json().catch(() => null);
   const parsed = parseOr400(IdScanBodySchema, body);
   if (!parsed.ok) return parsed.response;
-  const { name } = parsed.data;
+  const { name, dateOfBirth } = parsed.data;
 
   const needle = name.toLowerCase();
-  const match = recipients.find((r) => r.name.toLowerCase().includes(needle));
+  const match = recipients.find(
+    (r) =>
+      r.name.toLowerCase().includes(needle) && r.dateOfBirth === dateOfBirth,
+  );
   if (!match) {
     return NextResponse.json(
       { error: "no_recipient_match" },
       { status: 401 },
     );
+  }
+
+  if (!isLegalAge(new Date(`${match.dateOfBirth}T00:00:00Z`))) {
+    return NextResponse.json({ error: "underage" }, { status: 403 });
   }
 
   try {

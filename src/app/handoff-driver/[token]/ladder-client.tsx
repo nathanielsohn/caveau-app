@@ -37,6 +37,7 @@ export interface DriverView {
   token: string;
   deliveryId: string;
   status: string;
+  otpRequired: boolean;
   memberName: string;
   address: {
     line1: string;
@@ -84,6 +85,7 @@ export default function LadderClient({
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [scannedName, setScannedName] = useState("");
+  const [scannedDob, setScannedDob] = useState("");
   const [matchedName, setMatchedName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,20 +135,31 @@ export default function LadderClient({
       e.preventDefault();
       if (isPending) return;
       const name = scannedName.trim();
+      const dob = scannedDob.trim();
       if (name.length === 0) {
         setError("Enter the name from the recipient's ID.");
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+        setError("Enter the date of birth from the recipient's ID.");
         return;
       }
       setError(null);
       setIsPending(true);
       const res = await postJson(
         `/api/deliveries/by-token/${view.token}/id-scan`,
-        { name },
+        { name, dateOfBirth: dob },
       );
       setIsPending(false);
       if (res.status === 401) {
         setError(
-          "No match found. Confirm the ID belongs to a registered recipient.",
+          "No match found. Confirm the name and date of birth exactly match a registered recipient.",
+        );
+        return;
+      }
+      if (res.status === 403) {
+        setError(
+          "Recipient is under the legal drinking age (21). Do not release the bottles. Return to dispatch.",
         );
         return;
       }
@@ -169,9 +182,10 @@ export default function LadderClient({
         ?.matchedRecipientName;
       setMatchedName(matched ?? null);
       setScannedName("");
+      setScannedDob("");
       router.refresh();
     },
-    [isPending, postJson, router, scannedName, view.token],
+    [isPending, postJson, router, scannedName, scannedDob, view.token],
   );
 
   const handlePhoto = useCallback(
@@ -294,8 +308,10 @@ export default function LadderClient({
                         {step === "id-scan" && (
                           <IdScanStep
                             view={view}
-                            value={scannedName}
-                            setValue={setScannedName}
+                            nameValue={scannedName}
+                            setNameValue={setScannedName}
+                            dobValue={scannedDob}
+                            setDobValue={setScannedDob}
                             onSubmit={handleIdScan}
                             isPending={isPending}
                             matchedName={matchedName}
@@ -332,8 +348,15 @@ function Header({ view }: { view: DriverView }) {
       <h1 className="font-serif text-2xl md:text-3xl text-primary">
         {view.memberName}
       </h1>
-      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ok/30 bg-ok/10 text-ok px-2.5 py-1 text-[11px] uppercase tracking-wider">
-        <ShieldCheck size={12} /> Member verification complete
+      <div className="mt-3 flex flex-wrap gap-2">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-ok/30 bg-ok/10 text-ok px-2.5 py-1 text-[11px] uppercase tracking-wider">
+          <ShieldCheck size={12} /> Member verification complete
+        </div>
+        {view.otpRequired && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 text-gold px-2.5 py-1 text-[11px] uppercase tracking-wider">
+            <ShieldCheck size={12} /> Step-up OTP verified · &gt;$2K
+          </div>
+        )}
       </div>
     </div>
   );
@@ -514,19 +537,26 @@ function StartStep({
 
 function IdScanStep({
   view,
-  value,
-  setValue,
+  nameValue,
+  setNameValue,
+  dobValue,
+  setDobValue,
   onSubmit,
   isPending,
   matchedName,
 }: {
   view: DriverView;
-  value: string;
-  setValue: (v: string) => void;
+  nameValue: string;
+  setNameValue: (v: string) => void;
+  dobValue: string;
+  setDobValue: (v: string) => void;
   onSubmit: (e: FormEvent) => void;
   isPending: boolean;
   matchedName: string | null;
 }) {
+  // The registry preview shows names + relationships only — DOB stays
+  // server-side so the driver can't read it off the screen to forge a
+  // match. FL DABT verification hinges on reading the DOB off the ID.
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-4">
       <div className="rounded-xl bg-[#0A0A0B]/60 border border-[#2A2A30]/40 px-3 py-3">
@@ -541,15 +571,41 @@ function IdScanStep({
         </div>
       </div>
 
-      <input
-        type="text"
-        required
-        placeholder="Name as printed on ID"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={isPending}
-        className="w-full px-4 py-3 rounded-xl bg-[#1C1C20] border border-[#2A2A30]/50 text-primary placeholder-muted text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/25 transition-colors"
-      />
+      <div className="space-y-2">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted">
+            Name on ID
+          </span>
+          <input
+            type="text"
+            required
+            placeholder="Full legal name as printed"
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value)}
+            disabled={isPending}
+            className="mt-1 w-full px-4 py-3 rounded-xl bg-[#1C1C20] border border-[#2A2A30]/50 text-primary placeholder-muted text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/25 transition-colors"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted">
+            Date of birth on ID
+          </span>
+          <input
+            type="date"
+            required
+            value={dobValue}
+            onChange={(e) => setDobValue(e.target.value)}
+            disabled={isPending}
+            className="mt-1 w-full px-4 py-3 rounded-xl bg-[#1C1C20] border border-[#2A2A30]/50 text-primary placeholder-muted text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/25 transition-colors"
+          />
+        </label>
+
+        <p className="text-[11px] text-muted">
+          Florida DABT requires recipient to be 21 or older and ID-verified
+          at handoff.
+        </p>
+      </div>
 
       {matchedName && (
         <div className="inline-flex items-center gap-1.5 rounded-full border border-ok/30 bg-ok/10 text-ok px-2.5 py-1 text-xs">
@@ -559,7 +615,11 @@ function IdScanStep({
 
       <button
         type="submit"
-        disabled={isPending || value.trim().length === 0}
+        disabled={
+          isPending ||
+          nameValue.trim().length === 0 ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(dobValue)
+        }
         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? (

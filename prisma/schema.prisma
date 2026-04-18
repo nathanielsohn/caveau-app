@@ -666,6 +666,11 @@ model AuthorizedRecipient {
   memberId     String   @map("member_id")
   name         String
   relationship String?
+  // Required for the Florida DABT age floor (>= 21) enforced at handoff
+  // in /api/deliveries/by-token/[token]/id-scan. DATE (no time) so ISO
+  // string compares against driver-entered DOB are unambiguous across
+  // server/client TZ boundaries.
+  dateOfBirth  DateTime @map("date_of_birth") @db.Date
   createdAt    DateTime @default(now()) @map("created_at")
 
   member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)

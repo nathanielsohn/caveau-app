@@ -97,6 +97,7 @@ export default async function HandoffDriverPage({
     token,
     deliveryId: delivery.id,
     status: delivery.status,
+    otpRequired: delivery.otpRequired,
     memberName: member.name,
     address: {
       line1: delivery.deliveryAddressLine1,

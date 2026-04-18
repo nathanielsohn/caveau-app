@@ -27,6 +27,8 @@ import {
   canTransition,
   ALLOWED_TRANSITIONS,
   defaultExpiresAt,
+  isLegalAge,
+  MIN_LEGAL_AGE_YEARS,
 } from "../delivery";
 
 type Mock = ReturnType<typeof vi.fn>;
@@ -227,6 +229,44 @@ describe("ALLOWED_TRANSITIONS", () => {
     for (const [from, tos] of Object.entries(ALLOWED_TRANSITIONS)) {
       expect(tos).not.toContain(from);
     }
+  });
+});
+
+describe("isLegalAge", () => {
+  it("MIN_LEGAL_AGE_YEARS matches Florida DABT", () => {
+    expect(MIN_LEGAL_AGE_YEARS).toBe(21);
+  });
+
+  it("blocks the day before the 21st birthday", () => {
+    const asOf = new Date(Date.UTC(2026, 3, 17));
+    const dob = new Date(Date.UTC(2005, 3, 18));
+    expect(isLegalAge(dob, asOf)).toBe(false);
+  });
+
+  it("allows the exact 21st birthday", () => {
+    const asOf = new Date(Date.UTC(2026, 3, 17));
+    const dob = new Date(Date.UTC(2005, 3, 17));
+    expect(isLegalAge(dob, asOf)).toBe(true);
+  });
+
+  it("allows the day after the 21st birthday", () => {
+    const asOf = new Date(Date.UTC(2026, 3, 17));
+    const dob = new Date(Date.UTC(2005, 3, 16));
+    expect(isLegalAge(dob, asOf)).toBe(true);
+  });
+
+  it("handles leap-day DOB on a non-leap year (blocked until Mar 1)", () => {
+    const dob = new Date(Date.UTC(2004, 1, 29));
+    const feb28 = new Date(Date.UTC(2025, 1, 28));
+    const mar1 = new Date(Date.UTC(2025, 2, 1));
+    expect(isLegalAge(dob, feb28)).toBe(false);
+    expect(isLegalAge(dob, mar1)).toBe(true);
+  });
+
+  it("blocks a clearly underage recipient", () => {
+    const asOf = new Date(Date.UTC(2026, 3, 17));
+    const dob = new Date(Date.UTC(2010, 0, 1));
+    expect(isLegalAge(dob, asOf)).toBe(false);
   });
 });
 

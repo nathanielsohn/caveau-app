@@ -26,12 +26,16 @@ interface DeliverNowButtonProps {
   wineId: string;
   wineName: string;
   defaultAddress: DeliverNowAddressDefaults | null;
+  /** Hint surfaced when the bottle value trips the OTP_THRESHOLD_USD
+   *  step-up gate — kept in sync with `isOtpRequired` in src/lib/delivery.ts. */
+  requiresStepUpOtp: boolean;
 }
 
 export default function DeliverNowButton({
   wineId,
   wineName,
   defaultAddress,
+  requiresStepUpOtp,
 }: DeliverNowButtonProps) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -104,14 +108,21 @@ export default function DeliverNowButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium text-caveau-black bg-gold hover:bg-gold/90 transition-all"
-      >
-        <Truck size={16} />
-        Deliver Now
-      </button>
+      <div className="flex flex-col items-start gap-1">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium text-caveau-black bg-gold hover:bg-gold/90 transition-all"
+        >
+          <Truck size={16} />
+          Deliver Now
+        </button>
+        {requiresStepUpOtp && (
+          <p className="text-[11px] text-muted">
+            Step-up verification code required (collection value over $2,000).
+          </p>
+        )}
+      </div>
 
       <dialog
         ref={dialogRef}

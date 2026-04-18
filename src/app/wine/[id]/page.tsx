@@ -324,6 +324,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                   wineId={wine.id}
                   wineName={wine.name}
                   defaultAddress={defaultDeliveryAddress}
+                  requiresStepUpOtp={currentValue >= 2000}
                 />
               )}
             </div>

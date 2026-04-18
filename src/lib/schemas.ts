@@ -212,11 +212,20 @@ export const DeliveryRequestIdParamSchema = z.object({
   deliveryRequestId: UuidSchema,
 });
 
-// Door-side (driver) routes — Step 3. Input is a driver-typed name read off
-// the recipient's ID; server matches case-insensitively against the
-// AuthorizedRecipient registry for the member.
+// Door-side (driver) routes — Step 3. Input is the name + DOB read off
+// the recipient's ID. Server matches name case-insensitively against the
+// AuthorizedRecipient registry for the member, cross-checks DOB exactly
+// against the registered value, and enforces the Florida DABT >= 21
+// age floor before advancing handoff_started → id_scanned.
 export const IdScanBodySchema = z.object({
   name: z.string().trim().min(1).max(200),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "dateOfBirth must be YYYY-MM-DD")
+    .refine((s) => {
+      const d = new Date(`${s}T00:00:00Z`);
+      return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
+    }, "dateOfBirth is not a valid calendar date"),
 });
 
 export const DriverUploadUrlBodySchema = z.object({
