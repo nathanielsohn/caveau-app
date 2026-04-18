@@ -241,3 +241,151 @@ export async function sendAlertEmail(
     return false;
   }
 }
+
+// ── Delivery OTP (feature #51) ─────────────────────────────────────────────
+
+export interface DeliveryOtpEmailPayload {
+  code: string;
+  totalValueUsd: number;
+  bottleCount: number;
+  expiresAt: Date;
+}
+
+function buildDeliveryOtpHtml(
+  recipient: AlertEmailRecipient,
+  delivery: DeliveryOtpEmailPayload,
+): string {
+  const baseUrl = getAppBaseUrl();
+  const settingsLink = baseUrl
+    ? `<a href="${baseUrl}/settings" style="color:#FFD166;text-decoration:underline;">Caveau settings</a>`
+    : "Caveau settings";
+  const totalFmt = delivery.totalValueUsd.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+  const bottles = `${delivery.bottleCount} bottle${delivery.bottleCount === 1 ? "" : "s"}`;
+  const minutesLeft = Math.max(
+    1,
+    Math.round((delivery.expiresAt.getTime() - Date.now()) / 60_000),
+  );
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Caveau delivery verification</title>
+  </head>
+  <body style="margin:0;padding:0;background:#0A0A0B;color:#E8E6E1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0B;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#141416;border:1px solid #2A2A30;border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:24px 28px 16px 28px;border-bottom:1px solid #2A2A30;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="color:#FFD166;font-size:22px;line-height:1;">&#x25C8;</span>
+                  <span style="font-family:Georgia,'Playfair Display',serif;font-size:20px;color:#E8E6E1;letter-spacing:0.02em;">Caveau Delivery</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;">
+                <div style="display:inline-block;padding:4px 10px;border-radius:999px;background:#FFD16622;color:#FFD166;font-size:11px;font-weight:600;letter-spacing:0.08em;">VERIFICATION</div>
+                <h1 style="margin:14px 0 8px 0;font-family:Georgia,'Playfair Display',serif;font-size:22px;color:#E8E6E1;font-weight:500;">Your delivery verification code</h1>
+                <p style="margin:0 0 24px 0;color:#B4B4BE;font-size:15px;line-height:1.5;">Enter this code in the Caveau app to authorize handoff for ${escapeHtml(bottles)} (${escapeHtml(totalFmt)}).</p>
+
+                <div style="text-align:center;background:#0F0F11;border:1px solid #2A2A30;border-radius:12px;padding:28px 20px;">
+                  <div style="font-family:'SF Mono',Menlo,Consolas,monospace;font-size:32px;letter-spacing:6px;color:#FFD166;font-weight:600;">${escapeHtml(delivery.code)}</div>
+                  <div style="margin-top:10px;color:#8B8B96;font-size:12px;">Expires in ~${minutesLeft} minute${minutesLeft === 1 ? "" : "s"}</div>
+                </div>
+
+                <p style="margin:24px 0 0 0;color:#8B8B96;font-size:12px;line-height:1.5;">
+                  Hello ${escapeHtml(recipient.name)},<br />
+                  If you did not request this delivery, cancel it from the app and review recent activity in your ${settingsLink}.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px;border-top:1px solid #2A2A30;background:#0F0F11;">
+                <p style="margin:0;color:#6B6B76;font-size:11px;">&#x25C8; Caveau &middot; Biometric-verified Delivery</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function buildDeliveryOtpText(
+  recipient: AlertEmailRecipient,
+  delivery: DeliveryOtpEmailPayload,
+): string {
+  const totalFmt = delivery.totalValueUsd.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+  const bottles = `${delivery.bottleCount} bottle${delivery.bottleCount === 1 ? "" : "s"}`;
+  const minutesLeft = Math.max(
+    1,
+    Math.round((delivery.expiresAt.getTime() - Date.now()) / 60_000),
+  );
+  return [
+    "CAVEAU DELIVERY — VERIFICATION CODE",
+    "",
+    `Your code: ${delivery.code}`,
+    `Expires in ~${minutesLeft} minute${minutesLeft === 1 ? "" : "s"}.`,
+    "",
+    `For handoff of ${bottles} (${totalFmt}).`,
+    "",
+    `Hello ${recipient.name},`,
+    "Enter this code in the Caveau app to authorize the delivery.",
+    "If you didn't request it, cancel from the app and review recent activity.",
+    "",
+    "— Caveau Delivery",
+  ].join("\n");
+}
+
+/**
+ * Send a branded delivery OTP email via AWS SES.
+ * Returns `true` on success, `false` on any failure or missing config.
+ * Never throws.
+ */
+export async function sendDeliveryOtpEmail(
+  recipient: AlertEmailRecipient,
+  delivery: DeliveryOtpEmailPayload,
+): Promise<boolean> {
+  const from = env.AWS_SES_FROM_EMAIL;
+  if (!from) {
+    console.warn(
+      `[email] AWS_SES_FROM_EMAIL unset — skipping delivery OTP to ${recipient.email}`,
+    );
+    return false;
+  }
+
+  try {
+    const client = getClient();
+    const subject = `Caveau delivery verification code · ${delivery.code}`;
+    await client.send(
+      new SendEmailCommand({
+        Source: from,
+        Destination: { ToAddresses: [recipient.email] },
+        Message: {
+          Subject: { Data: subject, Charset: "UTF-8" },
+          Body: {
+            Html: { Data: buildDeliveryOtpHtml(recipient, delivery), Charset: "UTF-8" },
+            Text: { Data: buildDeliveryOtpText(recipient, delivery), Charset: "UTF-8" },
+          },
+        },
+      }),
+    );
+    maybeLogWebhookReminder();
+    return true;
+  } catch (err) {
+    console.error("[email] sendDeliveryOtpEmail failed:", err);
+    return false;
+  }
+}
