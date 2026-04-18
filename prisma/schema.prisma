@@ -86,6 +86,41 @@ enum AlertSource {
   simulation
 }
 
+enum DeliveryStatus {
+  requested
+  pin_entered
+  address_confirmed
+  otp_verified
+  handoff_started
+  id_scanned
+  completed
+  cancelled
+  expired
+}
+
+enum DeliveryEventActor {
+  member
+  staff
+  system
+}
+
+enum DeliveryEventType {
+  requested
+  biometric_verified
+  pin_entered
+  pin_failed
+  address_confirmed
+  otp_sent
+  otp_verified
+  otp_failed
+  handoff_started
+  id_scanned
+  photo_captured
+  completed
+  cancelled
+  expired
+}
+
 model Facility {
   id                    String    @id @default(uuid())
   name                  String
@@ -169,6 +204,8 @@ model Member {
   facilities            FacilityMember[]
   handoffPackages       HandoffPackage[]
   hurricaneProtocolMemberships HurricaneProtocolMember[]
+  deliveryRequests      DeliveryRequest[]
+  authorizedRecipients  AuthorizedRecipient[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -206,6 +243,7 @@ model Wine {
   dispositions     WineDisposition[]
   handoffPackages  HandoffPackage[]
   nfcTags          NfcTag[]
+  deliveryRequestItems DeliveryRequestItem[]
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
@@ -526,4 +564,108 @@ model HurricaneProtocolMember {
   @@unique([protocolId, memberId])
   @@index([memberId, createdAt(sort: Desc)])
   @@map("hurricane_protocol_members")
+}
+
+// Biometric-verified "Deliver Now" request (feature #51). Captures the full
+// 4-step member ladder (biometric tap → PIN → address confirm → step-up
+// OTP when total value ≥ $2K) plus the door-side handoff log. PIN and OTP
+// are hashed with SHA-256 + a per-request 16-byte salt (see
+// src/lib/delivery.ts); rate-limiting caps attempts at 5/15min so the
+// fast-hash choice is safe versus bcrypt's ~100ms cost.
+model DeliveryRequest {
+  id                   String                 @id @default(uuid())
+  memberId             String                 @map("member_id")
+  status               DeliveryStatus         @default(requested)
+  isBiometricVerified  Boolean                @default(false) @map("is_biometric_verified")
+
+  // PIN is set on creation. OTP is set only when total currentValue of the
+  // items crosses OTP_THRESHOLD_USD ($2K) — see isOtpRequired().
+  pinSalt              String                 @map("pin_salt")
+  pinHash              String                 @map("pin_hash")
+  otpRequired          Boolean                @default(false) @map("otp_required")
+  otpSalt              String?                @map("otp_salt")
+  otpHash              String?                @map("otp_hash")
+
+  pinAttempts          Int                    @default(0) @map("pin_attempts")
+  otpAttempts          Int                    @default(0) @map("otp_attempts")
+  pinVerifiedAt        DateTime?              @map("pin_verified_at")
+  otpVerifiedAt        DateTime?              @map("otp_verified_at")
+
+  // Address snapshot captured at delivery time. Keeping scalar columns
+  // here (instead of a MemberAddress model) gives us an audit-trail
+  // guarantee the recipient address can't drift after the fact.
+  deliveryAddressLine1 String                 @map("delivery_address_line1")
+  deliveryAddressLine2 String?                @map("delivery_address_line2")
+  deliveryCity         String                 @map("delivery_city")
+  deliveryState        String                 @map("delivery_state")
+  deliveryPostalCode   String                 @map("delivery_postal_code")
+
+  // Door-side handoff log. Photo key is the S3 object key for the staff
+  // handoff photo (same convention as NfcTag.intakeImageKey).
+  scannedRecipientName String?                @map("scanned_recipient_name")
+  handoffPhotoKey      String?                @map("handoff_photo_key")
+
+  expiresAt            DateTime               @map("expires_at")
+  completedAt          DateTime?              @map("completed_at")
+  cancelledAt          DateTime?              @map("cancelled_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt       @map("updated_at")
+
+  member               Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items                DeliveryRequestItem[]
+  events               DeliveryEvent[]
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("delivery_requests")
+}
+
+model DeliveryRequestItem {
+  id                String          @id @default(uuid())
+  deliveryRequestId String          @map("delivery_request_id")
+  wineId            String          @map("wine_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  deliveryRequest   DeliveryRequest @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+  // Restrict — preserve the audit trail of what was delivered if a wine
+  // row is ever removed. Matches WineDisposition's guarantee.
+  wine              Wine            @relation(fields: [wineId], references: [id], onDelete: Restrict)
+
+  @@unique([deliveryRequestId, wineId])
+  @@index([wineId])
+  @@map("delivery_request_items")
+}
+
+model DeliveryEvent {
+  id                String             @id @default(uuid())
+  deliveryRequestId String             @map("delivery_request_id")
+  actor             DeliveryEventActor
+  type              DeliveryEventType
+  payload           Json?
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  deliveryRequest   DeliveryRequest    @relation(fields: [deliveryRequestId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryRequestId, createdAt(sort: Desc)])
+  @@index([actor, createdAt(sort: Desc)])
+  @@map("delivery_events")
+}
+
+// Per-member registry of people allowed to receive a delivery at the door.
+// The staff handoff ladder matches a scanned-ID name against this list
+// (case-insensitive substring match for demo — real ID-parsing services
+// like Jumio/Onfido slot in post-demo without model changes).
+model AuthorizedRecipient {
+  id           String   @id @default(uuid())
+  memberId     String   @map("member_id")
+  name         String
+  relationship String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  member       Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, name])
+  @@index([memberId])
+  @@map("authorized_recipients")
 }

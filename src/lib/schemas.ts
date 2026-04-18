@@ -155,6 +155,63 @@ export const AdvisorChatBodySchema = z.object({
     .max(40),
 });
 
+// ── Delivery (feature #51) ─────────────────────────────────────────────────
+
+export const DeliveryAddressSchema = z.object({
+  line1: z.string().trim().min(1).max(200),
+  line2: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.length > 0 ? v : undefined),
+      z.string().trim().max(200).optional(),
+    )
+    .optional(),
+  city: z.string().trim().min(1).max(100),
+  // US two-letter code for demo. Non-US addresses arrive post-demo with an
+  // explicit country field and a relaxed state/region schema.
+  state: z.string().trim().length(2).regex(/^[A-Za-z]{2}$/),
+  postalCode: z.string().trim().regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code"),
+});
+
+export const CreateDeliveryRequestBodySchema = z.object({
+  wineIds: z.array(UuidSchema).min(1).max(20),
+  address: DeliveryAddressSchema,
+});
+
+export const ConfirmPinBodySchema = z.object({
+  deliveryRequestId: UuidSchema,
+  pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits"),
+});
+
+export const ConfirmOtpBodySchema = z.object({
+  deliveryRequestId: UuidSchema,
+  otp: z.string().regex(/^\d{6}$/, "OTP must be 6 digits"),
+});
+
+export const ConfirmAddressBodySchema = z.object({
+  deliveryRequestId: UuidSchema,
+  address: DeliveryAddressSchema,
+});
+
+export const RecordHandoffBodySchema = z.object({
+  deliveryRequestId: UuidSchema,
+  scannedRecipientName: z.string().trim().min(1).max(200),
+  photoKey: z.string().trim().min(1).max(512),
+});
+
+export const CreateAuthorizedRecipientBodySchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  relationship: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.length > 0 ? v : undefined),
+      z.string().trim().max(100).optional(),
+    )
+    .optional(),
+});
+
+export const DeliveryRequestIdParamSchema = z.object({
+  deliveryRequestId: UuidSchema,
+});
+
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 /**

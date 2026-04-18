@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { hashPin, hashOtp, defaultExpiresAt } from '../src/lib/delivery';
 
 const prisma = new PrismaClient();
 
@@ -153,6 +154,14 @@ async function main() {
     prisma.lockerSlot.deleteMany(),
     prisma.hurricaneProtocolMember.deleteMany(),
     prisma.hurricaneProtocol.deleteMany(),
+    // Delivery tables (feature #51). DeliveryRequestItem has onDelete:Restrict
+    // to wines, so it must be cleared before wines. DeliveryEvent and
+    // DeliveryRequest would cascade via member delete, but explicit clears
+    // match the rest of this block.
+    prisma.deliveryEvent.deleteMany(),
+    prisma.deliveryRequestItem.deleteMany(),
+    prisma.deliveryRequest.deleteMany(),
+    prisma.authorizedRecipient.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -683,6 +692,89 @@ async function main() {
       },
     });
     console.log('  ✓ Hurricane protocol: Helene (returned)');
+  }
+
+  // 10b. Biometric Deliver Now scaffolding (feature #51). Two authorized
+  // recipients for Rob's door-side registry, plus one in-flight
+  // DeliveryRequest parked at `address_confirmed` (OTP required because
+  // total currentValue of the two items crosses $2K). Demo PIN `2847` and
+  // OTP `518204` are hashed via the same helpers the runtime uses so the
+  // /deliveries step-2 UI can verify them end-to-end.
+  await prisma.authorizedRecipient.createMany({
+    data: [
+      { memberId: member.id, name: 'Isabella Saenz', relationship: 'Spouse' },
+      { memberId: member.id, name: 'Marcus Whitfield', relationship: 'Business partner' },
+    ],
+    skipDuplicates: true,
+  });
+
+  const deliveryItemWines = createdWines
+    .filter((w) =>
+      w.name === 'Screaming Eagle Cabernet Sauvignon' || w.name === 'Harlan Estate',
+    )
+    .slice(0, 2);
+  if (deliveryItemWines.length === 2) {
+    const now = Date.now();
+    const DEMO_PIN = '2847';
+    const DEMO_OTP = '518204';
+    const { salt: pinSalt, hash: pinHash } = hashPin(DEMO_PIN);
+    const { salt: otpSalt, hash: otpHash } = hashOtp(DEMO_OTP);
+    const deliveryRequest = await prisma.deliveryRequest.create({
+      data: {
+        memberId: member.id,
+        status: 'address_confirmed',
+        isBiometricVerified: true,
+        pinSalt,
+        pinHash,
+        pinAttempts: 0,
+        pinVerifiedAt: new Date(now - 3 * 60 * 1000),
+        otpRequired: true,
+        otpSalt,
+        otpHash,
+        otpAttempts: 0,
+        deliveryAddressLine1: '1245 Galleon Dr',
+        deliveryCity: 'Naples',
+        deliveryState: 'FL',
+        deliveryPostalCode: '34102',
+        expiresAt: defaultExpiresAt(new Date(now)),
+      },
+    });
+    await prisma.deliveryRequestItem.createMany({
+      data: deliveryItemWines.map((w) => ({
+        deliveryRequestId: deliveryRequest.id,
+        wineId: w.id,
+      })),
+    });
+    await prisma.deliveryEvent.createMany({
+      data: [
+        {
+          deliveryRequestId: deliveryRequest.id,
+          actor: 'member',
+          type: 'requested',
+          createdAt: new Date(now - 7 * 60 * 1000),
+        },
+        {
+          deliveryRequestId: deliveryRequest.id,
+          actor: 'member',
+          type: 'biometric_verified',
+          createdAt: new Date(now - 5 * 60 * 1000),
+        },
+        {
+          deliveryRequestId: deliveryRequest.id,
+          actor: 'member',
+          type: 'pin_entered',
+          createdAt: new Date(now - 3 * 60 * 1000),
+        },
+        {
+          deliveryRequestId: deliveryRequest.id,
+          actor: 'member',
+          type: 'address_confirmed',
+          createdAt: new Date(now - 1 * 60 * 1000),
+        },
+      ],
+    });
+    console.log(`  ✓ Authorized recipients: 2`);
+    console.log(`  ✓ Delivery request (in-flight): demo PIN ${DEMO_PIN}, OTP ${DEMO_OTP}`);
   }
 
   // 11. Liv-ex Fine Wine 100 benchmark (feature #50 — AI Advisor). Seeds
