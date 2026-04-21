@@ -112,7 +112,7 @@ The deck is aggressive about the Sentinel hardware IP — *patent filing in prog
 
 ### 12. Sentinel sensor inventory & tier-bundled assignment
 
-Related to #11 but different surface: at signup, per-tier device allocation needs to be visible. *"Your Private Vault membership includes 2 Sentinels — where do you want them installed?"* With serial number capture, location assignment, activation status.
+~~Related to #11 but different surface: at signup, per-tier device allocation needs to be visible. *"Your Private Vault membership includes 2 Sentinels — where do you want them installed?"* With serial number capture, location assignment, activation status.~~ Shipped 2026-04-21. Onboarding wizard gained a fourth step that reads `bundledSentinels`/`bundledBottleProbes` off the member's tier, consumes the oldest facility-pool units, and transactionally installs them in the reserved locker with a demo-alive heartbeat. Collector tier gets a pure-copy upsell panel instead. Settings page gets a read-only "Your Sentinel devices" card with a member-scoped Bottle Probe pairing action.
 
 ### 13. Allocation access / limited release queue
 

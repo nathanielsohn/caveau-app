@@ -1,11 +1,17 @@
 "use server";
 
-import { Prisma, Tier } from "@prisma/client";
+import {
+  Prisma,
+  SentinelConnectivity,
+  SentinelEventType,
+  SentinelModel,
+  Tier,
+} from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { CreateWineBodySchema, parseOr400 } from "@/lib/schemas";
-import { isFoundingWindowOpen } from "@/lib/tiers";
+import { isFoundingWindowOpen, tierSpecForDbTier } from "@/lib/tiers";
 
 const SLOTS_PER_LOCKER = 32;
 
@@ -222,6 +228,174 @@ export async function addFirstWine(
       error: e instanceof Error ? e.message : "Failed to add wine",
     };
   }
+}
+
+/**
+ * Step 3 — install the member's tier-bundled Sentinels into the locker
+ * reserved in step 2 (feature #59).
+ *
+ * Pulls the oldest pool units at the member's facility matching each
+ * required model, flips them to installed in one transaction, emits an
+ * `installed` audit event per unit, and seeds a "fresh WiFi heartbeat"
+ * at install time so the /settings card and admin fleet view show the
+ * device as alive immediately (demo-sound; the 24h stale threshold in
+ * `src/lib/devices.ts` eventually flips them offline if real telemetry
+ * never arrives — follow-up cron for long-running demos).
+ *
+ * Soft-fail on pool shortage: if the facility's pool can't cover the
+ * bundle, whatever units were available get installed and the caller
+ * receives `{ shortage: N }` so the wizard can render "1 of 2
+ * installed — your second ships this week." Blocking signup on an
+ * operator-side stocking gap would be worse than a partial install.
+ *
+ * Idempotent: if the member already has installed devices, we don't
+ * double-install. Re-running the step returns the already-installed
+ * serials so the resume path can reuse the same receipt view.
+ */
+export async function installBundledDevicesAction(): Promise<
+  ActionResult<{
+    installed: { serialNumber: string; model: SentinelModel }[];
+    shortage: number;
+  }>
+> {
+  const gate = await requirePendingMember();
+  if (!gate.ok)
+    return gate as ActionResult<{
+      installed: { serialNumber: string; model: SentinelModel }[];
+      shortage: number;
+    }>;
+  const memberId = gate.memberId;
+
+  const member = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: {
+      tier: true,
+      facilities: {
+        select: { facilityId: true },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+      },
+      lockers: {
+        select: { id: true, facilityId: true },
+        orderBy: { lockerNumber: "asc" },
+        take: 1,
+      },
+    },
+  });
+  if (!member) return { ok: false, error: "Not authenticated" };
+  const locker = member.lockers[0];
+  if (!locker) {
+    return { ok: false, error: "Reserve a locker before installing devices" };
+  }
+  const facilityId = member.facilities[0]?.facilityId ?? locker.facilityId;
+
+  const tierSpec = tierSpecForDbTier(member.tier);
+  const want: Record<SentinelModel, number> = {
+    [SentinelModel.sentinel_locker]: tierSpec.bundledSentinels,
+    [SentinelModel.bottle_probe]: tierSpec.bundledBottleProbes,
+  };
+  const totalWanted = want.sentinel_locker + want.bottle_probe;
+  if (totalWanted === 0) {
+    // Collector — nothing to install. Wizard renders the upsell and
+    // advances without calling this action, but guard anyway.
+    return { ok: true, data: { installed: [], shortage: 0 } };
+  }
+
+  // Resume path: if the member already has any installed devices, return
+  // them as the receipt and report no shortage. Avoids double-installing
+  // on a wizard re-entry after a browser reload.
+  const alreadyInstalled = await prisma.sentinelDevice.findMany({
+    where: { memberId, installedAt: { not: null }, retiredAt: null },
+    select: { serialNumber: true, model: true },
+    orderBy: { installedAt: "asc" },
+  });
+  if (alreadyInstalled.length > 0) {
+    return {
+      ok: true,
+      data: { installed: alreadyInstalled, shortage: 0 },
+    };
+  }
+
+  const now = new Date();
+  const installed: { serialNumber: string; model: SentinelModel }[] = [];
+
+  // Process each model separately so a pool shortage on one model doesn't
+  // prevent the other from installing (Estate: 1 bottle probe pool unit
+  // is still worth installing even if locker sensors are out).
+  for (const model of [
+    SentinelModel.sentinel_locker,
+    SentinelModel.bottle_probe,
+  ]) {
+    const count = want[model];
+    if (count === 0) continue;
+
+    const pool = await prisma.sentinelDevice.findMany({
+      where: {
+        facilityId,
+        model,
+        memberId: null,
+        lockerId: null,
+        installedAt: null,
+        retiredAt: null,
+      },
+      orderBy: { createdAt: "asc" },
+      take: count,
+      select: { id: true, serialNumber: true, model: true },
+    });
+
+    for (const device of pool) {
+      try {
+        await prisma.$transaction([
+          prisma.sentinelDevice.update({
+            where: { id: device.id },
+            data: {
+              lockerId: locker.id,
+              memberId,
+              installedAt: now,
+              lastHeartbeatAt: now,
+              connectivity: SentinelConnectivity.wifi,
+              batteryPct: 100,
+              bundledWithTier: member.tier,
+            },
+          }),
+          prisma.sentinelDeviceEvent.create({
+            data: {
+              deviceId: device.id,
+              type: SentinelEventType.installed,
+              actorMemberId: memberId,
+              payload: {
+                via: "onboarding",
+                lockerId: locker.id,
+                model: device.model,
+              },
+            },
+          }),
+        ]);
+        installed.push({
+          serialNumber: device.serialNumber,
+          model: device.model,
+        });
+      } catch (e) {
+        // A concurrent signup grabbed the same pool row first — keep
+        // going; remaining pool units for this model are still fair
+        // game. The shortage count accounts for whatever we miss.
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === "P2025"
+        ) {
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  const shortage = totalWanted - installed.length;
+
+  revalidatePath("/settings");
+  revalidatePath("/admin/sentinels");
+
+  return { ok: true, data: { installed, shortage } };
 }
 
 /**

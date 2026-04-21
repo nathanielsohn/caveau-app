@@ -3,38 +3,45 @@
 import { useState, useTransition } from "react";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Tier } from "@prisma/client";
+import { SentinelModel, Tier } from "@prisma/client";
 import {
   Check,
   ChevronRight,
   Crown,
+  Cpu,
+  Droplet,
   Lock,
   ShieldCheck,
   Sparkles,
+  Wifi,
   Wine,
 } from "lucide-react";
 import {
   FOUNDING_BENEFITS,
   SELF_SERVE_TIERS,
   foundingSavingsUsd,
+  tierSpecForDbTier,
 } from "@/lib/tiers";
 import {
   setOnboardingTier,
   reserveOnboardingLocker,
+  installBundledDevicesAction,
   addFirstWine,
   completeOnboarding,
 } from "./actions";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 type ReservedLocker = { lockerNumber: number; zone: string } | null;
+type InstalledDevice = { serialNumber: string; model: SentinelModel };
 
 interface Props {
   memberName: string;
   initialTier: Tier;
-  initialStep: 1 | 3;
+  initialStep: 1 | 3 | 4;
   reservedLocker: ReservedLocker;
   facilityName: string;
   foundingWindowOpen: boolean;
+  installedDevices: InstalledDevice[];
 }
 
 export default function OnboardingWizard({
@@ -44,6 +51,7 @@ export default function OnboardingWizard({
   reservedLocker: initialReservedLocker,
   facilityName,
   foundingWindowOpen,
+  installedDevices: initialInstalledDevices,
 }: Props) {
   const { update } = useSession();
   const prefersReducedMotion = useReducedMotion();
@@ -53,9 +61,18 @@ export default function OnboardingWizard({
   const [reservedLocker, setReservedLocker] = useState<ReservedLocker>(
     initialReservedLocker,
   );
+  const [installedDevices, setInstalledDevices] = useState<InstalledDevice[]>(
+    initialInstalledDevices,
+  );
+  const [installShortage, setInstallShortage] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
+
+  const tierSpec = tierSpecForDbTier(tier);
+  const bundleCount =
+    tierSpec.bundledSentinels + tierSpec.bundledBottleProbes;
+  const hasBundle = bundleCount > 0;
 
   function handleTierContinue() {
     setError(null);
@@ -80,6 +97,24 @@ export default function OnboardingWizard({
       setReservedLocker(res.data);
       setStep(3);
     });
+  }
+
+  function handleInstallDevices() {
+    setError(null);
+    startTransition(async () => {
+      const res = await installBundledDevicesAction();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setInstalledDevices(res.data.installed);
+      setInstallShortage(res.data.shortage);
+    });
+  }
+
+  function handleContinueFromDevices() {
+    setError(null);
+    setStep(4);
   }
 
   async function finish() {
@@ -141,13 +176,13 @@ export default function OnboardingWizard({
             Welcome to Caveau
           </h1>
           <p className="text-secondary text-sm mt-1">
-            Three quick steps, {memberName.split(" ")[0]}.
+            Four quick steps, {memberName.split(" ")[0]}.
           </p>
         </div>
 
         {/* Progress */}
         <ol className="flex items-center justify-center gap-3 mb-10" aria-label="Onboarding progress">
-          {[1, 2, 3].map((n) => {
+          {[1, 2, 3, 4].map((n) => {
             const completed = step > n;
             const active = step === n;
             return (
@@ -165,10 +200,10 @@ export default function OnboardingWizard({
                 >
                   {completed ? <Check size={14} /> : n}
                 </div>
-                {n < 3 && (
+                {n < 4 && (
                   <div
                     className={[
-                      "w-10 md:w-16 h-px transition-colors",
+                      "w-8 md:w-12 h-px transition-colors",
                       step > n ? "bg-gold" : "bg-[#2A2A30]",
                     ].join(" ")}
                   />
@@ -378,10 +413,183 @@ export default function OnboardingWizard({
             {step === 3 && (
               <motion.section key="step-3" {...motionProps}>
                 <header className="mb-6">
+                  <div className="inline-flex items-center gap-2 text-gold text-xs uppercase tracking-wider mb-2">
+                    <Cpu size={14} /> Step 3 — Sentinel devices
+                  </div>
+                  <h2 className="font-serif text-xl md:text-2xl text-primary">
+                    {hasBundle
+                      ? installedDevices.length > 0
+                        ? "Your Sentinels are live"
+                        : `Your ${tierSpec.name} membership includes ${bundleCopy(tierSpec.bundledSentinels, tierSpec.bundledBottleProbes)}`
+                      : "Your locker is monitored 24/7"}
+                  </h2>
+                  <p className="text-secondary text-sm mt-1">
+                    {hasBundle
+                      ? installedDevices.length > 0
+                        ? "Installed in your locker and streaming temperature, humidity, vibration, and light now."
+                        : reservedLocker
+                          ? `We'll install them in Locker #${reservedLocker.lockerNumber}, Zone ${reservedLocker.zone} and start streaming readings immediately.`
+                          : "We'll install them in your locker and start streaming readings immediately."
+                      : "Every Caveau locker ships with built-in monitoring. Add a Sentinel unit later to get probe-level detail and Bottle Probe tracking."}
+                  </p>
+                </header>
+
+                {hasBundle && installedDevices.length === 0 && (
+                  <>
+                    <div className="rounded-xl border border-[#2A2A30] bg-[#1C1C20] p-5 md:p-6 grid gap-3">
+                      {tierSpec.bundledSentinels > 0 && (
+                        <DeviceBundleRow
+                          icon="sensor"
+                          title={`${tierSpec.bundledSentinels} × Sentinel locker sensor${tierSpec.bundledSentinels === 1 ? "" : "s"}`}
+                          blurb="Temperature, humidity, vibration, and light monitoring with WiFi + LTE-M fallback."
+                        />
+                      )}
+                      {tierSpec.bundledBottleProbes > 0 && (
+                        <DeviceBundleRow
+                          icon="probe"
+                          title={`${tierSpec.bundledBottleProbes} × Bottle Probe`}
+                          blurb="Pair with a specific grand cru for bottle-level telemetry. Pair to a wine anytime from your settings."
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-8 flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setStep(2)}
+                        disabled={isPending || submitted}
+                        className="text-secondary hover:text-primary text-sm transition-colors"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleInstallDevices}
+                        disabled={isPending || submitted}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isPending ? "Installing..." : "Install my devices"}
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {hasBundle && installedDevices.length > 0 && (
+                  <>
+                    <div className="rounded-xl border border-gold/30 bg-gold/5 p-5 md:p-6 grid gap-3">
+                      {installedDevices.map((d) => (
+                        <div
+                          key={d.serialNumber}
+                          className="flex items-center gap-3"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center text-gold">
+                            {d.model === SentinelModel.bottle_probe ? (
+                              <Droplet size={16} />
+                            ) : (
+                              <Cpu size={16} />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs uppercase tracking-wider text-muted">
+                              {d.model === SentinelModel.bottle_probe
+                                ? "Bottle Probe"
+                                : "Sentinel (locker)"}
+                            </div>
+                            <div className="text-primary font-mono tabular-nums text-sm truncate">
+                              {d.serialNumber}
+                            </div>
+                          </div>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] text-ok bg-ok/10 border border-ok/30 rounded-full px-2 py-0.5 shrink-0">
+                            <Wifi size={11} />
+                            Online
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {installShortage > 0 && (
+                      <p className="mt-4 text-xs text-secondary">
+                        {installShortage} device
+                        {installShortage === 1 ? "" : "s"} from your bundle
+                        {installShortage === 1 ? " is" : " are"} shipping this
+                        week — you&rsquo;ll see{" "}
+                        {installShortage === 1 ? "it" : "them"} in your
+                        settings as soon as we provision them.
+                      </p>
+                    )}
+
+                    <div className="mt-8 flex flex-col-reverse md:flex-row md:items-center md:justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={handleContinueFromDevices}
+                        disabled={isPending || submitted}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Continue <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {!hasBundle && (
+                  <>
+                    <div className="rounded-xl border border-[#2A2A30] bg-[#1C1C20] p-5 md:p-6">
+                      <p className="text-sm text-secondary mb-4">
+                        Collector tier includes facility-wide Sentinel
+                        monitoring on every locker. For probe-level
+                        telemetry or a Bottle Probe paired to a specific
+                        bottle, upgrade any time:
+                      </p>
+                      <ul className="grid gap-2">
+                        <UpsellRow
+                          name="Reserve"
+                          include="1 Sentinel"
+                          price="$149/mo"
+                        />
+                        <UpsellRow
+                          name="Private Vault"
+                          include="2 Sentinels"
+                          price="$349/mo"
+                        />
+                        <UpsellRow
+                          name="Estate"
+                          include="2 Sentinels + Bottle Probe"
+                          price="$999/mo"
+                        />
+                      </ul>
+                    </div>
+
+                    <div className="mt-8 flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setStep(2)}
+                        disabled={isPending || submitted}
+                        className="text-secondary hover:text-primary text-sm transition-colors"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleContinueFromDevices}
+                        disabled={isPending || submitted}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-caveau-black font-semibold text-sm hover:bg-gold/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Continue <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.section>
+            )}
+
+            {step === 4 && (
+              <motion.section key="step-4" {...motionProps}>
+                <header className="mb-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="inline-flex items-center gap-2 text-gold text-xs uppercase tracking-wider mb-2">
-                        <Wine size={14} /> Step 3 — Your first bottle
+                        <Wine size={14} /> Step 4 — Your first bottle
                       </div>
                       <h2 className="font-serif text-xl md:text-2xl text-primary">
                         Add a wine to your cellar
@@ -544,5 +752,57 @@ export default function OnboardingWizard({
         </div>
       </div>
     </div>
+  );
+}
+
+function bundleCopy(sentinels: number, probes: number): string {
+  const parts: string[] = [];
+  if (sentinels > 0) {
+    parts.push(`${sentinels} Sentinel${sentinels === 1 ? "" : "s"}`);
+  }
+  if (probes > 0) {
+    parts.push(`${probes} Bottle Probe${probes === 1 ? "" : "s"}`);
+  }
+  return parts.join(" + ");
+}
+
+function DeviceBundleRow({
+  icon,
+  title,
+  blurb,
+}: {
+  icon: "sensor" | "probe";
+  title: string;
+  blurb: string;
+}) {
+  const Icon = icon === "probe" ? Droplet : Cpu;
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center text-gold shrink-0">
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0">
+        <div className="text-primary text-sm font-medium">{title}</div>
+        <div className="text-xs text-muted mt-0.5">{blurb}</div>
+      </div>
+    </div>
+  );
+}
+
+function UpsellRow({
+  name,
+  include,
+  price,
+}: {
+  name: string;
+  include: string;
+  price: string;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-primary">{name}</span>
+      <span className="text-secondary text-xs">{include}</span>
+      <span className="text-gold text-xs tabular-nums">{price}</span>
+    </li>
   );
 }

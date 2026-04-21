@@ -10,6 +10,7 @@ import {
   foundingSavingsUsd,
   tierSpecForDbTier,
 } from "@/lib/tiers";
+import SentinelDevicesCard from "@/components/sentinel-devices-card";
 import PreferencesForm from "./preferences-form";
 
 export const dynamic = "force-dynamic";
@@ -136,6 +137,9 @@ export default async function SettingsPage() {
           </ul>
         </div>
       )}
+
+      {/* Sentinel devices card (#59) */}
+      <SentinelDevicesCard memberId={session.user.id} />
 
       {/* Alert email preferences card */}
       <div className="glass-card p-6 md:p-8">

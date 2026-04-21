@@ -555,11 +555,16 @@ async function main() {
       batteryPct: 54,
       lastHeartbeatAt: hoursAgo(31),
     },
-    // Inventory pool — two fresh units ready to provision. No lockerId,
-    // no memberId, no installedAt. Show up on the fleet as "Ready for
-    // install."
-    {
-      serialNumber: 'SEN-2026-00121',
+    // Inventory pool — fresh units ready to provision (feature #59).
+    // Sized to cover multiple live-demo signups: Private Vault consumes
+    // 2 locker sensors per member, Estate consumes 2 + 1 Bottle Probe.
+    // 6 Naples locker sensors + 2 Naples Bottle Probes + 1 Miami unit
+    // means we can absorb two Estate signups back-to-back without
+    // running dry. No lockerId, memberId, or installedAt — they show up
+    // on the admin fleet page as "Ready for install" until onboarding
+    // consumes them.
+    ...Array.from({ length: 6 }, (_, i) => ({
+      serialNumber: `SEN-2026-00${(121 + i).toString().padStart(3, '0')}`,
       model: SentinelModel.sentinel_locker,
       hardwareRev: 'A2',
       firmwareVersion: '2.4.1',
@@ -574,13 +579,30 @@ async function main() {
       connectivity: SentinelConnectivity.offline,
       batteryPct: 100,
       lastHeartbeatAt: null,
-    },
+    })),
+    ...Array.from({ length: 2 }, (_, i) => ({
+      serialNumber: `PRB-2026-000${(15 + i).toString().padStart(2, '0')}`,
+      model: SentinelModel.bottle_probe,
+      hardwareRev: 'B1',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: null,
+      memberId: null,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: null,
+      installedAt: null,
+      retiredAt: null,
+      connectivity: SentinelConnectivity.offline,
+      batteryPct: 100,
+      lastHeartbeatAt: null,
+    })),
     {
-      serialNumber: 'SEN-2026-00122',
+      serialNumber: 'SEN-2026-00201',
       model: SentinelModel.sentinel_locker,
       hardwareRev: 'A2',
       firmwareVersion: '2.4.1',
-      facilityId: naples.id,
+      facilityId: miami.id,
       lockerId: null,
       memberId: null,
       wineId: null,
