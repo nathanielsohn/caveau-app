@@ -183,6 +183,24 @@ enum SentinelEventType {
   test_ping
 }
 
+// Allocations (feature #60). Staff post limited releases → members
+// request → staff accept → staff fulfill (writes a Wine row).
+enum AllocationStatus {
+  draft
+  published
+  closed
+  fulfilled
+  cancelled
+}
+
+enum AllocationRequestStatus {
+  submitted
+  accepted
+  declined
+  cancelled
+  fulfilled
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -283,6 +301,7 @@ model Member {
   exitSignals                   ExitSignal[]
   sentinelDevices               SentinelDevice[]
   sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
+  allocationRequests            AllocationRequest[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -313,6 +332,12 @@ model Wine {
   // (feature #39). Null for wines that have never been synced — the UI
   // falls back to the most recent WineValuation.date in that case.
   lastValuationSyncAt  DateTime?               @map("last_valuation_sync_at")
+  // Back-link to the Allocation this bottle was acquired through
+  // (feature #60). Null for wines the member added manually, via
+  // migration import (#52), or that pre-date the allocations module.
+  // SET NULL on allocation delete so retiring a release doesn't
+  // cascade away the member's physical inventory.
+  sourceAllocationId   String?                 @map("source_allocation_id")
   member               Member                  @relation(fields: [memberId], references: [id], onDelete: Restrict)
   lockerSlots          LockerSlot[]
   certificates         ProvenanceCertificate[]
@@ -323,10 +348,12 @@ model Wine {
   deliveryRequestItems DeliveryRequestItem[]
   exitSignals          ExitSignal[]
   sentinelDevices      SentinelDevice[]
+  sourceAllocation     Allocation?             @relation("WineAllocationSource", fields: [sourceAllocationId], references: [id], onDelete: SetNull)
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
   @@index([memberId, status, currentValue(sort: Desc)])
+  @@index([sourceAllocationId])
   @@map("wines")
 }
 
@@ -963,4 +990,72 @@ model SentinelDeviceEvent {
 
   @@index([deviceId, createdAt(sort: Desc)])
   @@map("sentinel_device_events")
+}
+
+// Private allocations / limited releases (feature #60). Staff posts a
+// release with per-tier eligibility; eligible members can request bottles;
+// staff accepts winners and fulfills (writes Wine rows with
+// sourceAllocationId set). Two-stage fulfillment (accepted → fulfilled)
+// leaves room for off-line payment between the two until Stripe (#27)
+// lands. foundingOnly AND-s a founding-member gate on top of
+// minimumTier; foundingEarlyAccess gives founding members visibility
+// before opensAt.
+model Allocation {
+  id                   String                  @id @default(uuid())
+  slug                 String                  @unique
+  producer             String
+  wineName             String                  @map("wine_name")
+  vintage              Int
+  region               String
+  varietal             String
+  description          String?
+  tastingNotes         String?                 @map("tasting_notes")
+  quantity             Int
+  pricePerBottleUsd    Decimal                 @map("price_per_bottle_usd") @db.Decimal(14, 2)
+  minimumTier          Tier                    @map("minimum_tier")
+  foundingOnly         Boolean                 @default(false) @map("founding_only")
+  foundingEarlyAccess  Boolean                 @default(false) @map("founding_early_access")
+  status               AllocationStatus        @default(draft)
+  heroImageKey         String?                 @map("hero_image_key")
+  opensAt              DateTime                @map("opens_at")
+  closesAt             DateTime                @map("closes_at")
+  publishedAt          DateTime?               @map("published_at")
+  closedAt             DateTime?               @map("closed_at")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  requests             AllocationRequest[]
+  sourcedWines         Wine[]                  @relation("WineAllocationSource")
+
+  @@index([status, opensAt])
+  @@index([minimumTier, status])
+  @@map("allocations")
+}
+
+// Per-member interest in an allocation. Unique on (allocationId, memberId)
+// so a cancelled row is preserved (for audit) and the member can't
+// double-submit. Lifecycle: submitted → accepted → fulfilled, with
+// declined / cancelled branches. `fulfilledById` is the staff member
+// who wrote the resulting Wine row.
+model AllocationRequest {
+  id                 String                   @id @default(uuid())
+  allocationId       String                   @map("allocation_id")
+  memberId           String                   @map("member_id")
+  quantityRequested  Int                      @map("quantity_requested")
+  memberNote         String?                  @map("member_note")
+  status             AllocationRequestStatus  @default(submitted)
+  staffNote          String?                  @map("staff_note")
+  acceptedAt         DateTime?                @map("accepted_at")
+  declinedAt         DateTime?                @map("declined_at")
+  cancelledAt        DateTime?                @map("cancelled_at")
+  fulfilledAt        DateTime?                @map("fulfilled_at")
+  fulfilledById      String?                  @map("fulfilled_by_id")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+  allocation         Allocation               @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  member             Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([allocationId, memberId])
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, allocationId])
+  @@map("allocation_requests")
 }

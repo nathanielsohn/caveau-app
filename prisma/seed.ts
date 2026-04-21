@@ -162,6 +162,10 @@ async function main() {
     prisma.provenanceCertificate.deleteMany(),
     prisma.wineValuation.deleteMany(),
     prisma.lockerSlot.deleteMany(),
+    // Allocations (feature #60). Requests cascade from allocations, but
+    // we also clear the FK on wines before wiping the allocation rows so
+    // `sourceAllocationId` SET NULL doesn't leave dangling pointers.
+    prisma.allocationRequest.deleteMany(),
     prisma.hurricaneProtocolMember.deleteMany(),
     prisma.hurricaneProtocol.deleteMany(),
     // Delivery tables (feature #51). DeliveryRequestItem has onDelete:Restrict
@@ -182,6 +186,11 @@ async function main() {
     // FK, but clearing explicitly matches the rest of this block.
     prisma.sentinelDeviceEvent.deleteMany(),
     prisma.sentinelDevice.deleteMany(),
+    // Allocations themselves. Must come AFTER wine.deleteMany() ran
+    // conceptually, but since Wine.sourceAllocationId is ON DELETE SET
+    // NULL the ordering here is harmless — wipe the releases before
+    // wines so the wines-delete below doesn't see FK-dependent rows.
+    prisma.allocation.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -298,6 +307,11 @@ async function main() {
       hurricaneProtectionEnrolledAt: new Date(Date.now() - 120 * 86400000),
       hurricaneInsurancePartner: 'PURE Insurance',
       hurricaneInsuranceDiscountPct: 12.5,
+      // Founding Member (feature #54) — seeded so the Founding Circle
+      // bundle renders on /settings and so Allocations (#60) with
+      // `foundingEarlyAccess` or `foundingOnly` surface for Robert.
+      foundingMember: true,
+      foundingLockedAt: new Date(Date.now() - 90 * 86400000),
     },
   });
   console.log(`  ✓ Member: ${member.name}`);
@@ -1306,7 +1320,139 @@ async function main() {
     `  ✓ Migration request: ${migrationRequest.rowCount} rows (status: ${migrationRequest.status})`,
   );
 
-  // 18. Exit signals (feature #55). Runs the same scoring pass the app
+  // 18. Allocations (feature #60). Three releases to show the full
+  // narrative: a founding-early Estate-only DRC, a Private-Vault-and-up
+  // Opus One with Robert's pending request, and a closed Screaming
+  // Eagle that was fulfilled into Robert's collection (with
+  // sourceAllocationId back-linked so the wine detail page can surface
+  // the provenance chain).
+  const DAY = 86400000;
+  const drc = await prisma.allocation.create({
+    data: {
+      slug: 'drc-romanee-conti-2021',
+      producer: 'Domaine de la Romanée-Conti',
+      wineName: 'Romanée-Conti',
+      vintage: 2021,
+      region: 'Burgundy',
+      varietal: 'Pinot Noir',
+      description:
+        "Three bottles from the 2021 library release, sourced through our private network. DRC's Grand Cru monopoly in Vosne-Romanée is as scarce as fine wine gets — 1.8 hectares, roughly 5,000 bottles a year. A cornerstone position for any Burgundy-focused collection.",
+      tastingNotes:
+        'Aromatic wildness: rose petal, crushed raspberry, cardamom, forest floor. Silken, weightless texture masking formidable tannin structure. A 40-year wine.',
+      quantity: 3,
+      pricePerBottleUsd: 18000,
+      minimumTier: Tier.black,
+      foundingOnly: false,
+      foundingEarlyAccess: true,
+      status: 'published',
+      opensAt: new Date(Date.now() - 5 * DAY),
+      closesAt: new Date(Date.now() + 25 * DAY),
+      publishedAt: new Date(Date.now() - 5 * DAY),
+    },
+  });
+  const opusOne = await prisma.allocation.create({
+    data: {
+      slug: 'opus-one-2021-library',
+      producer: 'Opus One',
+      wineName: 'Opus One',
+      vintage: 2021,
+      region: 'Napa Valley',
+      varietal: 'Cabernet Sauvignon Blend',
+      description:
+        'A 12-bottle library release from the 2021 vintage — one of the warmest, most-concentrated Napa years on record. Opus One is the Mondavi-Mouton collaboration that defined the "First Growth of the New World" framing.',
+      tastingNotes:
+        "Cassis, graphite, dark chocolate, cedar. Opulent but disciplined — the house's signature restraint. Peak 2028–2045.",
+      quantity: 12,
+      pricePerBottleUsd: 650,
+      minimumTier: Tier.platinum,
+      foundingOnly: false,
+      foundingEarlyAccess: false,
+      status: 'published',
+      opensAt: new Date(Date.now() - 2 * DAY),
+      closesAt: new Date(Date.now() + 14 * DAY),
+      publishedAt: new Date(Date.now() - 2 * DAY),
+    },
+  });
+  const screamingEagle = await prisma.allocation.create({
+    data: {
+      slug: 'screaming-eagle-2020',
+      producer: 'Screaming Eagle',
+      wineName: 'Cabernet Sauvignon',
+      vintage: 2020,
+      region: 'Napa Valley',
+      varietal: 'Cabernet Sauvignon',
+      description:
+        'Two bottles from the 2020 release — the most allocated cult Napa in the market. Standard annual production hovers around 500 cases, most of which move through a pre-existing mailing list.',
+      tastingNotes:
+        'Dense, savory, and layered: blackberry, tobacco, espresso, graphite. Structural tannins still tightly wound.',
+      quantity: 2,
+      pricePerBottleUsd: 4500,
+      minimumTier: Tier.black,
+      foundingOnly: false,
+      foundingEarlyAccess: false,
+      status: 'fulfilled',
+      opensAt: new Date(Date.now() - 60 * DAY),
+      closesAt: new Date(Date.now() - 30 * DAY),
+      publishedAt: new Date(Date.now() - 60 * DAY),
+      closedAt: new Date(Date.now() - 30 * DAY),
+    },
+  });
+
+  // Robert's pending request on Opus One (submitted, awaiting review).
+  await prisma.allocationRequest.create({
+    data: {
+      allocationId: opusOne.id,
+      memberId: member.id,
+      quantityRequested: 3,
+      memberNote:
+        'Planning to cellar two and pour the third at Thanksgiving — would love these.',
+      status: 'submitted',
+      createdAt: new Date(Date.now() - 1 * DAY),
+    },
+  });
+
+  // Robert's fulfilled request on Screaming Eagle — one bottle acquired
+  // through Caveau, already landed in his collection with
+  // sourceAllocationId back-linked so the wine detail page can render
+  // "acquired via Caveau Allocation".
+  const seRequest = await prisma.allocationRequest.create({
+    data: {
+      allocationId: screamingEagle.id,
+      memberId: member.id,
+      quantityRequested: 1,
+      memberNote: null,
+      status: 'fulfilled',
+      acceptedAt: new Date(Date.now() - 40 * DAY),
+      fulfilledAt: new Date(Date.now() - 30 * DAY),
+      fulfilledById: admin.id,
+      createdAt: new Date(Date.now() - 50 * DAY),
+    },
+  });
+
+  await prisma.wine.create({
+    data: {
+      name: 'Screaming Eagle Cabernet Sauvignon',
+      vintage: 2020,
+      region: 'Napa Valley',
+      varietal: 'Cabernet Sauvignon',
+      producer: 'Screaming Eagle',
+      purchasePrice: 4500,
+      currentValue: 4800,
+      tastingNotes:
+        'Acquired via Caveau Allocation. Dense, savory, layered: blackberry, tobacco, espresso, graphite.',
+      drinkWindowStart: 2026,
+      drinkWindowEnd: 2045,
+      memberId: member.id,
+      sourceAllocationId: screamingEagle.id,
+    },
+  });
+
+  void seRequest;
+  console.log(
+    `  ✓ Allocations: ${drc.producer} (open · founding early), ${opusOne.producer} (open · 1 pending), ${screamingEagle.producer} (fulfilled)`,
+  );
+
+  // 19. Exit signals (feature #55). Runs the same scoring pass the app
   // uses in production so the demo state reflects real rules — drink
   // window closing within 5 years and/or 12-month momentum >= +12%.
   // Safe to re-run: the reconciler upserts in place and closes stale

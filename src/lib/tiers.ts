@@ -151,6 +151,26 @@ export function tierSpecForDbTier(tier: Tier): TierSpec {
   );
 }
 
+/**
+ * Ordinal rank for DB Tier values, ascending from entry-level (Collector
+ * = 0) to top (Estate = 3). Used wherever "at least tier X" comparisons
+ * need to match the pitch-deck narrative (Collector < Reserve < Private
+ * Vault < Estate). The Prisma enum happens to declare in the same order
+ * today, but relying on enum declaration order is fragile if a tier ever
+ * gets inserted — this map is the single load-bearing source of truth.
+ */
+export const TIER_RANK: Record<Tier, number> = {
+  [Tier.gold]: 0,
+  [Tier.reserve]: 1,
+  [Tier.platinum]: 2,
+  [Tier.black]: 3,
+};
+
+/** True when memberTier >= minimum on the ordered tier ladder. */
+export function tierAtLeast(memberTier: Tier, minimum: Tier): boolean {
+  return TIER_RANK[memberTier] >= TIER_RANK[minimum];
+}
+
 // ── Founding Member pricing (#54) ──────────────────────────────────────
 
 /**

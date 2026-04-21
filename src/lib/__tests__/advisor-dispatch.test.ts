@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 
 describe("ADVISOR_TOOL_DEFINITIONS", () => {
-  it("registers exactly the ten member-scoped tools", () => {
+  it("registers exactly the eleven member-scoped tools", () => {
     const names = ADVISOR_TOOL_DEFINITIONS.map((t) => t.name).sort();
     expect(names).toEqual(
       [
@@ -57,6 +57,7 @@ describe("ADVISOR_TOOL_DEFINITIONS", () => {
         "getLivexBenchmark",
         "getLivexPriceHistory",
         "getMemberPortfolio",
+        "getMyAllocations",
         "getPortfolioVsLivex",
         "getTierDetails",
         "getWineDetail",

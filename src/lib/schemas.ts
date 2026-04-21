@@ -148,6 +148,10 @@ export const AdvisorBenchmarkParamSchema = z.object({
   since: DateSchema.optional(),
 });
 
+export const AdvisorAllocationsParamSchema = z.object({
+  status: z.enum(["eligible_open", "requested", "all"]).optional(),
+});
+
 // Chat route body. 8000 chars per turn is roughly ~2000 tokens — enough
 // for a long question without letting a single message balloon the
 // prompt. 40 turns caps total transcript cost per request; the chat UI
@@ -361,6 +365,90 @@ export const MigrationUpdateMappingBodySchema = z.object({
 
 export const MigrationFailBodySchema = z.object({
   failureReason: z.string().trim().min(1).max(500),
+});
+
+// ── Allocations (feature #60) ─────────────────────────────────────────────
+
+export const AllocationSlugSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(80)
+  .regex(
+    /^[a-z0-9-]+$/,
+    "Slug may only contain lowercase letters, digits, and dashes",
+  );
+
+export const CreateAllocationBodySchema = z
+  .object({
+    slug: AllocationSlugSchema,
+    producer: z.string().trim().min(1).max(200),
+    wineName: z.string().trim().min(1).max(200),
+    vintage: z.coerce.number().pipe(VintageSchema),
+    region: z.string().trim().min(1).max(200),
+    varietal: z.string().trim().min(1).max(200),
+    description: z
+      .preprocess(
+        (v) =>
+          typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+        z.string().max(5000).optional(),
+      )
+      .optional(),
+    tastingNotes: z
+      .preprocess(
+        (v) =>
+          typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+        z.string().max(5000).optional(),
+      )
+      .optional(),
+    quantity: z.coerce.number().int().min(1).max(1000),
+    pricePerBottleUsd: z.coerce.number().pipe(PriceSchema),
+    minimumTier: z.enum(["gold", "reserve", "platinum", "black"]),
+    foundingOnly: z.preprocess(
+      (v) => v === "on" || v === "true" || v === true,
+      z.boolean(),
+    ),
+    foundingEarlyAccess: z.preprocess(
+      (v) => v === "on" || v === "true" || v === true,
+      z.boolean(),
+    ),
+    heroImageKey: z
+      .preprocess(
+        (v) =>
+          typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+        z.string().max(512).optional(),
+      )
+      .optional(),
+    opensAt: DateSchema,
+    closesAt: DateSchema,
+    status: z.enum(["draft", "published"]).default("draft"),
+  })
+  .refine((v) => v.closesAt.getTime() >= v.opensAt.getTime(), {
+    message: "Close date must be at or after the open date",
+    path: ["closesAt"],
+  });
+
+export const RequestAllocationBodySchema = z.object({
+  allocationId: UuidSchema,
+  quantityRequested: z.coerce.number().int().min(1).max(3),
+  memberNote: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
+});
+
+export const AllocationRequestActionBodySchema = z.object({
+  requestId: UuidSchema,
+  staffNote: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────

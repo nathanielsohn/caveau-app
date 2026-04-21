@@ -287,6 +287,11 @@ export async function middleware(req: NextRequest) {
     // URL. Draft and cancelled events 404 at the page layer.
     pathname === "/events" ||
     pathname.startsWith("/events/") ||
+    // Allocations list (feature #60). Unauthenticated visitors see the
+    // anonymized teaser + waitlist CTA; authenticated members see the
+    // eligibility-gated feed. The detail page at /allocations/[slug]
+    // stays auth-gated — it calls redirect() itself if unauthenticated.
+    pathname === "/allocations" ||
     // Cron endpoints are auth'd via shared-secret Bearer token (CRON_SECRET),
     // not session cookies. Let them through the auth gate; the route handler
     // rejects unauthenticated invocations itself.

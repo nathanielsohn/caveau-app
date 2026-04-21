@@ -40,10 +40,12 @@ import {
   getPortfolioVsLivex,
   getExitSignals,
   getInsuranceSavingsEstimate,
+  getMyAllocations,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
+  AdvisorAllocationsParamSchema,
 } from "@/lib/schemas";
 import { logger } from "@/lib/logger";
 
@@ -180,6 +182,23 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getMyAllocations",
+    description:
+      "Return private allocations and limited releases available to the authenticated member. Each row includes producer, wine, vintage, quantity remaining, price per bottle, tier eligibility, founding-only flag, open/close dates, eligibility decision for the session member, and the member's own request state (submitted / accepted / fulfilled / declined / none). Use this for 'what allocations am I eligible for?', 'what's my request status on the DRC?', or 'which releases close this week?'. The optional `status` filter selects `eligible_open` (default — currently open and the member qualifies), `requested` (any allocation the member has ever requested), or `all` (every open release, including tier-locked ones so you can explain the ladder).",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["eligible_open", "requested", "all"],
+          description:
+            "Which slice of allocations to return. Defaults to `eligible_open`.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -228,6 +247,11 @@ export async function dispatchTool(
 
       case "getInsuranceSavingsEstimate":
         return { ok: true, result: await getInsuranceSavingsEstimate() };
+
+      case "getMyAllocations": {
+        const params = AdvisorAllocationsParamSchema.parse(input ?? {});
+        return { ok: true, result: await getMyAllocations(params) };
+      }
 
       default:
         return { ok: false, error: `Unknown tool: ${name}` };

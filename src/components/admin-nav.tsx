@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Cpu,
   FileInput,
+  Gem,
   LogOut,
   ArrowLeft,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const adminNavItems = [
   { href: "/admin/sentinels", label: "Devices", icon: Cpu },
   { href: "/admin/alerts", label: "Alerts", icon: Bell },
   { href: "/admin/events", label: "Events", icon: CalendarDays },
+  { href: "/admin/allocations", label: "Allocations", icon: Gem },
   { href: "/admin/migrations", label: "Migrations", icon: FileInput },
 ];
 

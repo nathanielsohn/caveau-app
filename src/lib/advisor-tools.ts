@@ -26,6 +26,11 @@ import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
 } from "@/lib/schemas";
+import {
+  AllocationRequestStatus,
+  AllocationStatus,
+} from "@prisma/client";
+import { decideEligibility, bottlesRemaining } from "@/lib/allocations";
 
 /**
  * Thrown when a tool is invoked without an authenticated session. The
@@ -943,4 +948,182 @@ export async function getInsuranceSavingsEstimate(): Promise<AdvisorInsuranceSav
     partners: estimate.partners,
     disciplineBullets: estimate.disciplineBullets,
   };
+}
+
+// ── getMyAllocations (feature #60) ───────────────────────────────────────
+
+export interface AdvisorAllocation {
+  slug: string;
+  producer: string;
+  wineName: string;
+  vintage: number;
+  region: string;
+  quantity: number;
+  /** Bottles still available (not yet accepted or fulfilled). */
+  remaining: number;
+  pricePerBottleUsd: number;
+  minimumTier: { slug: string; name: string };
+  foundingOnly: boolean;
+  foundingEarlyAccess: boolean;
+  opensAt: string;
+  closesAt: string;
+  /** Eligibility outcome for the session member — null reason when eligible. */
+  eligible: boolean;
+  reason: string;
+  /** Member's own request state on this allocation, if any. */
+  myRequest: {
+    status: string;
+    quantityRequested: number;
+    submittedAt: string;
+  } | null;
+}
+
+export interface AdvisorAllocations {
+  allocations: AdvisorAllocation[];
+  /** Echoes the filter the model passed so it can reason about coverage. */
+  filter: "eligible_open" | "requested" | "all";
+}
+
+/**
+ * Return allocations visible to the session member for the given filter:
+ *   - eligible_open (default): open + published + member is eligible
+ *   - requested: any allocation the member has ever requested (any status)
+ *   - all: every published/open allocation the member can see, even if
+ *     below their tier floor (so the advisor can reason about ladder)
+ *
+ * `myRequest` reflects the most recent non-cancelled request per allocation.
+ * Cancellations are hidden (treated as "not requested") so a cancelled
+ * request doesn't persist in the advisor's view.
+ */
+export async function getMyAllocations(params: {
+  status?: "eligible_open" | "requested" | "all";
+}): Promise<AdvisorAllocations> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+  const filter = params.status ?? "eligible_open";
+
+  const member = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: { tier: true, foundingMember: true },
+  });
+  if (!member) throw new AdvisorAuthError();
+
+  const now = new Date();
+
+  let allocations;
+  if (filter === "requested") {
+    allocations = await prisma.allocation.findMany({
+      where: {
+        requests: {
+          some: {
+            memberId,
+            status: {
+              not: AllocationRequestStatus.cancelled,
+            },
+          },
+        },
+      },
+      include: {
+        requests: {
+          where: { memberId },
+          select: {
+            status: true,
+            quantityRequested: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  } else {
+    allocations = await prisma.allocation.findMany({
+      where: {
+        status: AllocationStatus.published,
+        closesAt: { gte: now },
+      },
+      include: {
+        requests: {
+          where: { memberId },
+          select: {
+            status: true,
+            quantityRequested: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { opensAt: "asc" },
+      take: 50,
+    });
+  }
+
+  // Second query for the claimed-count math across all displayed rows.
+  const allocationIds = allocations.map((a) => a.id);
+  const claimedRows = allocationIds.length
+    ? await prisma.allocationRequest.findMany({
+        where: {
+          allocationId: { in: allocationIds },
+          status: {
+            in: [
+              AllocationRequestStatus.accepted,
+              AllocationRequestStatus.fulfilled,
+            ],
+          },
+        },
+        select: { allocationId: true, quantityRequested: true, status: true },
+      })
+    : [];
+  const claimedByAllocation = new Map<string, typeof claimedRows>();
+  for (const row of claimedRows) {
+    const arr = claimedByAllocation.get(row.allocationId) ?? [];
+    arr.push(row);
+    claimedByAllocation.set(row.allocationId, arr);
+  }
+
+  const results: AdvisorAllocation[] = allocations.map((a) => {
+    const decision = decideEligibility(
+      { tier: member.tier, foundingMember: member.foundingMember },
+      a,
+      now,
+    );
+    const claimed = claimedByAllocation.get(a.id) ?? [];
+    const remaining = bottlesRemaining(a, claimed);
+    const mine = a.requests[0];
+    const tierSpec = tierSpecForDbTier(a.minimumTier);
+    return {
+      slug: a.slug,
+      producer: a.producer,
+      wineName: a.wineName,
+      vintage: a.vintage,
+      region: a.region,
+      quantity: a.quantity,
+      remaining,
+      pricePerBottleUsd: toNumber(a.pricePerBottleUsd),
+      minimumTier: { slug: tierSpec.slug, name: tierSpec.name },
+      foundingOnly: a.foundingOnly,
+      foundingEarlyAccess: a.foundingEarlyAccess,
+      opensAt: a.opensAt.toISOString(),
+      closesAt: a.closesAt.toISOString(),
+      eligible: decision.eligible,
+      reason: decision.reason,
+      myRequest: mine
+        ? {
+            status: mine.status,
+            quantityRequested: mine.quantityRequested,
+            submittedAt: mine.createdAt.toISOString(),
+          }
+        : null,
+    };
+  });
+
+  const filtered =
+    filter === "eligible_open"
+      ? results.filter((r) => r.eligible)
+      : results;
+
+  return { allocations: filtered, filter };
 }
