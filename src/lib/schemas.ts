@@ -128,6 +128,14 @@ export const SensorIngestBodySchema = z.object({
     .datetime({ offset: true })
     .pipe(z.coerce.date()),
   deviceSignature: z.string().min(1).max(512),
+  // Optional heartbeat fields (feature #58). When present the ingest
+  // route upserts the device's mutable state — battery, connectivity,
+  // firmware — and emits a SentinelDeviceEvent on any change. Missing
+  // fields are ignored rather than nulling out the existing value, so
+  // older simulated devices keep working without schema churn.
+  batteryPct: z.coerce.number().int().min(0).max(100).optional(),
+  connectivity: z.enum(["wifi", "lte_m", "offline"]).optional(),
+  firmwareVersion: z.string().min(1).max(64).optional(),
 });
 
 // ── Advisor tool params (feature #50) ─────────────────────────────────────

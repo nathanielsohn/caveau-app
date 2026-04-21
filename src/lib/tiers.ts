@@ -32,6 +32,15 @@ export interface TierSpec {
   includedServices: string[];
   /** Null for tiers that can't be self-selected from onboarding. */
   dbTier: Tier | null;
+  /**
+   * Sentinel locker sensors included at this tier (feature #58 / #59).
+   * Collector requires purchase; Reserve 1, Private Vault 2, Estate 2
+   * per the pitch deck slide 8. The admin fleet page reads this to
+   * attribute bundled-vs-purchased on a device without a separate flag.
+   */
+  bundledSentinels: number;
+  /** Bottle Probes included at this tier. Estate only today. */
+  bundledBottleProbes: number;
 }
 
 export const TIERS: readonly TierSpec[] = [
@@ -52,6 +61,8 @@ export const TIERS: readonly TierSpec[] = [
       "Email alerts on threshold breaches",
     ],
     dbTier: Tier.gold,
+    bundledSentinels: 0,
+    bundledBottleProbes: 0,
   },
   {
     slug: "reserve",
@@ -70,6 +81,8 @@ export const TIERS: readonly TierSpec[] = [
       "Quarterly portfolio review",
     ],
     dbTier: Tier.reserve,
+    bundledSentinels: 1,
+    bundledBottleProbes: 0,
   },
   {
     slug: "private_vault",
@@ -89,6 +102,8 @@ export const TIERS: readonly TierSpec[] = [
       "Priority Sentinel alerts",
     ],
     dbTier: Tier.platinum,
+    bundledSentinels: 2,
+    bundledBottleProbes: 0,
   },
   {
     slug: "estate",
@@ -109,6 +124,8 @@ export const TIERS: readonly TierSpec[] = [
       "Hurricane Emergency Collection Protection",
     ],
     dbTier: Tier.black,
+    bundledSentinels: 2,
+    bundledBottleProbes: 1,
   },
 ] as const;
 

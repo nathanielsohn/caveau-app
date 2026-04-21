@@ -156,6 +156,33 @@ enum ExitSignalStrength {
   strong
 }
 
+// Sentinel fleet (feature #58). `sentinel_locker` is the standard
+// locker-mounted environmental sensor; `bottle_probe` is the Estate-tier
+// accessory that pairs with a specific bottle (wine_id set, locker_id
+// usually null). Same fleet page, same event log — the enum gates the few
+// places logic differs (e.g. which link to render in the assignment card).
+enum SentinelModel {
+  sentinel_locker
+  bottle_probe
+}
+
+enum SentinelConnectivity {
+  wifi
+  lte_m
+  offline
+}
+
+enum SentinelEventType {
+  installed
+  firmware_updated
+  reassigned
+  retired
+  heartbeat_gap
+  battery_low
+  connectivity_changed
+  test_ping
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -170,6 +197,7 @@ model Facility {
   events                FacilityEvent[]
   hurricaneProtocols    HurricaneProtocol[]
   tastingEvents         Event[]
+  sentinelDevices       SentinelDevice[]
 
   @@map("facilities")
 }
@@ -253,6 +281,8 @@ model Member {
   eventRsvps                    EventRsvp[]
   migrationRequests             MigrationRequest[]
   exitSignals                   ExitSignal[]
+  sentinelDevices               SentinelDevice[]
+  sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
 
   @@index([tier])
   @@index([role, createdAt])
@@ -292,6 +322,7 @@ model Wine {
   nfcTags              NfcTag[]
   deliveryRequestItems DeliveryRequestItem[]
   exitSignals          ExitSignal[]
+  sentinelDevices      SentinelDevice[]
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
@@ -336,10 +367,11 @@ model Locker {
   updatedAt    DateTime                @updatedAt @map("updated_at")
   facility     Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   member       Member?                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  slots        LockerSlot[]
-  readings     SensorReading[]
-  alerts       Alert[]
-  certificates ProvenanceCertificate[]
+  slots            LockerSlot[]
+  readings         SensorReading[]
+  alerts           Alert[]
+  certificates     ProvenanceCertificate[]
+  sentinelDevices  SentinelDevice[]
 
   @@unique([facilityId, lockerNumber])
   @@index([memberId])
@@ -362,17 +394,24 @@ model LockerSlot {
 }
 
 model SensorReading {
-  id          Int      @id @default(autoincrement())
-  lockerId    String   @map("locker_id")
-  temperature Decimal  @db.Decimal(5, 2)
-  humidity    Decimal  @db.Decimal(5, 2)
-  vibration   Decimal  @db.Decimal(5, 3)
-  lightLux    Decimal  @map("light_lux") @db.Decimal(5, 2)
-  timestamp   DateTime @default(now())
-  locker      Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  id          Int             @id @default(autoincrement())
+  lockerId    String          @map("locker_id")
+  // Nullable FK to the device that emitted this reading (feature #58).
+  // Ingest resolves `deviceSignature` → device at write time; historical
+  // rows stay null, no backfill. Load-bearing once a locker holds both a
+  // locker sensor and a bottle probe — without it the two streams conflate.
+  deviceId    String?         @map("device_id")
+  temperature Decimal         @db.Decimal(5, 2)
+  humidity    Decimal         @db.Decimal(5, 2)
+  vibration   Decimal         @db.Decimal(5, 3)
+  lightLux    Decimal         @map("light_lux") @db.Decimal(5, 2)
+  timestamp   DateTime        @default(now())
+  locker      Locker          @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+  device      SentinelDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@unique([lockerId, timestamp])
   @@index([lockerId, timestamp(sort: Desc)])
+  @@index([deviceId, timestamp(sort: Desc)])
   @@map("sensor_readings")
 }
 
@@ -863,4 +902,65 @@ model ExitSignal {
   @@index([memberId, closedAt, openedAt(sort: Desc)])
   @@index([wineId, closedAt])
   @@map("exit_signals")
+}
+
+// Sentinel device registry (feature #58). One row per physical unit — both
+// Caveau Naples locker sensors and Estate-tier Bottle Probes. Static
+// inventory (serial, model, firmware) and mutable heartbeat state
+// (battery, connectivity, lastHeartbeatAt) live on the same row; a 1:1
+// status table was considered and rejected because heartbeats are read on
+// every admin page load. `bundledWithTier` is null when purchased
+// outright, otherwise records which tier entitled the unit — carries more
+// info than a boolean when a member downgrades tiers later. `lockerId` is
+// set for sensors; `wineId` is set for probes. Ingest resolves
+// `deviceSignature` → device and updates mutable state on each reading.
+model SentinelDevice {
+  id                  String                @id @default(uuid())
+  serialNumber        String                @unique @map("serial_number")
+  model               SentinelModel
+  hardwareRev         String?               @map("hardware_rev")
+  firmwareVersion     String                @map("firmware_version")
+  facilityId          String                @map("facility_id")
+  lockerId            String?               @map("locker_id")
+  memberId            String?               @map("member_id")
+  wineId              String?               @map("wine_id")
+  bundledWithTier     Tier?                 @map("bundled_with_tier")
+  purchasedAt         DateTime?             @map("purchased_at")
+  installedAt         DateTime?             @map("installed_at")
+  retiredAt           DateTime?             @map("retired_at")
+  connectivity        SentinelConnectivity  @default(offline)
+  batteryPct          Int?                  @map("battery_pct")
+  lastHeartbeatAt     DateTime?             @map("last_heartbeat_at")
+  alertRoutingConfig  Json?                 @map("alert_routing_config")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  facility            Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  locker              Locker?               @relation(fields: [lockerId], references: [id], onDelete: SetNull)
+  member              Member?               @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  wine                Wine?                 @relation(fields: [wineId], references: [id], onDelete: SetNull)
+  events              SentinelDeviceEvent[]
+  readings            SensorReading[]
+
+  @@index([facilityId, lastHeartbeatAt(sort: Desc)])
+  @@index([memberId])
+  @@index([lockerId])
+  @@map("sentinel_devices")
+}
+
+// Per-device audit log (feature #58). `actorMemberId` is the staff user
+// who performed a manual action; system-emitted events (heartbeat_gap,
+// battery_low, connectivity_changed) leave it null. `payload` is opaque
+// JSON — e.g. { from: "2.3.5", to: "2.4.1" } for firmware bumps.
+model SentinelDeviceEvent {
+  id             String             @id @default(uuid())
+  deviceId       String             @map("device_id")
+  type           SentinelEventType
+  actorMemberId  String?            @map("actor_member_id")
+  payload        Json?
+  createdAt      DateTime           @default(now()) @map("created_at")
+  device         SentinelDevice     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  actor          Member?            @relation("SentinelDeviceEventActor", fields: [actorMemberId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@map("sentinel_device_events")
 }

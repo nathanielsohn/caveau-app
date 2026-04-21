@@ -134,6 +134,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Locker not found" }, { status: 404 });
   }
 
+  // Resolve the signature to a registered SentinelDevice (feature #58).
+  // Unknown signatures still write the reading with deviceId=null so
+  // unregistered devices in the field don't silently drop readings on the
+  // floor — operations can register them retroactively.
+  const device = await prisma.sentinelDevice.findUnique({
+    where: { serialNumber: payload.deviceSignature },
+    select: {
+      id: true,
+      firmwareVersion: true,
+      connectivity: true,
+      batteryPct: true,
+    },
+  });
+
   // Idempotent ingest. The @@unique([lockerId, timestamp]) constraint
   // makes a replayed Bearer-authenticated POST a no-op on the row itself,
   // but we still run threshold checks on a replay — if the first request
@@ -147,6 +161,7 @@ export async function POST(req: NextRequest) {
     const reading = await prisma.sensorReading.create({
       data: {
         lockerId: payload.lockerId,
+        deviceId: device?.id ?? null,
         temperature: new Prisma.Decimal(payload.temperature),
         humidity: new Prisma.Decimal(payload.humidity),
         vibration: new Prisma.Decimal(payload.vibration),
@@ -184,6 +199,74 @@ export async function POST(req: NextRequest) {
       lockerId: payload.lockerId,
       readingId,
     });
+  }
+
+  // Update the device's mutable status (feature #58). Runs on both new
+  // and duplicate readings — a replay still carries a fresh heartbeat.
+  // Emit SentinelDeviceEvent rows on any state transition so the audit
+  // log reflects field changes without the admin having to click through.
+  if (device) {
+    const updates: {
+      lastHeartbeatAt: Date;
+      connectivity?: "wifi" | "lte_m" | "offline";
+      batteryPct?: number;
+      firmwareVersion?: string;
+    } = { lastHeartbeatAt: payload.timestamp };
+    const events: {
+      type: "firmware_updated" | "connectivity_changed" | "battery_low";
+      payload: Prisma.InputJsonValue;
+    }[] = [];
+
+    if (payload.connectivity && payload.connectivity !== device.connectivity) {
+      updates.connectivity = payload.connectivity;
+      events.push({
+        type: "connectivity_changed",
+        payload: { from: device.connectivity, to: payload.connectivity },
+      });
+    }
+    if (typeof payload.batteryPct === "number") {
+      updates.batteryPct = payload.batteryPct;
+      if (
+        payload.batteryPct < 20 &&
+        (device.batteryPct === null || device.batteryPct >= 20)
+      ) {
+        events.push({
+          type: "battery_low",
+          payload: { batteryPct: payload.batteryPct },
+        });
+      }
+    }
+    if (
+      payload.firmwareVersion &&
+      payload.firmwareVersion !== device.firmwareVersion
+    ) {
+      updates.firmwareVersion = payload.firmwareVersion;
+      events.push({
+        type: "firmware_updated",
+        payload: { from: device.firmwareVersion, to: payload.firmwareVersion },
+      });
+    }
+
+    try {
+      await prisma.sentinelDevice.update({
+        where: { id: device.id },
+        data: updates,
+      });
+      if (events.length > 0) {
+        await prisma.sentinelDeviceEvent.createMany({
+          data: events.map((e) => ({
+            deviceId: device.id,
+            type: e.type,
+            payload: e.payload,
+          })),
+        });
+      }
+    } catch (err) {
+      logger.error("[ingest/sensor] device status update failed", err, {
+        requestId,
+        deviceId: device.id,
+      });
+    }
   }
 
   // Evaluate thresholds against the normalized (number) reading — Decimal

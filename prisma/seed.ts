@@ -1,5 +1,6 @@
 import {
   PrismaClient,
+  Prisma,
   Role,
   Tier,
   AlertType,
@@ -7,6 +8,9 @@ import {
   FacilityEventType,
   DispositionType,
   WineStatus,
+  SentinelModel,
+  SentinelConnectivity,
+  SentinelEventType,
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -174,6 +178,10 @@ async function main() {
     prisma.eventRsvp.deleteMany(),
     prisma.eventSignup.deleteMany(),
     prisma.event.deleteMany(),
+    // Sentinel fleet (feature #58). Events cascade from devices via the
+    // FK, but clearing explicitly matches the rest of this block.
+    prisma.sentinelDeviceEvent.deleteMany(),
+    prisma.sentinelDevice.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -407,6 +415,242 @@ async function main() {
     });
   }
   console.log(`  ✓ Alerts: ${alertData.length}`);
+
+  // 6b. Sentinel fleet (feature #58). Mix designed to make the fleet
+  // filters meaningful: 8 online (WiFi), 1 LTE-M, 1 offline-stale; 2 with
+  // low battery; 1 firmware behind; 1 Bottle Probe paired with Robert's
+  // Pétrus; 2 inventory-pool units at Naples; 1 retired unit. Attribution
+  // matches Robert's Estate tier (2 bundled Sentinels + 1 Bottle Probe);
+  // the rest are attributed as bundled-at-tier-of-member or purchased.
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3600000);
+
+  const petrus = createdWines.find((w) => w.name === 'Pétrus');
+
+  const devicesToSeed: {
+    serialNumber: string;
+    model: SentinelModel;
+    hardwareRev: string | null;
+    firmwareVersion: string;
+    facilityId: string;
+    lockerId: string | null;
+    memberId: string | null;
+    wineId: string | null;
+    bundledWithTier: Tier | null;
+    purchasedAt: Date | null;
+    installedAt: Date | null;
+    retiredAt: Date | null;
+    connectivity: SentinelConnectivity;
+    batteryPct: number | null;
+    lastHeartbeatAt: Date | null;
+  }[] = [
+    // Robert's primary Sentinels (bundled at Estate tier)
+    {
+      serialNumber: 'SEN-2025-10042',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: locker7.id,
+      memberId: member.id,
+      wineId: null,
+      bundledWithTier: Tier.black,
+      purchasedAt: null,
+      installedAt: daysAgo(182),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.wifi,
+      batteryPct: 87,
+      lastHeartbeatAt: hoursAgo(0.1),
+    },
+    {
+      serialNumber: 'SEN-2025-10043',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: locker12.id,
+      memberId: member.id,
+      wineId: null,
+      bundledWithTier: Tier.black,
+      purchasedAt: null,
+      installedAt: daysAgo(182),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.wifi,
+      batteryPct: 92,
+      lastHeartbeatAt: hoursAgo(0.2),
+    },
+    // Third Naples locker for Robert — purchased outright add-on (he has
+    // 3 Naples lockers, bundled covers 2). Stale firmware so the "Update
+    // available" story lands on the fleet view.
+    {
+      serialNumber: 'SEN-2025-10087',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.3.5',
+      facilityId: naples.id,
+      lockerId: locker19.id,
+      memberId: member.id,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: daysAgo(120),
+      installedAt: daysAgo(119),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.wifi,
+      batteryPct: 64,
+      lastHeartbeatAt: hoursAgo(0.3),
+    },
+    // Miami Champagne vault — LTE-M fallback active (WiFi AP rebooted
+    // last night). Low battery — demo surfaces two "needs attention"
+    // signals on this unit.
+    {
+      serialNumber: 'SEN-2025-11201',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.4.1',
+      facilityId: miami.id,
+      lockerId: locker24.id,
+      memberId: member.id,
+      wineId: null,
+      bundledWithTier: Tier.black,
+      purchasedAt: null,
+      installedAt: daysAgo(95),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.lte_m,
+      batteryPct: 17,
+      lastHeartbeatAt: hoursAgo(0.1),
+    },
+    // Bottle Probe paired with Pétrus — Estate-tier accessory, slide 8.
+    {
+      serialNumber: 'PRB-2025-00014',
+      model: SentinelModel.bottle_probe,
+      hardwareRev: 'B1',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: locker7.id,
+      memberId: member.id,
+      wineId: petrus?.id ?? null,
+      bundledWithTier: Tier.black,
+      purchasedAt: null,
+      installedAt: daysAgo(45),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.wifi,
+      batteryPct: 78,
+      lastHeartbeatAt: hoursAgo(0.5),
+    },
+    // Offline unit — stale heartbeat for 31 hours. Battery was fine the
+    // last time we heard from it; this is what a dead radio looks like.
+    {
+      serialNumber: 'SEN-2024-09318',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A1',
+      firmwareVersion: '2.2.0',
+      facilityId: miami.id,
+      lockerId: null,
+      memberId: null,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: daysAgo(420),
+      installedAt: daysAgo(410),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.offline,
+      batteryPct: 54,
+      lastHeartbeatAt: hoursAgo(31),
+    },
+    // Inventory pool — two fresh units ready to provision. No lockerId,
+    // no memberId, no installedAt. Show up on the fleet as "Ready for
+    // install."
+    {
+      serialNumber: 'SEN-2026-00121',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: null,
+      memberId: null,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: null,
+      installedAt: null,
+      retiredAt: null,
+      connectivity: SentinelConnectivity.offline,
+      batteryPct: 100,
+      lastHeartbeatAt: null,
+    },
+    {
+      serialNumber: 'SEN-2026-00122',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A2',
+      firmwareVersion: '2.4.1',
+      facilityId: naples.id,
+      lockerId: null,
+      memberId: null,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: null,
+      installedAt: null,
+      retiredAt: null,
+      connectivity: SentinelConnectivity.offline,
+      batteryPct: 100,
+      lastHeartbeatAt: null,
+    },
+    // Retired unit — replaced 60 days ago during a hardware swap. Stays
+    // on record for audit.
+    {
+      serialNumber: 'SEN-2024-05201',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'A1',
+      firmwareVersion: '2.1.0',
+      facilityId: naples.id,
+      lockerId: null,
+      memberId: null,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: daysAgo(640),
+      installedAt: daysAgo(635),
+      retiredAt: daysAgo(60),
+      connectivity: SentinelConnectivity.offline,
+      batteryPct: null,
+      lastHeartbeatAt: daysAgo(61),
+    },
+  ];
+
+  const createdDevices = await Promise.all(
+    devicesToSeed.map((d) => prisma.sentinelDevice.create({ data: d })),
+  );
+  console.log(`  ✓ Sentinel devices: ${createdDevices.length}`);
+
+  // Device events — covers every enum value at least once so the detail
+  // page event log tells a story. `payload` is schema-free JSON; the UI
+  // just renders JSON.stringify.
+  const bySerial = new Map(createdDevices.map((d) => [d.serialNumber, d.id]));
+  const event = (
+    serial: string,
+    type: SentinelEventType,
+    createdAt: Date,
+    payload: Record<string, unknown> | null = null,
+    actorMemberId: string | null = null,
+  ): Prisma.SentinelDeviceEventCreateManyInput => ({
+    deviceId: bySerial.get(serial)!,
+    type,
+    actorMemberId,
+    payload: payload === null ? Prisma.JsonNull : (payload as Prisma.InputJsonValue),
+    createdAt,
+  });
+
+  await prisma.sentinelDeviceEvent.createMany({
+    data: [
+      event('SEN-2025-10042', SentinelEventType.installed, daysAgo(182), null, admin.id),
+      event('SEN-2025-10043', SentinelEventType.installed, daysAgo(182), null, admin.id),
+      event('SEN-2025-10087', SentinelEventType.installed, daysAgo(119), null, admin.id),
+      event('SEN-2025-11201', SentinelEventType.installed, daysAgo(95), null, admin.id),
+      event('PRB-2025-00014', SentinelEventType.installed, daysAgo(45), { wineId: petrus?.id ?? null }, admin.id),
+      event('SEN-2025-11201', SentinelEventType.connectivity_changed, hoursAgo(14), { from: 'wifi', to: 'lte_m', reason: 'WiFi AP reboot' }),
+      event('SEN-2025-11201', SentinelEventType.battery_low, hoursAgo(2), { batteryPct: 17 }),
+      event('SEN-2024-09318', SentinelEventType.heartbeat_gap, hoursAgo(30), { lastSeenAt: hoursAgo(31).toISOString() }),
+      event('SEN-2024-05201', SentinelEventType.firmware_updated, daysAgo(200), { from: '2.0.3', to: '2.1.0' }, admin.id),
+      event('SEN-2024-05201', SentinelEventType.retired, daysAgo(60), { reason: 'hardware swap — replaced by SEN-2025-10042' }, admin.id),
+    ],
+  });
+  console.log('  ✓ Sentinel device events: 10');
 
   // 7. Caveau Custody & Condition Reports — investment-grade wines across lockers
   const certConfigs = [
