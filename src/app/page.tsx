@@ -13,6 +13,8 @@ import {
 } from "@/lib/investment";
 import { isActiveStage } from "@/lib/hurricane";
 import { reasonLabel } from "@/lib/exit-signals";
+import { estimateInsuranceSavings } from "@/lib/insurance";
+import { tierSpecForDbTier } from "@/lib/tiers";
 import DashboardClient from "./dashboard-client";
 import HurricaneBanner from "@/components/hurricane-banner";
 
@@ -384,6 +386,14 @@ export default async function DashboardPage() {
       targetPriceHigh: formatCurrency(toNumber(s.targetPriceHigh)),
     }));
 
+    // Insurance savings estimate (feature #56). Collection value comes
+    // from the same in-cellar wine sum used for the Collection Value
+    // metric card; tier comes off the session so no extra DB hit.
+    const insuranceEstimate = estimateInsuranceSavings({
+      collectionValueUsd: totalValue,
+      tier: tierSpecForDbTier(session.user.tier).slug,
+    });
+
     return (
       <>
         {activeHurricane && (
@@ -406,6 +416,7 @@ export default async function DashboardPage() {
           portfolio={portfolioData}
           exitSignals={exitSignalsForClient}
           exitSignalTotal={openExitSignalCount}
+          insuranceEstimate={insuranceEstimate}
           firstName={session.user.name?.split(" ")[0] ?? "Member"}
         />
       </>

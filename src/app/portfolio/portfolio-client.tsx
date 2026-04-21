@@ -10,6 +10,8 @@ import {
   type InvestmentTier,
 } from "@/lib/investment";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils";
+import InsuranceSavingsCard from "@/components/insurance-savings-card";
+import type { InsuranceSavingsEstimate } from "@/lib/insurance";
 
 export interface PortfolioBottle {
   id: string;
@@ -39,6 +41,10 @@ interface PortfolioClientProps {
   bottles: PortfolioBottle[];
   totals: Totals;
   tierCounts: Record<InvestmentTier, number>;
+  /** Static insurance savings estimate (#56). Uses the full in-cellar
+   *  value, not just investment-grade — carriers insure the whole
+   *  collection. */
+  insuranceEstimate: InsuranceSavingsEstimate;
 }
 
 function appreciation(b: PortfolioBottle): number {
@@ -51,6 +57,7 @@ export default function PortfolioClient({
   bottles,
   totals,
   tierCounts,
+  insuranceEstimate,
 }: PortfolioClientProps) {
   const totalAppreciation =
     totals.purchase > 0 ? (totals.current - totals.purchase) / totals.purchase : 0;
@@ -85,6 +92,11 @@ export default function PortfolioClient({
           View full collection →
         </Link>
       </div>
+
+      {/* Insurance Savings Estimate (feature #56) — always renders so it
+          shows whether or not the member has investment-grade bottles
+          classified. Carriers underwrite the whole collection. */}
+      <InsuranceSavingsCard estimate={insuranceEstimate} />
 
       {bottles.length === 0 ? (
         <div className="glass-card p-10 text-center">

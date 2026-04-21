@@ -17,6 +17,7 @@ import { getServerAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tierSpecForDbTier } from "@/lib/tiers";
 import { toNumber, percentChange } from "@/lib/utils";
+import { estimateInsuranceSavings } from "@/lib/insurance";
 import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
@@ -776,4 +777,70 @@ export async function getExitSignals(): Promise<AdvisorExitSignal[]> {
     momentum12moPct: s.momentum12moPct != null ? toNumber(s.momentum12moPct) : null,
     openedAt: s.openedAt.toISOString(),
   }));
+}
+
+// ── getInsuranceSavingsEstimate ─────────────────────────────────────────
+
+export interface AdvisorInsuranceSavings {
+  collectionValueUsd: number;
+  tier: {
+    slug: "collector" | "reserve" | "private_vault" | "estate";
+    name: string;
+  };
+  savingsRangeUsd: { low: number; high: number };
+  discountPct: { low: number; high: number };
+  baselinePremiumUsd: { low: number; high: number };
+  partners: readonly { name: string; focus: string }[];
+  disciplineBullets: readonly string[];
+}
+
+/**
+ * Static insurance savings estimate feeding slide 6 canonical Q4
+ * ("how much am I saving on insurance?"). Sums the member's in-cellar
+ * wine valuations, resolves their published tier, and hands the result
+ * to `estimateInsuranceSavings` — same math as the dashboard card so
+ * the advisor and the UI never disagree on the number.
+ */
+export async function getInsuranceSavingsEstimate(): Promise<AdvisorInsuranceSavings> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+
+  const [wineSum, member] = await Promise.all([
+    prisma.wine.aggregate({
+      where: { memberId, status: "in_cellar" },
+      _sum: { currentValue: true },
+    }),
+    prisma.member.findUnique({
+      where: { id: memberId },
+      select: { tier: true },
+    }),
+  ]);
+
+  if (!member) throw new AdvisorAuthError();
+
+  const collectionValueUsd = toNumber(wineSum._sum.currentValue ?? 0);
+  const tierSpec = tierSpecForDbTier(member.tier);
+  const estimate = estimateInsuranceSavings({
+    collectionValueUsd,
+    tier: tierSpec.slug,
+  });
+
+  return {
+    collectionValueUsd,
+    tier: { slug: tierSpec.slug, name: tierSpec.name },
+    savingsRangeUsd: {
+      low: estimate.savingsLowUsd,
+      high: estimate.savingsHighUsd,
+    },
+    discountPct: {
+      low: estimate.discountPctLow,
+      high: estimate.discountPctHigh,
+    },
+    baselinePremiumUsd: {
+      low: estimate.baselinePremiumLowUsd,
+      high: estimate.baselinePremiumHighUsd,
+    },
+    partners: estimate.partners,
+    disciplineBullets: estimate.disciplineBullets,
+  };
 }

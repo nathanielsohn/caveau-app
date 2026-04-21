@@ -26,6 +26,8 @@ vi.mock("@/lib/advisor-tools", async () => {
     getTierDetails: vi.fn(),
     getWineDetail: vi.fn(),
     getLivexBenchmark: vi.fn(),
+    getExitSignals: vi.fn(),
+    getInsuranceSavingsEstimate: vi.fn(),
   };
 });
 
@@ -43,12 +45,14 @@ beforeEach(() => {
 });
 
 describe("ADVISOR_TOOL_DEFINITIONS", () => {
-  it("registers exactly the seven member-scoped tools", () => {
+  it("registers exactly the nine member-scoped tools", () => {
     const names = ADVISOR_TOOL_DEFINITIONS.map((t) => t.name).sort();
     expect(names).toEqual(
       [
         "getActiveAlerts",
         "getCCRList",
+        "getExitSignals",
+        "getInsuranceSavingsEstimate",
         "getLivexBenchmark",
         "getLivexPriceHistory",
         "getMemberPortfolio",
@@ -144,6 +148,30 @@ describe("dispatchTool — correct routing per tool name", () => {
     });
     const r = await dispatchTool("getLivexBenchmark", null);
     expect(r.ok).toBe(true);
+  });
+
+  it("getExitSignals → getExitSignals()", async () => {
+    (tools.getExitSignals as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    const r = await dispatchTool("getExitSignals", {});
+    expect(r.ok).toBe(true);
+    expect(tools.getExitSignals).toHaveBeenCalledOnce();
+  });
+
+  it("getInsuranceSavingsEstimate → getInsuranceSavingsEstimate()", async () => {
+    (
+      tools.getInsuranceSavingsEstimate as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
+      collectionValueUsd: 0,
+      tier: { slug: "collector", name: "Collector" },
+      savingsRangeUsd: { low: 0, high: 0 },
+      discountPct: { low: 0.15, high: 0.25 },
+      baselinePremiumUsd: { low: 0, high: 0 },
+      partners: [],
+      disciplineBullets: [],
+    });
+    const r = await dispatchTool("getInsuranceSavingsEstimate", {});
+    expect(r.ok).toBe(true);
+    expect(tools.getInsuranceSavingsEstimate).toHaveBeenCalledOnce();
   });
 });
 

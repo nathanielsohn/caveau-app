@@ -12,6 +12,8 @@ import {
   type InvestmentTier,
   type PortfolioWineInput,
 } from "@/lib/investment";
+import { estimateInsuranceSavings } from "@/lib/insurance";
+import { tierSpecForDbTier } from "@/lib/tiers";
 import PortfolioClient, { type PortfolioBottle } from "./portfolio-client";
 
 export const dynamic = "force-dynamic";
@@ -124,6 +126,18 @@ export default async function PortfolioPage() {
     };
     for (const b of bottles) tierCounts[b.tier] += 1;
 
+    // Insurance savings estimate (feature #56). Uses the full in-cellar
+    // collection value rather than investment-grade only — carriers
+    // underwrite the whole collection, not just trophy bottles.
+    const fullCollectionValueUsd = wines.reduce(
+      (sum, w) => sum + toNumber(w.currentValue),
+      0,
+    );
+    const insuranceEstimate = estimateInsuranceSavings({
+      collectionValueUsd: fullCollectionValueUsd,
+      tier: tierSpecForDbTier(session.user.tier).slug,
+    });
+
     return (
       <PortfolioClient
         bottles={bottles}
@@ -136,6 +150,7 @@ export default async function PortfolioPage() {
           earliestAnchor: earliestAnchor ? earliestAnchor.toISOString() : null,
         }}
         tierCounts={tierCounts}
+        insuranceEstimate={insuranceEstimate}
       />
     );
   } catch (error) {

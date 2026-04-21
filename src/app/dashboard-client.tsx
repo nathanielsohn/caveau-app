@@ -44,6 +44,8 @@ import {
   type ExitSignalReason,
   type ExitSignalStrength,
 } from "@/lib/exit-signals";
+import InsuranceSavingsCard from "@/components/insurance-savings-card";
+import type { InsuranceSavingsEstimate } from "@/lib/insurance";
 
 interface MetricsData {
   totalValue: string;
@@ -134,6 +136,10 @@ interface DashboardClientProps {
   /** Total open-signal count across the portfolio; drives the "View all
    *  N" affordance next to the card header. */
   exitSignalTotal: number;
+  /** Insurance savings estimate (#56) — static carrier-discount math on
+   *  collection value × tier storage discipline. Always present; the
+   *  card renders a "—" range when collection value is zero. */
+  insuranceEstimate: InsuranceSavingsEstimate;
   /** First name resolved server-side so the welcome line doesn't flash
    *  "Member" before the client session hydrates. */
   firstName: string;
@@ -163,6 +169,7 @@ export default function DashboardClient({
   portfolio,
   exitSignals,
   exitSignalTotal,
+  insuranceEstimate,
   firstName: serverFirstName,
 }: DashboardClientProps) {
   const { data: session, status } = useSession();
@@ -532,6 +539,11 @@ export default function DashboardClient({
           </div>
         </div>
       )}
+
+      {/* Insurance Savings Estimate (feature #56) — static discount math
+          sitting below the exit-signals card. Always renders; the card
+          falls back to "—" when collection value is zero. */}
+      <InsuranceSavingsCard estimate={insuranceEstimate} />
 
       {/* Portfolio Appreciation */}
       {(topGainers.length > 0 || topLosers.length > 0) && (

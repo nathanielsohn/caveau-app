@@ -38,6 +38,7 @@ import {
   getWineDetail,
   getLivexBenchmark,
   getExitSignals,
+  getInsuranceSavingsEstimate,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
@@ -158,6 +159,16 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getInsuranceSavingsEstimate",
+    description:
+      "Return the member's estimated annual insurance savings from storing with Caveau — a savings range in USD, the tier-scaled discount band (15–35%), the baseline premium assumption, the four named partner carriers (PURE, Chubb, AXA XL, Berkley One), and the specific storage-discipline inputs a carrier would underwrite. Use this for 'how much am I saving on insurance?', 'which carriers work with Caveau?', or tier-benefit questions that touch insurance. Static estimate (not a real quote); surface the range and the tier ladder rather than inventing a point number. Takes no arguments.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -200,6 +211,9 @@ export async function dispatchTool(
 
       case "getExitSignals":
         return { ok: true, result: await getExitSignals() };
+
+      case "getInsuranceSavingsEstimate":
+        return { ok: true, result: await getInsuranceSavingsEstimate() };
 
       default:
         return { ok: false, error: `Unknown tool: ${name}` };
