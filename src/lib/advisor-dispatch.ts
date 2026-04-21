@@ -37,6 +37,7 @@ import {
   getTierDetails,
   getWineDetail,
   getLivexBenchmark,
+  getPortfolioVsLivex,
   getExitSignals,
   getInsuranceSavingsEstimate,
 } from "@/lib/advisor-tools";
@@ -150,6 +151,16 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "getPortfolioVsLivex",
+    description:
+      "Return the member's portfolio performance versus the Liv-ex Fine Wine 100 over the YTD window (or trailing 12 months when YTD has fewer than three snapshots). Both series are indexed to 100 at the anchor so comparisons read as percent. `portfolioChangePct` / `livexChangePct` are the two endpoints, `deltaPct` is the portfolio-minus-index edge in percentage points. Use this as the first call for 'how am I doing vs the Liv-ex 100?' — it collapses what would otherwise be two tool calls plus manual math into one structured answer. Takes no arguments.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "getExitSignals",
     description:
       "Return all open exit signals across the member's collection. Each signal contains a rationale, a reason ('drink_window_closing' | 'peak_momentum' | 'dual'), a strength ('moderate' | 'strong'), a price snapshot, and a recommended consignment target range. Use this as the first call for 'what's my best exit opportunity right now?' — surface the rationale verbatim instead of inventing reasoning. Takes no arguments.",
@@ -208,6 +219,9 @@ export async function dispatchTool(
         const params = AdvisorBenchmarkParamSchema.parse(input ?? {});
         return { ok: true, result: await getLivexBenchmark(params) };
       }
+
+      case "getPortfolioVsLivex":
+        return { ok: true, result: await getPortfolioVsLivex() };
 
       case "getExitSignals":
         return { ok: true, result: await getExitSignals() };

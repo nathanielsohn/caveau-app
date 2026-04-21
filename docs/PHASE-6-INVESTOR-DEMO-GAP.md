@@ -102,9 +102,9 @@ Not a feature — a deliverable Rob asked for explicitly on Apr 16. I'll draft o
 
 ## P1 — Claimed in the deck or materials, visibly missing, not demo-blocking but investor-surprising
 
-### 10. Portfolio vs. Liv-ex 100 benchmark
+### 10. ~~Portfolio vs. Liv-ex 100 benchmark~~ — done 2026-04-21 (feature #57)
 
-Slide 5 dashboard tile: *"Live value, YTD performance, exit signals and advisor prompts — one view."* Slide 6 Q&A: *"How am I positioned vs the Liv-ex 100?"* The app shows portfolio value and CAGR but not YTD performance vs. an index benchmark. Add a YTD vs. Liv-ex 100 line to the portfolio view.
+~~Slide 5 dashboard tile: *"Live value, YTD performance, exit signals and advisor prompts — one view."* Slide 6 Q&A: *"How am I positioned vs the Liv-ex 100?"* The app shows portfolio value and CAGR but not YTD performance vs. an index benchmark. Add a YTD vs. Liv-ex 100 line to the portfolio view.~~ Shipped — dashboard teaser card, `/portfolio` chart (both indexed to 100 at the YTD anchor), and `getPortfolioVsLivex` advisor tool.
 
 ### 11. Sentinel fleet / device admin
 

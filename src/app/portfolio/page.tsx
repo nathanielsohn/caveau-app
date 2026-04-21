@@ -14,6 +14,10 @@ import {
 } from "@/lib/investment";
 import { estimateInsuranceSavings } from "@/lib/insurance";
 import { tierSpecForDbTier } from "@/lib/tiers";
+import {
+  buildPortfolioVsLivexSeries,
+  type TimeseriesWine,
+} from "@/lib/portfolio-timeseries";
 import PortfolioClient, { type PortfolioBottle } from "./portfolio-client";
 
 export const dynamic = "force-dynamic";
@@ -25,27 +29,38 @@ export default async function PortfolioPage() {
   const memberId = session.user.id;
 
   try {
-    // Pull only the fields we need to classify + compute CAGR. Earliest
-    // valuation date becomes the CAGR start anchor; if a wine has no
-    // historical valuations we fall back to purchase price + createdAt.
-    const wines = await prisma.wine.findMany({
-      where: { memberId, status: "in_cellar" },
-      select: {
-        id: true,
-        name: true,
-        producer: true,
-        vintage: true,
-        region: true,
-        purchasePrice: true,
-        currentValue: true,
-        createdAt: true,
-        valuations: {
-          orderBy: { date: "asc" },
-          take: 1,
-          select: { price: true, date: true },
+    // Pull the fields we need to classify + compute CAGR + build the
+    // Portfolio vs. Liv-ex timeseries (feature #57). Full valuation
+    // history is needed for the month-end sampling; `valuations[0]`
+    // remains the earliest entry for the CAGR anchor.
+    const [wines, livexPointsRaw] = await Promise.all([
+      prisma.wine.findMany({
+        where: { memberId, status: "in_cellar" },
+        select: {
+          id: true,
+          name: true,
+          producer: true,
+          vintage: true,
+          region: true,
+          purchasePrice: true,
+          currentValue: true,
+          createdAt: true,
+          valuations: {
+            orderBy: { date: "asc" },
+            select: { price: true, date: true },
+          },
         },
-      },
-    });
+      }),
+      prisma.livexBenchmark.findMany({
+        where: {
+          date: {
+            gte: new Date(Date.now() - 18 * 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+        orderBy: { date: "asc" },
+        select: { date: true, indexValue: true },
+      }),
+    ]);
 
     const now = new Date();
 
@@ -138,6 +153,26 @@ export default async function PortfolioPage() {
       tier: tierSpecForDbTier(session.user.tier).slug,
     });
 
+    // Portfolio vs. Liv-ex 100 series (feature #57). Uses the full
+    // in-cellar wine set, not just investment-grade — we want the chart
+    // to reflect the member's complete holdings vs the index.
+    const timeseriesWines: TimeseriesWine[] = wines.map((w) => ({
+      createdAt: w.createdAt,
+      purchasePrice: toNumber(w.purchasePrice),
+      valuations: w.valuations.map((v) => ({
+        date: v.date,
+        price: toNumber(v.price),
+      })),
+    }));
+    const vsLivex = buildPortfolioVsLivexSeries({
+      wines: timeseriesWines,
+      livexPoints: livexPointsRaw.map((p) => ({
+        date: p.date,
+        indexValue: toNumber(p.indexValue),
+      })),
+      now,
+    });
+
     return (
       <PortfolioClient
         bottles={bottles}
@@ -151,6 +186,19 @@ export default async function PortfolioPage() {
         }}
         tierCounts={tierCounts}
         insuranceEstimate={insuranceEstimate}
+        vsLivex={{
+          points: vsLivex.points.map((p) => ({
+            date: p.date,
+            label: p.label,
+            portfolio: p.portfolio,
+            livex: p.livex,
+          })),
+          portfolioChangePct: vsLivex.portfolioChangePct,
+          livexChangePct: vsLivex.livexChangePct,
+          deltaPct: vsLivex.deltaPct,
+          windowType: vsLivex.windowType,
+          anchorDate: vsLivex.anchorDate,
+        }}
       />
     );
   } catch (error) {

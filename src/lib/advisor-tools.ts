@@ -19,6 +19,10 @@ import { tierSpecForDbTier } from "@/lib/tiers";
 import { toNumber, percentChange } from "@/lib/utils";
 import { estimateInsuranceSavings } from "@/lib/insurance";
 import {
+  buildPortfolioVsLivexSeries,
+  type TimeseriesWine,
+} from "@/lib/portfolio-timeseries";
+import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
 } from "@/lib/schemas";
@@ -721,6 +725,102 @@ function findClosestPointValue(
     }
   }
   return closest.indexValue;
+}
+
+// ── getPortfolioVsLivex ─────────────────────────────────────────────────
+
+export interface PortfolioVsLivexSeriesPoint {
+  date: string;
+  label: string;
+  portfolioUsd: number;
+  portfolioIndexed: number;
+  livexValue: number;
+  livexIndexed: number;
+}
+
+export interface PortfolioVsLivexResult {
+  windowType: "ytd" | "trailing_12m";
+  anchorDate: string | null;
+  asOf: string;
+  portfolioChangePct: number | null;
+  livexChangePct: number | null;
+  deltaPct: number | null;
+  points: PortfolioVsLivexSeriesPoint[];
+}
+
+/**
+ * Portfolio performance vs the Liv-ex Fine Wine 100 over the YTD window
+ * (or trailing 12 months when YTD is too short). Returns both series
+ * indexed to 100 at the anchor so the advisor can answer slide-6 Q2
+ * ("how am I doing vs the Liv-ex 100?") in one tool call — the
+ * `deltaPct` field is the portfolio-minus-index edge in percentage
+ * points, matching the dashboard and portfolio-page UI.
+ *
+ * Bottles added after the anchor are excluded so the baseline is
+ * stable across the window (same math as the charts).
+ */
+export async function getPortfolioVsLivex(): Promise<PortfolioVsLivexResult> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+
+  const now = new Date();
+  const eighteenMonthsAgo = new Date(
+    now.getTime() - 18 * 30 * 24 * 60 * 60 * 1000,
+  );
+
+  const [wines, livexRows] = await Promise.all([
+    prisma.wine.findMany({
+      where: { memberId, status: "in_cellar" },
+      select: {
+        createdAt: true,
+        purchasePrice: true,
+        valuations: {
+          orderBy: { date: "asc" },
+          select: { date: true, price: true },
+        },
+      },
+    }),
+    prisma.livexBenchmark.findMany({
+      where: { date: { gte: eighteenMonthsAgo } },
+      orderBy: { date: "asc" },
+      select: { date: true, indexValue: true },
+    }),
+  ]);
+
+  const timeseriesWines: TimeseriesWine[] = wines.map((w) => ({
+    createdAt: w.createdAt,
+    purchasePrice: toNumber(w.purchasePrice),
+    valuations: w.valuations.map((v) => ({
+      date: v.date,
+      price: toNumber(v.price),
+    })),
+  }));
+
+  const series = buildPortfolioVsLivexSeries({
+    wines: timeseriesWines,
+    livexPoints: livexRows.map((p) => ({
+      date: p.date,
+      indexValue: toNumber(p.indexValue),
+    })),
+    now,
+  });
+
+  return {
+    windowType: series.windowType,
+    anchorDate: series.anchorDate,
+    asOf: now.toISOString(),
+    portfolioChangePct: series.portfolioChangePct,
+    livexChangePct: series.livexChangePct,
+    deltaPct: series.deltaPct,
+    points: series.points.map((p) => ({
+      date: p.date,
+      label: p.label,
+      portfolioUsd: Math.round(p.portfolioUsd),
+      portfolioIndexed: p.portfolio,
+      livexValue: p.livexValue,
+      livexIndexed: p.livex,
+    })),
+  };
 }
 
 // ── getExitSignals ──────────────────────────────────────────────────────

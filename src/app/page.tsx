@@ -11,6 +11,10 @@ import {
   computePortfolioSummary,
   type PortfolioWineInput,
 } from "@/lib/investment";
+import {
+  buildPortfolioVsLivexSeries,
+  type TimeseriesWine,
+} from "@/lib/portfolio-timeseries";
 import { isActiveStage } from "@/lib/hurricane";
 import { reasonLabel } from "@/lib/exit-signals";
 import { estimateInsuranceSavings } from "@/lib/insurance";
@@ -56,6 +60,7 @@ export default async function DashboardPage() {
       hurricaneMembership,
       openExitSignals,
       openExitSignalCount,
+      livexPoints,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -70,11 +75,12 @@ export default async function DashboardPage() {
           currentValue: true,
           purchasePrice: true,
           createdAt: true,
-          // Earliest valuation is the CAGR anchor for the portfolio
-          // card (feature #45). One extra row per wine — cheap.
+          // Full valuation history. `valuations[0]` is still the
+          // earliest (asc order), which #45's CAGR anchor uses; the
+          // broader list feeds the portfolio-vs-Liv-ex timeseries
+          // reconstruction for #57.
           valuations: {
             orderBy: { date: "asc" },
-            take: 1,
             select: { price: true, date: true },
           },
         },
@@ -142,6 +148,18 @@ export default async function DashboardPage() {
       }),
       prisma.exitSignal.count({
         where: { memberId, closedAt: null },
+      }),
+      // Liv-ex Fine Wine 100 history for the Portfolio vs. Liv-ex 100
+      // chart (feature #57). 18 months is enough for a YTD window plus
+      // the trailing-12m fallback we use when YTD has too few points.
+      prisma.livexBenchmark.findMany({
+        where: {
+          date: {
+            gte: new Date(Date.now() - 18 * 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+        orderBy: { date: "asc" },
+        select: { date: true, indexValue: true },
       }),
     ]);
 
@@ -394,6 +412,33 @@ export default async function DashboardPage() {
       tier: tierSpecForDbTier(session.user.tier).slug,
     });
 
+    // Portfolio vs. Liv-ex 100 timeseries (feature #57). Uses the same
+    // `wines` result — no extra DB query — plus the Liv-ex snapshots
+    // from the initial Promise.all.
+    const timeseriesWines: TimeseriesWine[] = wines.map((w) => ({
+      createdAt: w.createdAt,
+      purchasePrice: toNumber(w.purchasePrice),
+      valuations: w.valuations.map((v) => ({
+        date: v.date,
+        price: toNumber(v.price),
+      })),
+    }));
+    const vsLivex = buildPortfolioVsLivexSeries({
+      wines: timeseriesWines,
+      livexPoints: livexPoints.map((p) => ({
+        date: p.date,
+        indexValue: toNumber(p.indexValue),
+      })),
+      now: new Date(),
+    });
+    const portfolioVsLivex = {
+      hasData: vsLivex.points.length >= 2,
+      windowType: vsLivex.windowType,
+      portfolioChangePct: vsLivex.portfolioChangePct,
+      livexChangePct: vsLivex.livexChangePct,
+      deltaPct: vsLivex.deltaPct,
+    };
+
     return (
       <>
         {activeHurricane && (
@@ -417,6 +462,7 @@ export default async function DashboardPage() {
           exitSignals={exitSignalsForClient}
           exitSignalTotal={openExitSignalCount}
           insuranceEstimate={insuranceEstimate}
+          portfolioVsLivex={portfolioVsLivex}
           firstName={session.user.name?.split(" ")[0] ?? "Member"}
         />
       </>

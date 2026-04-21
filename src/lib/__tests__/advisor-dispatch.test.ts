@@ -26,6 +26,7 @@ vi.mock("@/lib/advisor-tools", async () => {
     getTierDetails: vi.fn(),
     getWineDetail: vi.fn(),
     getLivexBenchmark: vi.fn(),
+    getPortfolioVsLivex: vi.fn(),
     getExitSignals: vi.fn(),
     getInsuranceSavingsEstimate: vi.fn(),
   };
@@ -45,7 +46,7 @@ beforeEach(() => {
 });
 
 describe("ADVISOR_TOOL_DEFINITIONS", () => {
-  it("registers exactly the nine member-scoped tools", () => {
+  it("registers exactly the ten member-scoped tools", () => {
     const names = ADVISOR_TOOL_DEFINITIONS.map((t) => t.name).sort();
     expect(names).toEqual(
       [
@@ -56,6 +57,7 @@ describe("ADVISOR_TOOL_DEFINITIONS", () => {
         "getLivexBenchmark",
         "getLivexPriceHistory",
         "getMemberPortfolio",
+        "getPortfolioVsLivex",
         "getTierDetails",
         "getWineDetail",
       ].sort(),
@@ -148,6 +150,23 @@ describe("dispatchTool — correct routing per tool name", () => {
     });
     const r = await dispatchTool("getLivexBenchmark", null);
     expect(r.ok).toBe(true);
+  });
+
+  it("getPortfolioVsLivex → getPortfolioVsLivex()", async () => {
+    (
+      tools.getPortfolioVsLivex as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
+      windowType: "ytd",
+      anchorDate: null,
+      asOf: new Date().toISOString(),
+      portfolioChangePct: null,
+      livexChangePct: null,
+      deltaPct: null,
+      points: [],
+    });
+    const r = await dispatchTool("getPortfolioVsLivex", {});
+    expect(r.ok).toBe(true);
+    expect(tools.getPortfolioVsLivex).toHaveBeenCalledOnce();
   });
 
   it("getExitSignals → getExitSignals()", async () => {

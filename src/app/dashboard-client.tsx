@@ -46,6 +46,9 @@ import {
 } from "@/lib/exit-signals";
 import InsuranceSavingsCard from "@/components/insurance-savings-card";
 import type { InsuranceSavingsEstimate } from "@/lib/insurance";
+import PortfolioVsLivexCard, {
+  type PortfolioVsLivexCardProps,
+} from "@/components/portfolio-vs-livex-card";
 
 interface MetricsData {
   totalValue: string;
@@ -140,6 +143,9 @@ interface DashboardClientProps {
    *  collection value × tier storage discipline. Always present; the
    *  card renders a "—" range when collection value is zero. */
   insuranceEstimate: InsuranceSavingsEstimate;
+  /** Portfolio vs. Liv-ex 100 tile (#57) — numeric teaser linking to
+   *  /portfolio. Hides when there's not enough series data to draw. */
+  portfolioVsLivex: PortfolioVsLivexCardProps;
   /** First name resolved server-side so the welcome line doesn't flash
    *  "Member" before the client session hydrates. */
   firstName: string;
@@ -170,6 +176,7 @@ export default function DashboardClient({
   exitSignals,
   exitSignalTotal,
   insuranceEstimate,
+  portfolioVsLivex,
   firstName: serverFirstName,
 }: DashboardClientProps) {
   const { data: session, status } = useSession();
@@ -468,6 +475,12 @@ export default function DashboardClient({
           </div>
         </Link>
       )}
+
+      {/* Portfolio vs. Liv-ex 100 (feature #57) — numeric teaser that
+          clicks through to the full chart on /portfolio. Sits between
+          the investment portfolio card and the exit signals card so
+          the "how am I doing" story reads top-down. */}
+      <PortfolioVsLivexCard {...portfolioVsLivex} />
 
       {/* Exit Signals (feature #55) — AI-surfaced sell-window alerts.
           Renders only when at least one signal is open so the card doesn't

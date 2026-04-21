@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamicImport from "next/dynamic";
 import { TrendingUp, Sparkles, LineChart } from "lucide-react";
 import {
   tierLabel,
@@ -12,6 +13,30 @@ import {
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils";
 import InsuranceSavingsCard from "@/components/insurance-savings-card";
 import type { InsuranceSavingsEstimate } from "@/lib/insurance";
+
+const PortfolioVsLivexChart = dynamicImport(
+  () => import("@/components/portfolio-vs-livex-chart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="glass-card h-80 animate-pulse" aria-label="Loading chart" />
+    ),
+  },
+);
+
+export interface PortfolioVsLivexData {
+  points: {
+    date: string;
+    label: string;
+    portfolio: number;
+    livex: number;
+  }[];
+  portfolioChangePct: number | null;
+  livexChangePct: number | null;
+  deltaPct: number | null;
+  windowType: "ytd" | "trailing_12m";
+  anchorDate: string | null;
+}
 
 export interface PortfolioBottle {
   id: string;
@@ -45,6 +70,10 @@ interface PortfolioClientProps {
    *  value, not just investment-grade — carriers insure the whole
    *  collection. */
   insuranceEstimate: InsuranceSavingsEstimate;
+  /** Portfolio vs. Liv-ex 100 series (#57). Uses the full in-cellar
+   *  collection (not just investment-grade bottles) since the index
+   *  reflects the broad secondary market, not just trophy wines. */
+  vsLivex: PortfolioVsLivexData;
 }
 
 function appreciation(b: PortfolioBottle): number {
@@ -58,6 +87,7 @@ export default function PortfolioClient({
   totals,
   tierCounts,
   insuranceEstimate,
+  vsLivex,
 }: PortfolioClientProps) {
   const totalAppreciation =
     totals.purchase > 0 ? (totals.current - totals.purchase) / totals.purchase : 0;
@@ -215,6 +245,21 @@ export default function PortfolioClient({
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Portfolio vs. Liv-ex 100 (feature #57). Full in-cellar
+              series indexed to 100 at the window start. Renders only
+              when we have two or more snapshot points; the card hides
+              itself below. */}
+          {vsLivex.points.length >= 2 && (
+            <PortfolioVsLivexChart
+              points={vsLivex.points}
+              portfolioChangePct={vsLivex.portfolioChangePct}
+              livexChangePct={vsLivex.livexChangePct}
+              deltaPct={vsLivex.deltaPct}
+              windowType={vsLivex.windowType}
+              anchorDate={vsLivex.anchorDate}
+            />
           )}
 
           {/* Per-bottle breakdown — matches the 10-Bottle PDF format:
