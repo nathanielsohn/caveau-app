@@ -160,6 +160,10 @@ export const AdvisorAcquisitionsParamSchema = z.object({
   status: z.enum(["open", "fulfilled", "all"]).optional(),
 });
 
+export const AdvisorExitsParamSchema = z.object({
+  status: z.enum(["open", "closed", "all"]).optional(),
+});
+
 // Chat route body. 8000 chars per turn is roughly ~2000 tokens — enough
 // for a long question without letting a single message balloon the
 // prompt. 40 turns caps total transcript cost per request; the chat UI
@@ -703,6 +707,94 @@ export const FulfillAcquisitionSchema = z.object({
 export const DeclineAcquisitionSchema = z.object({
   acquisitionId: UuidSchema,
   staffNote: z.string().trim().min(1).max(1000),
+});
+
+// ── Exit facilitation (feature #47) ──────────────────────────────────────
+
+const optionalPrice = z
+  .preprocess(
+    (v) => {
+      if (v === "" || v == null) return undefined;
+      const n = typeof v === "string" ? Number(v) : v;
+      return Number.isFinite(n) ? n : v;
+    },
+    PriceSchema.optional(),
+  )
+  .optional();
+
+const ExitChannelSchema = z.enum([
+  "auction",
+  "broker",
+  "private_sale",
+  "self_handled",
+]);
+
+const optionalExitChannel = z
+  .preprocess(
+    (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+    ExitChannelSchema.optional(),
+  )
+  .optional();
+
+/**
+ * Member-submitted request. `wineId` is required; everything else is an
+ * optional hint. The form pre-fills target prices from the open
+ * ExitSignal's target range when present (#55 pairing), but the member
+ * can edit or clear them. `preferredChannel` is non-binding — staff
+ * choose the actual channel at the listing step.
+ */
+export const RequestExitFacilitationBodySchema = z.object({
+  wineId: UuidSchema,
+  memberNote: optionalString(1000),
+  targetPriceLow: optionalPrice,
+  targetPriceHigh: optionalPrice,
+  preferredChannel: optionalExitChannel,
+});
+
+/**
+ * Admin list-it body. Picks a channel, names the auction house if
+ * channel=auction, records the listed price, and flips status to
+ * `listed`. `auctionHouseName` required when channel=auction, ignored
+ * otherwise.
+ */
+export const ListExitFacilitationSchema = z
+  .object({
+    exitId: UuidSchema,
+    channel: ExitChannelSchema,
+    auctionHouseName: optionalString(200),
+    listedPriceUsd: z.coerce.number().pipe(PriceSchema),
+    staffNote: optionalString(1000),
+  })
+  .superRefine((v, ctx) => {
+    if (v.channel === "auction" && (!v.auctionHouseName || v.auctionHouseName.trim().length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Auction house name is required for auction channel",
+        path: ["auctionHouseName"],
+      });
+    }
+  });
+
+/**
+ * Admin close-sale body. Locks in gross proceeds + commission percent;
+ * the server computes commissionUsd + netProceedsUsd, writes a
+ * WineDisposition row (type=sold), flips Wine.status=sold, and closes
+ * the open ExitSignal for the wine — all transactionally.
+ */
+export const SellExitFacilitationSchema = z.object({
+  exitId: UuidSchema,
+  grossProceedsUsd: z.coerce.number().pipe(PriceSchema),
+  commissionPct: z.coerce.number().min(0).max(50),
+  staffNote: optionalString(1000),
+});
+
+/**
+ * Admin withdraw body. `reason` is required and shown on the member
+ * detail page.
+ */
+export const WithdrawExitFacilitationSchema = z.object({
+  exitId: UuidSchema,
+  reason: z.string().trim().min(1).max(1000),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────

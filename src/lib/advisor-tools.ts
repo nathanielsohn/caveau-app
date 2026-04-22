@@ -1371,3 +1371,137 @@ export async function getMyAcquisitions(params: {
     filter,
   };
 }
+
+// ── getMyExits (feature #47) ─────────────────────────────────────────────
+
+export interface AdvisorExit {
+  id: string;
+  status: "requested" | "listed" | "sold" | "withdrawn" | "cancelled";
+  /** Member-facing status copy ("In review", "Listed", "Sold", ...) */
+  memberStatus: string;
+  wineId: string;
+  /** Formatted as "2010 Château Lafite Rothschild — Pauillac". */
+  wineSummary: string;
+  channel: "auction" | "broker" | "private_sale" | "self_handled" | null;
+  /** Named auction house ("Sotheby's") when channel=auction. Null otherwise. */
+  auctionHouseName: string | null;
+  /** One-line human channel description — e.g. "Auction · Sotheby's". */
+  channelSummary: string;
+  listedPriceUsd: number | null;
+  /** Gross proceeds — member sees the top-line number. */
+  grossProceedsUsd: number | null;
+  /** Net after commission — the member's actual take. */
+  netProceedsUsd: number | null;
+  /** Member-authored target range at request time. */
+  targetPriceLowUsd: number | null;
+  targetPriceHighUsd: number | null;
+  /** Staff note (visible to member — used for listing / closing comms). */
+  staffNote: string | null;
+  /** Reason the listing was pulled — surfaced verbatim to the member
+   *  on withdrawn rows. */
+  withdrawnReason: string | null;
+  createdAt: string;
+  listedAt: string | null;
+  soldAt: string | null;
+  withdrawnAt: string | null;
+  cancelledAt: string | null;
+}
+
+export interface AdvisorExits {
+  exits: AdvisorExit[];
+  filter: "open" | "closed" | "all";
+}
+
+/**
+ * Return the member's exit facilitations (feature #47).
+ *
+ * Filter values:
+ *   - open (default): `requested` + `listed` — the slice the advisor
+ *     is usually answering about ("what's happening with my Opus One sale?")
+ *   - closed: terminal rows (sold / withdrawn / cancelled)
+ *   - all: everything
+ *
+ * Deliberately excludes `commissionPct` and `commissionUsd` — slide 5
+ * mentions the 10–12% commission as the operator's revenue handle, not
+ * a member-facing disclosure. An advisor running in member context
+ * should not leak Caveau's cut even when asked directly. Members see
+ * gross and net; if they ask "what's Caveau's cut?", the advisor
+ * declines with "that's an operator-side figure" — same contract as
+ * the #62 acquisitions margin withholding.
+ */
+export async function getMyExits(params: {
+  status?: "open" | "closed" | "all";
+}): Promise<AdvisorExits> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+  const filter = params.status ?? "open";
+
+  const { ExitStatus } = await import("@prisma/client");
+  const { formatChannelWithHouse, MEMBER_STATUS_COPY } = await import(
+    "@/lib/exits"
+  );
+
+  const where = (() => {
+    if (filter === "open") {
+      return {
+        memberId,
+        status: { in: [ExitStatus.requested, ExitStatus.listed] },
+      };
+    }
+    if (filter === "closed") {
+      return {
+        memberId,
+        status: {
+          in: [ExitStatus.sold, ExitStatus.withdrawn, ExitStatus.cancelled],
+        },
+      };
+    }
+    return { memberId };
+  })();
+
+  const exits = await prisma.exitFacilitation.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: {
+      wine: {
+        select: { id: true, name: true, producer: true, vintage: true, region: true },
+      },
+    },
+    take: 50,
+  });
+
+  return {
+    exits: exits.map((e) => ({
+      id: e.id,
+      status: e.status,
+      memberStatus: MEMBER_STATUS_COPY[e.status],
+      wineId: e.wine.id,
+      wineSummary: `${e.wine.vintage} ${e.wine.producer} ${e.wine.name} — ${e.wine.region}`,
+      channel: e.channel,
+      auctionHouseName: e.auctionHouseName,
+      channelSummary: formatChannelWithHouse({
+        channel: e.channel,
+        auctionHouseName: e.auctionHouseName,
+      }),
+      listedPriceUsd: e.listedPriceUsd ? toNumber(e.listedPriceUsd) : null,
+      grossProceedsUsd: e.grossProceedsUsd
+        ? toNumber(e.grossProceedsUsd)
+        : null,
+      netProceedsUsd: e.netProceedsUsd ? toNumber(e.netProceedsUsd) : null,
+      // NOTE: commissionPct + commissionUsd intentionally absent — see
+      // comment on the getMyExits JSDoc for the contract.
+      targetPriceLowUsd: e.targetPriceLow ? toNumber(e.targetPriceLow) : null,
+      targetPriceHighUsd: e.targetPriceHigh
+        ? toNumber(e.targetPriceHigh)
+        : null,
+      staffNote: e.staffNote,
+      withdrawnReason: e.withdrawnReason,
+      createdAt: e.createdAt.toISOString(),
+      listedAt: e.listedAt?.toISOString() ?? null,
+      soldAt: e.soldAt?.toISOString() ?? null,
+      withdrawnAt: e.withdrawnAt?.toISOString() ?? null,
+      cancelledAt: e.cancelledAt?.toISOString() ?? null,
+    })),
+    filter,
+  };
+}

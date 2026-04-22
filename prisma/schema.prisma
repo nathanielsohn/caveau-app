@@ -183,6 +183,33 @@ enum SentinelEventType {
   test_ping
 }
 
+// Exit facilitation (feature #47). Member-initiated consignment. The
+// lifecycle is: staff accepts the request, then lists it on the chosen
+// channel, then closes the sale. `withdrawn` means staff pulled the
+// listing (auction rejected the lot, broker couldn't place, price floor
+// not met); `cancelled` means the member backed out before listing.
+// Once listed, only staff can terminate via `withdrawn` — the member
+// cannot cancel a live auction lot.
+enum ExitStatus {
+  requested
+  listed
+  sold
+  withdrawn
+  cancelled
+}
+
+// Sale channel. `self_handled` is the "CCR bundle + you sell it
+// privately" option — commission is zero, Caveau never touches the
+// funds. The other three are concierge-facilitated: Caveau consigns to
+// an auction house, a broker, or a private collector on the member's
+// behalf and takes a commission.
+enum ExitChannel {
+  auction
+  broker
+  private_sale
+  self_handled
+}
+
 // Allocations (feature #60). Staff post limited releases → members
 // request → staff accept → staff fulfill (writes a Wine row).
 enum AllocationStatus {
@@ -366,6 +393,8 @@ model Member {
   allocationRequests            AllocationRequest[]
   appraisals                    Appraisal[]
   acquisitions                  Acquisition[]
+  exitFacilitations             ExitFacilitation[]
+  exitFacilitationsClosed       ExitFacilitation[]        @relation("ExitFacilitationSoldBy")
 
   @@index([tier])
   @@index([role, createdAt])
@@ -418,6 +447,7 @@ model Wine {
   deliveryRequestItems DeliveryRequestItem[]
   exitSignals          ExitSignal[]
   sentinelDevices      SentinelDevice[]
+  exitFacilitations    ExitFacilitation[]
   sourceAllocation     Allocation?             @relation("WineAllocationSource", fields: [sourceAllocationId], references: [id], onDelete: SetNull)
   sourceAcquisition    Acquisition?            @relation("WineAcquisitionSource", fields: [sourceAcquisitionId], references: [id], onDelete: SetNull)
 
@@ -582,18 +612,19 @@ model WineDisposition {
 }
 
 model HandoffPackage {
-  id             String          @id @default(uuid())
-  wineId         String          @map("wine_id")
-  memberId       String          @map("member_id")
-  recipientName  String          @map("recipient_name")
-  recipientEmail String          @map("recipient_email")
-  channel        HandoffChannel
-  shareToken     String          @unique @map("share_token")
-  expiresAt      DateTime?       @map("expires_at")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  wine           Wine            @relation(fields: [wineId], references: [id], onDelete: Cascade)
-  member         Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  accesses       HandoffAccess[]
+  id                 String             @id @default(uuid())
+  wineId             String             @map("wine_id")
+  memberId           String             @map("member_id")
+  recipientName      String             @map("recipient_name")
+  recipientEmail     String             @map("recipient_email")
+  channel            HandoffChannel
+  shareToken         String             @unique @map("share_token")
+  expiresAt          DateTime?          @map("expires_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  wine               Wine               @relation(fields: [wineId], references: [id], onDelete: Cascade)
+  member             Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  accesses           HandoffAccess[]
+  exitFacilitations  ExitFacilitation[]
 
   @@index([memberId, createdAt(sort: Desc)])
   @@index([wineId])
@@ -1231,4 +1262,64 @@ model Acquisition {
   @@index([memberId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("acquisitions")
+}
+
+// Exit facilitation (feature #47). Member-initiated consignment workflow
+// mirroring the acquisition shape (#62) in reverse: member requests → staff
+// accepts + lists → staff closes the sale or withdraws. Pairs with exit
+// signals (#55) — an open ExitSignal on a wine is usually the proximate
+// reason a member initiates an exit facilitation for that wine, and the
+// signal auto-closes when the facilitation flips to `sold`.
+//
+// Commission fields are admin-only reporting (same contract as
+// Acquisition.marginUsd): the operator-facing CSV + admin queue expose
+// them; member surfaces and the AI Advisor's getMyExits tool never do.
+// `self_handled` channels carry zero commission — Caveau supplies the
+// CCR bundle but doesn't touch the funds.
+//
+// At most one non-terminal row per wine (enforced by a partial unique
+// index in migration 0039) prevents double-listing the same bottle.
+// `handoffPackageId` is an optional attachment — staff generate a #41
+// shareable bundle when an auction house or broker wants to view the
+// CCR + Liv-ex snapshot + provenance timeline inline.
+model ExitFacilitation {
+  id                 String           @id @default(uuid())
+  wineId             String           @map("wine_id")
+  memberId           String           @map("member_id")
+  // Member-authored request fields
+  memberNote         String?          @map("member_note")
+  targetPriceLow     Decimal?         @map("target_price_low") @db.Decimal(14, 2)
+  targetPriceHigh    Decimal?         @map("target_price_high") @db.Decimal(14, 2)
+  preferredChannel   ExitChannel?     @map("preferred_channel")
+  // Staff-authored lifecycle state
+  status             ExitStatus       @default(requested)
+  channel            ExitChannel?
+  auctionHouseName   String?          @map("auction_house_name")
+  staffNote          String?          @map("staff_note")
+  listedPriceUsd     Decimal?         @map("listed_price_usd") @db.Decimal(14, 2)
+  // Settlement — gross/net member-visible; commission fields admin-only.
+  // net = gross - commission (denormalized for single-query admin CSV).
+  grossProceedsUsd   Decimal?         @map("gross_proceeds_usd") @db.Decimal(14, 2)
+  commissionPct      Decimal?         @map("commission_pct") @db.Decimal(5, 2)
+  commissionUsd      Decimal?         @map("commission_usd") @db.Decimal(14, 2)
+  netProceedsUsd     Decimal?         @map("net_proceeds_usd") @db.Decimal(14, 2)
+  // Lifecycle timestamps
+  listedAt           DateTime?        @map("listed_at")
+  soldAt             DateTime?        @map("sold_at")
+  withdrawnAt        DateTime?        @map("withdrawn_at")
+  withdrawnReason    String?          @map("withdrawn_reason")
+  cancelledAt        DateTime?        @map("cancelled_at")
+  soldById           String?          @map("sold_by_id")
+  handoffPackageId   String?          @map("handoff_package_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  wine               Wine             @relation(fields: [wineId], references: [id], onDelete: Restrict)
+  member             Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  soldBy             Member?          @relation("ExitFacilitationSoldBy", fields: [soldById], references: [id], onDelete: SetNull)
+  handoffPackage     HandoffPackage?  @relation(fields: [handoffPackageId], references: [id], onDelete: SetNull)
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([wineId])
+  @@map("exit_facilitations")
 }

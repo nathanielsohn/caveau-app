@@ -16,6 +16,8 @@ import {
   AppraisalPurpose,
   AcquisitionSource,
   AcquisitionStatus,
+  ExitChannel,
+  ExitStatus,
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -1606,11 +1608,155 @@ async function main() {
     `  ✓ Acquisitions: ${sourcingLafite.producer} (sourcing · quote $2,800), Tenuta San Guido Sassicaia (fulfilled · 3 bottles, 9.7% margin)`,
   );
 
-  // 21. Exit signals (feature #55). Runs the same scoring pass the app
+  // 21. Exit facilitations (feature #47). Three rows to show the whole
+  // funnel: a listed concierge consignment (Pétrus → Sotheby's), a
+  // closed sale (Opus One sold at Sotheby's with 10% commission +
+  // transactional WineDisposition), and a self-handled listing (Harlan
+  // → zero commission, member places it directly).
+  //
+  // Timing: seed these BEFORE `reconcileMemberExitSignals` so when the
+  // reconciler sees Opus One's status flipped to sold it closes any
+  // scoring-pass-opened signal on that wine with `closedReason:
+  // "disposed"`. Pétrus and Harlan stay in_cellar (listed, not sold)
+  // so any signal they hold remains open.
+  //
+  // `petrus` is already declared higher up (Sentinel seed uses it for
+  // the Bottle Probe pairing) — re-used here without redeclaring.
+  const opusOneWine = createdWines.find(
+    (w) => w.name === 'Opus One' && w.vintage === 2019,
+  );
+  const harlanWine = createdWines.find((w) => w.name === 'Harlan Estate');
+
+  if (!petrus || !opusOneWine || !harlanWine) {
+    throw new Error(
+      'Seed #47 expected Pétrus, Opus One 2019, and Harlan Estate in createdWines.',
+    );
+  }
+
+  // 21a. Listed exit on Pétrus — concierge Sotheby's consignment.
+  const petrusExit = await prisma.exitFacilitation.create({
+    data: {
+      wineId: petrus.id,
+      memberId: member.id,
+      memberNote:
+        "Happy to hold for the right auction window — Sotheby's fall fine & rare if it fits the calendar.",
+      targetPriceLow: 6400,
+      targetPriceHigh: 7000,
+      preferredChannel: ExitChannel.auction,
+      status: ExitStatus.listed,
+      channel: ExitChannel.auction,
+      auctionHouseName: "Sotheby's",
+      listedPriceUsd: 6500,
+      staffNote:
+        "Catalogued for Sotheby's Sept 24 Fine & Rare Wines sale, lot 247. CCR + provenance bundle shared with the intake desk. Estimate $6,400–$7,200.",
+      listedAt: new Date(Date.now() - 3 * DAY),
+      createdAt: new Date(Date.now() - 10 * DAY),
+    },
+  });
+
+  // 21b. Closed sale on Opus One — transactional close + WineDisposition
+  // + Wine.status flip in a single $transaction, matching the live
+  // sellExit action's contract.
+  const opusOneGross = 510;
+  const opusOneCommissionPct = 10;
+  const opusOneCommissionUsd = 51; // 510 * 10%
+  const opusOneNet = 459; // 510 - 51
+  const opusOneSoldAt = new Date(Date.now() - 8 * DAY);
+
+  const opusOneExit = await prisma.$transaction(async (tx) => {
+    const exit = await tx.exitFacilitation.create({
+      data: {
+        wineId: opusOneWine.id,
+        memberId: member.id,
+        memberNote:
+          'Ready to let this one go — younger Napa is better placed with the next collector.',
+        targetPriceLow: 450,
+        targetPriceHigh: 550,
+        preferredChannel: ExitChannel.auction,
+        status: ExitStatus.sold,
+        channel: ExitChannel.auction,
+        auctionHouseName: "Sotheby's",
+        listedPriceUsd: 500,
+        grossProceedsUsd: opusOneGross,
+        commissionPct: opusOneCommissionPct,
+        commissionUsd: opusOneCommissionUsd,
+        netProceedsUsd: opusOneNet,
+        staffNote:
+          "Hammer + buyer's premium cleared at $510. Funds settle to your account within 30 days of sale close.",
+        listedAt: new Date(Date.now() - 28 * DAY),
+        soldAt: opusOneSoldAt,
+        soldById: admin.id,
+        createdAt: new Date(Date.now() - 35 * DAY),
+      },
+    });
+
+    await tx.wineDisposition.create({
+      data: {
+        wineId: opusOneWine.id,
+        memberId: member.id,
+        type: DispositionType.sold,
+        date: opusOneSoldAt,
+        salePrice: opusOneGross,
+        recipient: "Sotheby's",
+        notes: `Consigned via Caveau exit facilitation #${exit.id.slice(0, 8)}.`,
+      },
+    });
+
+    await tx.wine.update({
+      where: { id: opusOneWine.id },
+      data: { status: WineStatus.sold },
+    });
+
+    // updateMany because a signal may or may not be open at this point —
+    // the reconcile pass runs next and would catch it as `disposed`,
+    // but closing explicitly with `exit_facilitated` matches the live
+    // code path.
+    await tx.exitSignal.updateMany({
+      where: { wineId: opusOneWine.id, closedAt: null },
+      data: {
+        closedAt: opusOneSoldAt,
+        closedReason: 'exit_facilitated',
+      },
+    });
+
+    return exit;
+  });
+
+  // 21c. Self-handled listing on Harlan — Caveau hands over the CCR
+  // bundle, member places it privately. Zero commission when it
+  // eventually closes; currently listed.
+  const harlanExit = await prisma.exitFacilitation.create({
+    data: {
+      wineId: harlanWine.id,
+      memberId: member.id,
+      memberNote:
+        'Going direct to a collector friend in Miami — just need the bundle. No commission path.',
+      targetPriceLow: 1750,
+      targetPriceHigh: 1900,
+      preferredChannel: ExitChannel.self_handled,
+      status: ExitStatus.listed,
+      channel: ExitChannel.self_handled,
+      listedPriceUsd: 1800,
+      staffNote:
+        'CCR + provenance bundle shared. You own the conversation from here — send us the close details and we archive the record.',
+      listedAt: new Date(Date.now() - 2 * DAY),
+      createdAt: new Date(Date.now() - 4 * DAY),
+    },
+  });
+
+  console.log(
+    `  ✓ Exit facilitations: Pétrus (listed · Sotheby's), Opus One (sold · $${opusOneGross}, net $${opusOneNet}), Harlan Estate (listed · self-handled)`,
+  );
+  void petrusExit;
+  void opusOneExit;
+  void harlanExit;
+
+  // 22. Exit signals (feature #55). Runs the same scoring pass the app
   // uses in production so the demo state reflects real rules — drink
   // window closing within 5 years and/or 12-month momentum >= +12%.
   // Safe to re-run: the reconciler upserts in place and closes stale
-  // signals.
+  // signals. Runs AFTER the #47 block so the Opus-One disposal is
+  // visible to the scoring pass.
   const exitStats = await reconcileMemberExitSignals(member.id);
   console.log(
     `  ✓ Exit signals: opened ${exitStats.opened}, updated ${exitStats.updated}, closed ${exitStats.closed}`,

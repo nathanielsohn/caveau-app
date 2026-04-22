@@ -349,7 +349,11 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
               </p>
             )}
 
-            {/* Disposition + Deliver Now buttons */}
+            {/* Disposition + Deliver Now + Handoff bundle buttons.
+                Handoff bundle (#41) is a shareable recipient link for
+                ad-hoc auction / broker views — distinct from the
+                concierge consignment flow (#47), which routes through
+                the Exit Signal panel below. */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <DispositionButton
                 wineId={wine.id}
@@ -363,6 +367,14 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                   wineName={wine.name}
                   defaultAddress={defaultDeliveryAddress}
                   requiresStepUpOtp={currentValue >= 2000}
+                />
+              )}
+              {wine.status === "in_cellar" && (
+                <HandoffPackageButton
+                  wineId={wine.id}
+                  wineName={wine.name}
+                  createHandoffPackageAction={createHandoffPackage}
+                  variant="list"
                 />
               )}
             </div>
@@ -649,17 +661,16 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <div className="inline-flex">
-              <HandoffPackageButton
-                wineId={wine.id}
-                wineName={wine.name}
-                createHandoffPackageAction={createHandoffPackage}
-                variant="list"
-              />
-            </div>
+            <Link
+              href={`/exits/new?wineId=${wine.id}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gold text-caveau-black text-xs font-semibold hover:bg-gold/90 transition-colors"
+            >
+              <Target className="w-3.5 h-3.5" />
+              Consign this bottle
+            </Link>
             <p className="text-xs text-muted">
-              Start an auction / broker / private-sale handoff package to
-              act on this signal.
+              Hands off to the concierge — auction, broker, private sale,
+              or a self-handled CCR bundle.
             </p>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
   LogOut,
   ArrowLeft,
   Search,
+  Target,
 } from "lucide-react";
 
 const adminNavItems = [
@@ -27,6 +28,7 @@ const adminNavItems = [
   { href: "/admin/events", label: "Events", icon: CalendarDays },
   { href: "/admin/allocations", label: "Allocations", icon: Gem },
   { href: "/admin/acquisitions", label: "Sourcing", icon: Search },
+  { href: "/admin/exits", label: "Exits", icon: Target },
   { href: "/admin/appraisals", label: "Appraisals", icon: FileText },
   { href: "/admin/migrations", label: "Migrations", icon: FileInput },
 ];

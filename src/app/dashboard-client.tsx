@@ -45,6 +45,11 @@ import {
   type ExitSignalReason,
   type ExitSignalStrength,
 } from "@/lib/exit-signals";
+import {
+  formatChannelWithHouse,
+  MEMBER_STATUS_COPY,
+} from "@/lib/exits";
+import type { ExitChannel } from "@prisma/client";
 import InsuranceSavingsCard from "@/components/insurance-savings-card";
 import type { InsuranceSavingsEstimate } from "@/lib/insurance";
 import PortfolioVsLivexCard, {
@@ -124,6 +129,18 @@ export interface ExitSignalCardItem {
   targetPriceHigh: string;
 }
 
+export interface ActiveExitCardItem {
+  id: string;
+  status: "requested" | "listed";
+  wineId: string;
+  wineName: string;
+  wineVintage: number;
+  channel: ExitChannel | null;
+  auctionHouseName: string | null;
+  /** Pre-formatted listed price ("$6,200") or null while requested. */
+  listedPriceUsd: string | null;
+}
+
 interface DashboardClientProps {
   metrics: MetricsData;
   topWines: TopWine[];
@@ -140,6 +157,11 @@ interface DashboardClientProps {
   /** Total open-signal count across the portfolio; drives the "View all
    *  N" affordance next to the card header. */
   exitSignalTotal: number;
+  /** Active exit facilitations (#47) — requested + listed rows, up to 3.
+   *  Empty when the member has none in flight. */
+  activeExits: ActiveExitCardItem[];
+  /** Total requested-or-listed exit count, for the card header. */
+  activeExitTotal: number;
   /** Insurance savings estimate (#56) — static carrier-discount math on
    *  collection value × tier storage discipline. Always present; the
    *  card renders a "—" range when collection value is zero. */
@@ -182,6 +204,8 @@ export default function DashboardClient({
   portfolio,
   exitSignals,
   exitSignalTotal,
+  activeExits,
+  activeExitTotal,
   insuranceEstimate,
   portfolioVsLivex,
   welcomeAppraisalAvailable,
@@ -586,6 +610,78 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Active exits (feature #47) — pairs with the exit-signals card.
+          Member acts on a signal → lands in `requested` / `listed` →
+          shows here until the sale closes or staff withdraws. */}
+      {activeExits.length > 0 && (
+        <Link
+          href="/exits"
+          className="glass-card p-5 md:p-6 block hover:border-gold/40 transition-colors group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0">
+              <Target className="w-5 h-5 text-gold" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="font-serif text-lg text-primary group-hover:text-gold-text transition-colors">
+                  Active Exits
+                </h2>
+                <span className="text-xs text-muted">
+                  {activeExitTotal} in flight
+                </span>
+              </div>
+              <p className="text-xs text-muted mt-1">
+                Consignments under concierge review or live on a channel.
+                Net proceeds land here the moment a sale closes.
+              </p>
+              <div className="mt-4 space-y-2">
+                {activeExits.map((exit) => (
+                  <div
+                    key={exit.id}
+                    className="flex items-start gap-3 p-3 rounded-xl bg-caveau-graphite/30"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-serif text-sm text-primary truncate">
+                          {exit.wineName}
+                        </p>
+                        <span className="text-xs text-muted">
+                          {exit.wineVintage}
+                        </span>
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                            exit.status === "listed"
+                              ? "bg-ok/10 text-ok border-ok/30"
+                              : "bg-gold/10 text-gold border-gold/30"
+                          }`}
+                        >
+                          {MEMBER_STATUS_COPY[exit.status]}
+                        </span>
+                      </div>
+                      <p className="text-xs text-secondary mt-1">
+                        {formatChannelWithHouse({
+                          channel: exit.channel,
+                          auctionHouseName: exit.auctionHouseName,
+                        })}
+                      </p>
+                    </div>
+                    {exit.listedPriceUsd && (
+                      <div className="text-right flex-shrink-0 self-center">
+                        <p className="text-xs text-muted">Listed</p>
+                        <p className="text-sm font-semibold text-gold tabular-nums">
+                          {exit.listedPriceUsd}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Link>
       )}
 
       {/* Insurance Savings Estimate (feature #56) — static discount math

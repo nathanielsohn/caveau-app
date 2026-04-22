@@ -62,6 +62,8 @@ export default async function DashboardPage() {
       openExitSignals,
       openExitSignalCount,
       livexPoints,
+      activeExits,
+      activeExitCount,
     ] = await Promise.all([
       prisma.wine.findMany({
         where: { memberId, status: "in_cellar" },
@@ -161,6 +163,27 @@ export default async function DashboardPage() {
         },
         orderBy: { date: "asc" },
         select: { date: true, indexValue: true },
+      }),
+      // Active exit facilitations (feature #47). Capped at 3 for the
+      // dashboard teaser; the full list lives on /exits. Pairs
+      // narratively with exit signals — a member who acted on a signal
+      // lands here in `requested` or `listed`.
+      prisma.exitFacilitation.findMany({
+        where: {
+          memberId,
+          status: { in: ["requested", "listed"] },
+        },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        take: 3,
+        include: {
+          wine: { select: { id: true, name: true, vintage: true } },
+        },
+      }),
+      prisma.exitFacilitation.count({
+        where: {
+          memberId,
+          status: { in: ["requested", "listed"] },
+        },
       }),
     ]);
 
@@ -419,6 +442,22 @@ export default async function DashboardPage() {
       targetPriceHigh: formatCurrency(toNumber(s.targetPriceHigh)),
     }));
 
+    // Serialize active exits (feature #47). Renders the dashboard
+    // teaser below the exit-signals card so the signal → listing →
+    // sale narrative reads top-down.
+    const activeExitsForClient = activeExits.map((e) => ({
+      id: e.id,
+      status: e.status as "requested" | "listed",
+      wineId: e.wine.id,
+      wineName: e.wine.name,
+      wineVintage: e.wine.vintage,
+      channel: e.channel,
+      auctionHouseName: e.auctionHouseName,
+      listedPriceUsd: e.listedPriceUsd
+        ? formatCurrency(toNumber(e.listedPriceUsd))
+        : null,
+    }));
+
     // Insurance savings estimate (feature #56). Collection value comes
     // from the same in-cellar wine sum used for the Collection Value
     // metric card; tier comes off the session so no extra DB hit.
@@ -476,6 +515,8 @@ export default async function DashboardPage() {
           portfolio={portfolioData}
           exitSignals={exitSignalsForClient}
           exitSignalTotal={openExitSignalCount}
+          activeExits={activeExitsForClient}
+          activeExitTotal={activeExitCount}
           insuranceEstimate={insuranceEstimate}
           portfolioVsLivex={portfolioVsLivex}
           welcomeAppraisalAvailable={welcomeAppraisalAvailable}

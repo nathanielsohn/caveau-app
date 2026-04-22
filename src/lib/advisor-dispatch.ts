@@ -43,6 +43,7 @@ import {
   getMyAllocations,
   getMyAppraisals,
   getMyAcquisitions,
+  getMyExits,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
@@ -50,6 +51,7 @@ import {
   AdvisorAllocationsParamSchema,
   AdvisorAppraisalsParamSchema,
   AdvisorAcquisitionsParamSchema,
+  AdvisorExitsParamSchema,
 } from "@/lib/schemas";
 import { logger } from "@/lib/logger";
 
@@ -237,6 +239,23 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getMyExits",
+    description:
+      "Return the member's exit facilitations (feature #47) — bottles the member has asked Caveau to consign through an auction house, broker, private sale, or self-handled CCR bundle. Each row returns lifecycle status (requested / listed / sold / withdrawn / cancelled), the channel + named auction house (when applicable), the listed price, gross proceeds and net proceeds (once sold), the member's target range, staff notes, and lifecycle timestamps. Does NOT return the commission percent or commission dollar amount — those are admin-only operator figures. If the member asks 'what's Caveau's cut?' or 'what's the commission rate?', decline with 'that's an operator-side figure — what I can tell you is your gross and net proceeds'. Use this for 'what's happening with my Opus One sale?', 'did my Pétrus sell?', 'what exits do I have in progress?', or 'show me the net proceeds on my last sale'. For 'what should I sell?' or 'which bottles are at peak?' call getExitSignals first — that's the upstream scoring pass; getMyExits is the facilitation layer that acts on it. Optional `status` filter: `open` (default — requested or listed), `closed` (sold / withdrawn / cancelled), or `all`.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["open", "closed", "all"],
+          description:
+            "Which slice of the exits list to return. Defaults to `open`.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -299,6 +318,11 @@ export async function dispatchTool(
       case "getMyAcquisitions": {
         const params = AdvisorAcquisitionsParamSchema.parse(input ?? {});
         return { ok: true, result: await getMyAcquisitions(params) };
+      }
+
+      case "getMyExits": {
+        const params = AdvisorExitsParamSchema.parse(input ?? {});
+        return { ok: true, result: await getMyExits(params) };
       }
 
       default:
