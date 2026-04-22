@@ -17,6 +17,7 @@ import {
   Sparkles,
   CalendarDays,
   Gem,
+  FileText,
   MoreHorizontal,
   X,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const secondaryNavItems = [
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
   { href: "/allocations", label: "Allocations", icon: Gem },
+  { href: "/appraisals", label: "Appraisals", icon: FileText },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/facility", label: "Facility", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: SettingsIcon },

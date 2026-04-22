@@ -11,6 +11,9 @@ import {
   SentinelModel,
   SentinelConnectivity,
   SentinelEventType,
+  AppraisalStatus,
+  AppraisalBasis,
+  AppraisalPurpose,
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -21,6 +24,11 @@ import {
   generateDriverToken,
 } from '../src/lib/delivery';
 import { reconcileMemberExitSignals } from '../src/lib/exit-signals';
+import { appraisalIntegrityHash } from '../src/lib/appraisal-hash';
+import {
+  DEFAULT_APPRAISER,
+  buildAppraisalSnapshot,
+} from '../src/lib/appraisals';
 
 const prisma = new PrismaClient();
 
@@ -162,6 +170,10 @@ async function main() {
     prisma.provenanceCertificate.deleteMany(),
     prisma.wineValuation.deleteMany(),
     prisma.lockerSlot.deleteMany(),
+    // Appraisals (feature #61). Cascade-on-delete from members would
+    // also clear these, but explicit clears keep the seed
+    // idempotent against a mid-run failure.
+    prisma.appraisal.deleteMany(),
     // Allocations (feature #60). Requests cascade from allocations, but
     // we also clear the FK on wines before wiping the allocation rows so
     // `sourceAllocationId` SET NULL doesn't leave dangling pointers.
@@ -1452,7 +1464,59 @@ async function main() {
     `  ✓ Allocations: ${drc.producer} (open · founding early), ${opusOne.producer} (open · 1 pending), ${screamingEagle.producer} (fulfilled)`,
   );
 
-  // 19. Exit signals (feature #55). Runs the same scoring pass the app
+  // 19. Welcome appraisal (feature #61). Robert is a founding Estate
+  // member — he gets one completed welcome appraisal covering his whole
+  // collection, dated ~30 days back to look like it shipped shortly
+  // after onboarding. The snapshot runs against current wines so the
+  // document reflects live state at seed time; in production the
+  // snapshot freezes at completion, but for a seed we want the numbers
+  // to reconcile with what the member sees on /collection today.
+  const appraisalEffective = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const appraisalSnapshot = await buildAppraisalSnapshot({
+    memberId: member.id,
+    scopedWineIds: null,
+  });
+  const appraisalId = crypto.randomUUID();
+  const welcomeAppraisalNumber = `CAV-APR-${appraisalEffective.getUTCFullYear()}-0001`;
+  const welcomeAppraisalHash = appraisalIntegrityHash({
+    id: appraisalId,
+    memberId: member.id,
+    effectiveDate: appraisalEffective,
+    purpose: AppraisalPurpose.insurance,
+    basis: AppraisalBasis.fair_market_value,
+    totalBasisUsd: appraisalSnapshot.totalBasisUsd,
+  });
+  const welcomeAppraisal = await prisma.appraisal.create({
+    data: {
+      id: appraisalId,
+      memberId: member.id,
+      status: AppraisalStatus.completed,
+      purpose: AppraisalPurpose.insurance,
+      basis: AppraisalBasis.fair_market_value,
+      memberNote:
+        'For my PURE policy binder — the broker asked for a signed basis statement.',
+      // scopedWineIds + heirs are optional JSON columns — omit rather
+      // than set Prisma.DbNull so the column defaults to SQL NULL.
+      appraiserName: DEFAULT_APPRAISER.name,
+      appraiserCreds: DEFAULT_APPRAISER.creds,
+      scopeOfWork: DEFAULT_APPRAISER.scope,
+      staffNote: 'Seeded welcome appraisal — Founding Circle freebie.',
+      effectiveDate: appraisalEffective,
+      totalBasisUsd: appraisalSnapshot.totalBasisUsd,
+      bottleCount: appraisalSnapshot.bottleCount,
+      lineItems: appraisalSnapshot.lineItems as unknown as Prisma.InputJsonValue,
+      priceChargedUsd: 0,
+      isWelcomeAppraisal: true,
+      appraisalNumber: welcomeAppraisalNumber,
+      dataIntegrityHash: welcomeAppraisalHash,
+      completedAt: appraisalEffective,
+    },
+  });
+  console.log(
+    `  ✓ Welcome appraisal: ${welcomeAppraisal.appraisalNumber} · ${appraisalSnapshot.bottleCount} bottles · $${appraisalSnapshot.totalBasisUsd.toFixed(2)}`,
+  );
+
+  // 20. Exit signals (feature #55). Runs the same scoring pass the app
   // uses in production so the demo state reflects real rules — drink
   // window closing within 5 years and/or 12-month momentum >= +12%.
   // Safe to re-run: the reconciler upserts in place and closes stale

@@ -1127,3 +1127,128 @@ export async function getMyAllocations(params: {
 
   return { allocations: filtered, filter };
 }
+
+// ── getMyAppraisals (feature #61) ────────────────────────────────────────
+
+export interface AdvisorAppraisal {
+  id: string;
+  appraisalNumber: string | null;
+  status: "submitted" | "in_progress" | "completed" | "cancelled";
+  purpose: "insurance" | "estate" | "tax_donation" | "divorce" | "gift" | "personal";
+  basis: "fair_market_value" | "retail_replacement" | "auction_estimate";
+  isWelcomeAppraisal: boolean;
+  bottleCount: number | null;
+  totalBasisUsd: number | null;
+  priceChargedUsd: number | null;
+  effectiveDate: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  revokedAt: string | null;
+  /** When completed, a public `/verify/appraisal/<hash>` URL anyone can
+   *  hit to confirm the document. Null for non-completed. */
+  verifyUrl: string | null;
+}
+
+export interface AdvisorAppraisals {
+  appraisals: AdvisorAppraisal[];
+  /**
+   * Founding welcome appraisal status for the session member:
+   *   - "available": eligible and hasn't been requested/claimed yet
+   *   - "claimed": already requested or completed
+   *   - "ineligible": not a founding member
+   */
+  welcomeState: "available" | "claimed" | "ineligible";
+  /** Price the member would pay for an additional (paid) appraisal. */
+  paidPriceUsd: number;
+  filter: "open" | "completed" | "all";
+}
+
+/**
+ * Return the member's appraisal list. Default filter is `open` (submitted
+ * or in_progress) because that's what the advisor is usually answering
+ * about ("is my estate appraisal ready?"). `completed` returns issued
+ * documents for reference; `all` returns everything including cancelled.
+ *
+ * `verifyUrl` is intentionally a relative path — the chat route doesn't
+ * know the external origin, and every place we consume this value
+ * (advisor response text, optional link-out) can prefix with the
+ * canonical origin itself. Keeping it relative here avoids hard-coding
+ * a host in the tool output.
+ */
+export async function getMyAppraisals(params: {
+  status?: "open" | "completed" | "all";
+}): Promise<AdvisorAppraisals> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+  const filter = params.status ?? "open";
+
+  const { AppraisalStatus } = await import("@prisma/client");
+  const { checkWelcomeEligibility, resolveAppraisalPrice } = await import(
+    "@/lib/appraisals"
+  );
+
+  const member = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: { tier: true, foundingMember: true },
+  });
+  if (!member) throw new AdvisorAuthError();
+
+  const where = (() => {
+    if (filter === "completed") {
+      return { memberId, status: AppraisalStatus.completed };
+    }
+    if (filter === "open") {
+      return {
+        memberId,
+        status: {
+          in: [AppraisalStatus.submitted, AppraisalStatus.in_progress],
+        },
+      };
+    }
+    return { memberId };
+  })();
+
+  const [appraisals, welcome] = await Promise.all([
+    prisma.appraisal.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    checkWelcomeEligibility(memberId, member.foundingMember),
+  ]);
+
+  const welcomeState: AdvisorAppraisals["welcomeState"] = !member.foundingMember
+    ? "ineligible"
+    : welcome.existing
+      ? "claimed"
+      : "available";
+
+  const paidPrice = resolveAppraisalPrice(member.tier, false);
+
+  return {
+    appraisals: appraisals.map((a) => ({
+      id: a.id,
+      appraisalNumber: a.appraisalNumber,
+      status: a.status,
+      purpose: a.purpose,
+      basis: a.basis,
+      isWelcomeAppraisal: a.isWelcomeAppraisal,
+      bottleCount: a.bottleCount,
+      totalBasisUsd: a.totalBasisUsd ? toNumber(a.totalBasisUsd) : null,
+      priceChargedUsd: a.priceChargedUsd ? toNumber(a.priceChargedUsd) : null,
+      effectiveDate: a.effectiveDate?.toISOString() ?? null,
+      createdAt: a.createdAt.toISOString(),
+      completedAt: a.completedAt?.toISOString() ?? null,
+      revokedAt: a.revokedAt?.toISOString() ?? null,
+      verifyUrl:
+        a.status === AppraisalStatus.completed &&
+        a.dataIntegrityHash &&
+        !a.revokedAt
+          ? `/verify/appraisal/${a.dataIntegrityHash}`
+          : null,
+    })),
+    welcomeState,
+    paidPriceUsd: paidPrice.priceUsd,
+    filter,
+  };
+}

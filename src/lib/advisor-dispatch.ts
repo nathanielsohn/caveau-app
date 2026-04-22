@@ -41,11 +41,13 @@ import {
   getExitSignals,
   getInsuranceSavingsEstimate,
   getMyAllocations,
+  getMyAppraisals,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
   AdvisorAllocationsParamSchema,
+  AdvisorAppraisalsParamSchema,
 } from "@/lib/schemas";
 import { logger } from "@/lib/logger";
 
@@ -199,6 +201,23 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getMyAppraisals",
+    description:
+      "Return the member's appraisal history — insurance / estate / tax / donation / gift / personal valuation documents. Distinct from CCRs: a CCR attests to custody conditions for one bottle; an appraisal attests to dollar value of the collection (or a scoped subset) at a point in time. Each row returns status, purpose, basis, bottle count, total basis in USD, appraisal number (when completed), and a public `/verify/appraisal/<hash>` URL for completed documents. Also returns a `welcomeState` — `available` (founding member who can still claim their free welcome appraisal), `claimed` (already requested or completed), or `ineligible` (not founding). Use this for 'do I have an insurance appraisal on file?', 'what's the total basis on my last appraisal?', 'can I still claim my welcome appraisal?', or 'give me the verify link for CAV-APR-2026-0001'. Optional `status` filter selects `open` (default — submitted or in-progress), `completed`, or `all`.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["open", "completed", "all"],
+          description:
+            "Which slice of the appraisal list to return. Defaults to `open`.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -251,6 +270,11 @@ export async function dispatchTool(
       case "getMyAllocations": {
         const params = AdvisorAllocationsParamSchema.parse(input ?? {});
         return { ok: true, result: await getMyAllocations(params) };
+      }
+
+      case "getMyAppraisals": {
+        const params = AdvisorAppraisalsParamSchema.parse(input ?? {});
+        return { ok: true, result: await getMyAppraisals(params) };
       }
 
       default:

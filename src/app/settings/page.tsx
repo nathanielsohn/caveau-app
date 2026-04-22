@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, Check, Crown, Mail, ShieldCheck, Sparkles, ChevronRight } from "lucide-react";
+import {
+  Bell,
+  Check,
+  Crown,
+  FileText,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  ChevronRight,
+} from "lucide-react";
+import { AppraisalStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -10,6 +20,7 @@ import {
   foundingSavingsUsd,
   tierSpecForDbTier,
 } from "@/lib/tiers";
+import { checkWelcomeEligibility } from "@/lib/appraisals";
 import SentinelDevicesCard from "@/components/sentinel-devices-card";
 import PreferencesForm from "./preferences-form";
 
@@ -43,6 +54,19 @@ export default async function SettingsPage() {
   const foundingSavings = member.foundingMember
     ? foundingSavingsUsd(tierSpec)
     : 0;
+
+  // Welcome-appraisal state (feature #61). Founding members see either
+  // a "claim now" CTA or a "completed on" row inside the Founding Circle
+  // bundle. Non-founding members skip this entirely.
+  const welcome = member.foundingMember
+    ? await checkWelcomeEligibility(session.user.id, member.foundingMember)
+    : null;
+  const welcomeCompleted =
+    welcome?.existing?.status === AppraisalStatus.completed
+      ? welcome.existing
+      : null;
+  const welcomePending =
+    welcome?.existing && !welcomeCompleted ? welcome.existing : null;
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
@@ -135,8 +159,68 @@ export default async function SettingsPage() {
               </li>
             ))}
           </ul>
+
+          {/* Welcome appraisal status line (#61) */}
+          <div className="mt-4 pt-4 border-t border-[#2A2A30]/50">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gold shrink-0" />
+                <span className="text-sm text-primary">
+                  Welcome appraisal
+                </span>
+              </div>
+              {welcomeCompleted ? (
+                <Link
+                  href={`/appraisals/${welcomeCompleted.id}`}
+                  className="text-xs text-ok hover:text-ok/80 transition-colors"
+                >
+                  Completed{" "}
+                  {welcomeCompleted.completedAt?.toLocaleDateString("en-US", {
+                    dateStyle: "medium",
+                  }) ?? "recently"}{" "}
+                  →
+                </Link>
+              ) : welcomePending ? (
+                <Link
+                  href={`/appraisals/${welcomePending.id}`}
+                  className="text-xs text-gold-text hover:text-gold transition-colors"
+                >
+                  In progress — view request →
+                </Link>
+              ) : (
+                <Link
+                  href="/appraisals/new?welcome=1"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gold/10 border border-gold/30 text-gold text-xs font-medium hover:bg-gold/15 transition-colors"
+                >
+                  Claim now →
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Appraisals card — links every tier to the appraisal list */}
+      <Link
+        href="/appraisals"
+        className="glass-card p-6 md:p-8 mb-6 block hover:bg-[#1C1C20]/40 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-gold" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-serif text-lg text-primary">Appraisals</h2>
+              <p className="text-xs text-muted mt-0.5">
+                Insurance, estate, and tax valuation documents for your
+                collection
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+        </div>
+      </Link>
 
       {/* Sentinel devices card (#59) */}
       <SentinelDevicesCard memberId={session.user.id} />

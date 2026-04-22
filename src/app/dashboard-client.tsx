@@ -36,6 +36,7 @@ import {
   LineChart,
   Target,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { formatPercent } from "@/lib/investment";
@@ -146,6 +147,12 @@ interface DashboardClientProps {
   /** Portfolio vs. Liv-ex 100 tile (#57) — numeric teaser linking to
    *  /portfolio. Hides when there's not enough series data to draw. */
   portfolioVsLivex: PortfolioVsLivexCardProps;
+  /** Welcome appraisal nudge (#61). True only when the member is a
+   *  founding member and hasn't claimed the freebie yet. Non-founding
+   *  members and members with a pending/completed welcome appraisal
+   *  see no dashboard card — the detail lives on /settings and
+   *  /appraisals for those cases. */
+  welcomeAppraisalAvailable: boolean;
   /** First name resolved server-side so the welcome line doesn't flash
    *  "Member" before the client session hydrates. */
   firstName: string;
@@ -177,6 +184,7 @@ export default function DashboardClient({
   exitSignalTotal,
   insuranceEstimate,
   portfolioVsLivex,
+  welcomeAppraisalAvailable,
   firstName: serverFirstName,
 }: DashboardClientProps) {
   const { data: session, status } = useSession();
@@ -199,6 +207,33 @@ export default function DashboardClient({
           Welcome back, {firstName}
         </p>
       </div>
+
+      {/* Welcome appraisal nudge (#61) — founding-only, hides once claimed */}
+      {welcomeAppraisalAvailable && (
+        <Link
+          href="/appraisals/new?welcome=1"
+          className="glass-card p-4 md:p-5 block border border-gold/30 bg-gold/5 hover:bg-gold/10 transition-colors group"
+        >
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-start gap-3 min-w-0">
+              <Sparkles className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-gold-text mb-0.5">
+                  Founding Circle benefit
+                </p>
+                <p className="text-sm text-primary">
+                  Your welcome appraisal is included — claim it for
+                  insurance, estate, or personal records.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-sm text-gold font-medium shrink-0 group-hover:translate-x-0.5 transition-transform">
+              Claim now
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
+        </Link>
+      )}
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">

@@ -201,6 +201,42 @@ enum AllocationRequestStatus {
   fulfilled
 }
 
+// Welcome appraisal / valuation document (feature #61). Lifecycle is
+// linear: member requests → staff starts drafting → staff completes
+// (writes hash + appraisalNumber + line-item snapshot). `cancelled` is a
+// terminal branch from submitted/in_progress. Distinct from CCR
+// (custody/condition) — this is value-on-paper for insurance, estate, or
+// tax purposes.
+enum AppraisalStatus {
+  submitted
+  in_progress
+  completed
+  cancelled
+}
+
+// Appraisal basis — the valuation standard the appraiser is attesting
+// to. Insurance underwriters default to fair_market_value;
+// retail_replacement is higher and used for total-loss replacement
+// policies; auction_estimate is lower and used for liquidation / estate
+// planning scenarios where the holder expects to sell through auction.
+enum AppraisalBasis {
+  fair_market_value
+  retail_replacement
+  auction_estimate
+}
+
+// What the appraisal is for. Drives disclosure language on the
+// document (e.g. heirs section is only rendered for `estate`) and the
+// recommended basis (insurance → fair_market_value is typical).
+enum AppraisalPurpose {
+  insurance
+  estate
+  tax_donation
+  divorce
+  gift
+  personal
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -302,6 +338,7 @@ model Member {
   sentinelDevices               SentinelDevice[]
   sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
   allocationRequests            AllocationRequest[]
+  appraisals                    Appraisal[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -1029,6 +1066,58 @@ model Allocation {
   @@index([status, opensAt])
   @@index([minimumTier, status])
   @@map("allocations")
+}
+
+// Welcome appraisal / valuation document (feature #61). Distinct from
+// the Caveau Custody & Condition Report — a CCR attests to
+// custody/environmental conditions; an Appraisal attests to dollar
+// value at a point in time for insurance, estate, tax-donation, or
+// personal purposes. Request fields (`purpose`, `basis`, `memberNote`,
+// `scopedWineIds`, `heirs`) are member-authored on submit; authoring
+// fields (`appraiserName`, `appraiserCreds`, `scopeOfWork`,
+// `effectiveDate`, `totalBasisUsd`, `bottleCount`, `lineItems`,
+// `appraisalNumber`, `dataIntegrityHash`) are staff-authored on
+// completion. `lineItems` is a JSON snapshot of the bottles the
+// appraiser valued — captured at completion so the document stays
+// stable even if the member's portfolio changes afterward. `heirs` is
+// nullable and only populated for `purpose = estate`.
+// `isWelcomeAppraisal` marks the founding-member freebie so eligibility
+// checks can run without a dedicated Member column (see
+// src/lib/appraisals.ts). Price is stored on the row (not derived) so
+// the historical record reflects what the member was actually charged
+// even if the tier pricing ladder changes later.
+model Appraisal {
+  id                 String            @id @default(uuid())
+  memberId           String            @map("member_id")
+  status             AppraisalStatus   @default(submitted)
+  purpose            AppraisalPurpose
+  basis              AppraisalBasis
+  memberNote         String?           @map("member_note")
+  scopedWineIds      Json?             @map("scoped_wine_ids")
+  heirs              Json?
+  appraiserName      String?           @map("appraiser_name")
+  appraiserCreds     String?           @map("appraiser_creds")
+  scopeOfWork        String?           @map("scope_of_work")
+  staffNote          String?           @map("staff_note")
+  effectiveDate      DateTime?         @map("effective_date")
+  totalBasisUsd      Decimal?          @map("total_basis_usd") @db.Decimal(14, 2)
+  bottleCount        Int?              @map("bottle_count")
+  lineItems          Json?             @map("line_items")
+  priceChargedUsd    Decimal?          @map("price_charged_usd") @db.Decimal(14, 2)
+  isWelcomeAppraisal Boolean           @default(false) @map("is_welcome_appraisal")
+  appraisalNumber    String?           @unique @map("appraisal_number")
+  dataIntegrityHash  String?           @map("data_integrity_hash")
+  revokedAt          DateTime?         @map("revoked_at")
+  completedAt        DateTime?         @map("completed_at")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  member             Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([dataIntegrityHash])
+  @@map("appraisals")
 }
 
 // Per-member interest in an allocation. Unique on (allocationId, memberId)

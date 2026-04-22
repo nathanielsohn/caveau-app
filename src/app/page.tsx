@@ -19,6 +19,7 @@ import { isActiveStage } from "@/lib/hurricane";
 import { reasonLabel } from "@/lib/exit-signals";
 import { estimateInsuranceSavings } from "@/lib/insurance";
 import { tierSpecForDbTier } from "@/lib/tiers";
+import { checkWelcomeEligibility } from "@/lib/appraisals";
 import DashboardClient from "./dashboard-client";
 import HurricaneBanner from "@/components/hurricane-banner";
 
@@ -388,6 +389,20 @@ export default async function DashboardPage() {
         ? hurricaneMembership
         : null;
 
+    // Welcome appraisal nudge (feature #61). Only surfaces on the
+    // dashboard for founding members who haven't claimed yet —
+    // non-founding members and members with a pending/completed
+    // welcome appraisal see nothing here (settings has the fuller
+    // status row for the other cases).
+    const memberFounding = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: { foundingMember: true },
+    });
+    const welcomeDecision = memberFounding?.foundingMember
+      ? await checkWelcomeEligibility(memberId, memberFounding.foundingMember)
+      : null;
+    const welcomeAppraisalAvailable = welcomeDecision?.eligible ?? false;
+
     // Serialize exit signals for the client card (feature #55). Converts
     // Prisma.Decimal into plain numbers so the card renders currency
     // without each row re-coercing on click.
@@ -463,6 +478,7 @@ export default async function DashboardPage() {
           exitSignalTotal={openExitSignalCount}
           insuranceEstimate={insuranceEstimate}
           portfolioVsLivex={portfolioVsLivex}
+          welcomeAppraisalAvailable={welcomeAppraisalAvailable}
           firstName={session.user.name?.split(" ")[0] ?? "Member"}
         />
       </>

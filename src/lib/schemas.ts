@@ -152,6 +152,10 @@ export const AdvisorAllocationsParamSchema = z.object({
   status: z.enum(["eligible_open", "requested", "all"]).optional(),
 });
 
+export const AdvisorAppraisalsParamSchema = z.object({
+  status: z.enum(["open", "completed", "all"]).optional(),
+});
+
 // Chat route body. 8000 chars per turn is roughly ~2000 tokens — enough
 // for a long question without letting a single message balloon the
 // prompt. 40 turns caps total transcript cost per request; the chat UI
@@ -442,6 +446,119 @@ export const RequestAllocationBodySchema = z.object({
 
 export const AllocationRequestActionBodySchema = z.object({
   requestId: UuidSchema,
+  staffNote: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
+});
+
+// ── Welcome appraisal (feature #61) ───────────────────────────────────────
+
+/**
+ * One estate heir. Name + share string kept loose on purpose — a heir
+ * record might read "Elena Saenz (daughter)" and a share might read
+ * "25% or $375,000 cash-equivalent". Free text, capped to keep the row
+ * from ballooning.
+ */
+export const AppraisalHeirSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  share: z.string().trim().min(1).max(200),
+});
+
+/**
+ * Member-side request body. `purpose`, `basis`, optional free-text
+ * note, optional scoped wine ids (null/missing = appraise whole
+ * portfolio), optional heirs (required only for purpose=estate,
+ * enforced via `.superRefine` below). `requestWelcome` lets a founding
+ * member flag the request as their welcome appraisal — the server
+ * re-checks eligibility before honoring it (see
+ * `checkWelcomeEligibility`), so a non-founding caller setting it to
+ * true just gets their price not discounted.
+ */
+export const RequestAppraisalBodySchema = z
+  .object({
+    purpose: z.enum([
+      "insurance",
+      "estate",
+      "tax_donation",
+      "divorce",
+      "gift",
+      "personal",
+    ]),
+    basis: z.enum([
+      "fair_market_value",
+      "retail_replacement",
+      "auction_estimate",
+    ]),
+    memberNote: z
+      .preprocess(
+        (v) =>
+          typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+        z.string().max(1000).optional(),
+      )
+      .optional(),
+    scopedWineIds: z.array(UuidSchema).max(500).optional(),
+    heirs: z.array(AppraisalHeirSchema).max(20).optional(),
+    requestWelcome: z.preprocess(
+      (v) => v === "on" || v === "true" || v === true,
+      z.boolean().default(false),
+    ),
+  })
+  .superRefine((v, ctx) => {
+    if (v.purpose === "estate" && (!v.heirs || v.heirs.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Estate appraisals require at least one heir",
+        path: ["heirs"],
+      });
+    }
+  });
+
+/**
+ * Admin completion body. Runs when staff has reviewed the request,
+ * locked in an appraiser, and wants to mint the final document. The
+ * server re-snapshots the portfolio at this point (using the stored
+ * scope), computes totals, hashes, and assigns the next
+ * appraisal_number. Everything except staff-authored metadata is
+ * derived server-side so a client can't forge a basis total.
+ */
+export const CompleteAppraisalBodySchema = z.object({
+  appraisalId: UuidSchema,
+  appraiserName: z.string().trim().min(1).max(200),
+  appraiserCreds: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
+  scopeOfWork: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(2000).optional(),
+    )
+    .optional(),
+  effectiveDate: DateSchema,
+  staffNote: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(1000).optional(),
+    )
+    .optional(),
+});
+
+/**
+ * Admin action bodies for start/cancel/revoke. All carry just the
+ * appraisal id plus an optional note so one Zod schema covers the
+ * three lifecycle transitions the queue surfaces.
+ */
+export const AppraisalLifecycleActionSchema = z.object({
+  appraisalId: UuidSchema,
   staffNote: z
     .preprocess(
       (v) =>
