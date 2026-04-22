@@ -42,12 +42,14 @@ import {
   getInsuranceSavingsEstimate,
   getMyAllocations,
   getMyAppraisals,
+  getMyAcquisitions,
 } from "@/lib/advisor-tools";
 import {
   AdvisorWineIdParamSchema,
   AdvisorBenchmarkParamSchema,
   AdvisorAllocationsParamSchema,
   AdvisorAppraisalsParamSchema,
+  AdvisorAcquisitionsParamSchema,
 } from "@/lib/schemas";
 import { logger } from "@/lib/logger";
 
@@ -218,6 +220,23 @@ export const ADVISOR_TOOL_DEFINITIONS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "getMyAcquisitions",
+    description:
+      "Return the member's concierge sourcing requests (feature #62). Each acquisition captures a bottle the member asked Caveau to hunt down — producer, optional wine name + vintage (exact or range), region, varietal, quantity, optional budget cap, and a free-text note. Returns status (requested / sourcing / fulfilled / declined / cancelled), the staff-authored sourcing note, a working-quote total (`estimatedTotalUsd`) if staff have shared one, the final `memberPriceUsd` once fulfilled, the source (Liv-ex / broker / auction / Caveau private network), and the wine IDs written into the member's collection on fulfillment. Does NOT return Caveau's cost basis or margin — those are admin-only reporting fields. Use this for 'what's the status on my 2015 Margaux hunt?', 'what acquisitions do I have in progress?', or 'did my Sassicaia come through?'. Optional `status` filter: `open` (default — requested or sourcing), `fulfilled`, or `all`.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["open", "fulfilled", "all"],
+          description:
+            "Which slice of the acquisitions list to return. Defaults to `open`.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
@@ -275,6 +294,11 @@ export async function dispatchTool(
       case "getMyAppraisals": {
         const params = AdvisorAppraisalsParamSchema.parse(input ?? {});
         return { ok: true, result: await getMyAppraisals(params) };
+      }
+
+      case "getMyAcquisitions": {
+        const params = AdvisorAcquisitionsParamSchema.parse(input ?? {});
+        return { ok: true, result: await getMyAcquisitions(params) };
       }
 
       default:

@@ -14,6 +14,8 @@ import {
   AppraisalStatus,
   AppraisalBasis,
   AppraisalPurpose,
+  AcquisitionSource,
+  AcquisitionStatus,
 } from '@prisma/client';
 import { createHmac } from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -203,6 +205,10 @@ async function main() {
     // NULL the ordering here is harmless — wipe the releases before
     // wines so the wines-delete below doesn't see FK-dependent rows.
     prisma.allocation.deleteMany(),
+    // Acquisitions (feature #62). Same SET NULL FK pattern as
+    // allocations — Wine.sourceAcquisitionId nulls when the
+    // acquisition is deleted, so ordering here is fine.
+    prisma.acquisition.deleteMany(),
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
@@ -1516,7 +1522,91 @@ async function main() {
     `  ✓ Welcome appraisal: ${welcomeAppraisal.appraisalNumber} · ${appraisalSnapshot.bottleCount} bottles · $${appraisalSnapshot.totalBasisUsd.toFixed(2)}`,
   );
 
-  // 20. Exit signals (feature #55). Runs the same scoring pass the app
+  // 20. Acquisition sourcing (feature #62). Two requests for Robert:
+  // one still `sourcing` (2010 Lafite, a staff-quoted single bottle
+  // against a $3K cap) so the admin queue has live work on screen, and
+  // one `fulfilled` (2019 Sassicaia, 3 bottles at 10.8% margin) so the
+  // member detail page renders with an actual collection back-link and
+  // the admin CSV export shows a real margin row. The fulfilled side
+  // also writes 3 Wine rows with `sourceAcquisitionId` set so the
+  // bottle detail pages can surface "acquired via Caveau sourcing" in
+  // the same way allocation-sourced bottles do (#60).
+  const sourcingLafite = await prisma.acquisition.create({
+    data: {
+      memberId: member.id,
+      producer: 'Château Lafite Rothschild',
+      wineName: null,
+      vintageExact: 2010,
+      region: 'Pauillac',
+      varietal: 'Cabernet Sauvignon Blend',
+      quantity: 1,
+      maxBudgetUsd: 3000,
+      memberNote:
+        "For our 20th anniversary dinner in September. Willing to stretch 10% for a provenance-clean bottle — previous owner matters.",
+      status: AcquisitionStatus.sourcing,
+      staffNote:
+        'Broker has 2010 at $2,750 with a 20-yr chain of custody back to La Place de Bordeaux. Liv-ex has two comps at $2,800–$2,850 this week. Will confirm within 48h.',
+      estimatedTotalUsd: 2800,
+      sourcingStartedAt: new Date(Date.now() - 2 * DAY),
+      createdAt: new Date(Date.now() - 5 * DAY),
+    },
+  });
+
+  const sassicaiaAcquisitionId = crypto.randomUUID();
+  const sassicaiaCost = 650;
+  const sassicaiaPrice = 720; // 9.72% margin — inside the 8–12% band
+  await prisma.acquisition.create({
+    data: {
+      id: sassicaiaAcquisitionId,
+      memberId: member.id,
+      producer: 'Tenuta San Guido',
+      wineName: 'Sassicaia',
+      vintageExact: 2019,
+      region: 'Tuscany',
+      varietal: 'Cabernet Sauvignon Blend',
+      quantity: 3,
+      maxBudgetUsd: 2500,
+      memberNote:
+        'For the cellar — happy to take whichever vintage is cleanest in the 2018–2019 window.',
+      status: AcquisitionStatus.fulfilled,
+      staffNote:
+        '3 bottles sourced via Liv-ex at $650/btl, provenance confirmed back to the Tenuta. Delivered to Naples vault, CCRs issued at intake.',
+      source: AcquisitionSource.livex,
+      estimatedTotalUsd: sassicaiaPrice * 3,
+      actualCostUsd: sassicaiaCost * 3,
+      memberPriceUsd: sassicaiaPrice * 3,
+      marginUsd: (sassicaiaPrice - sassicaiaCost) * 3,
+      sourcingStartedAt: new Date(Date.now() - 25 * DAY),
+      fulfilledAt: new Date(Date.now() - 15 * DAY),
+      fulfilledById: admin.id,
+      createdAt: new Date(Date.now() - 30 * DAY),
+    },
+  });
+
+  // Write the three Wine rows the fulfilled request produced, with
+  // sourceAcquisitionId back-linking to the acquisition above.
+  await prisma.wine.createMany({
+    data: Array.from({ length: 3 }, () => ({
+      name: 'Tenuta San Guido Sassicaia',
+      vintage: 2019,
+      region: 'Tuscany',
+      varietal: 'Cabernet Sauvignon Blend',
+      producer: 'Tenuta San Guido',
+      purchasePrice: sassicaiaPrice,
+      currentValue: sassicaiaPrice,
+      tastingNotes:
+        'Acquired via Caveau sourcing. Dense cassis, tobacco, and graphite with the house cedar signature.',
+      drinkWindowStart: 2025,
+      drinkWindowEnd: 2045,
+      memberId: member.id,
+      sourceAcquisitionId: sassicaiaAcquisitionId,
+    })),
+  });
+  console.log(
+    `  ✓ Acquisitions: ${sourcingLafite.producer} (sourcing · quote $2,800), Tenuta San Guido Sassicaia (fulfilled · 3 bottles, 9.7% margin)`,
+  );
+
+  // 21. Exit signals (feature #55). Runs the same scoring pass the app
   // uses in production so the demo state reflects real rules — drink
   // window closing within 5 years and/or 12-month momentum >= +12%.
   // Safe to re-run: the reconciler upserts in place and closes stale

@@ -1252,3 +1252,122 @@ export async function getMyAppraisals(params: {
     filter,
   };
 }
+
+// ── getMyAcquisitions (feature #62) ──────────────────────────────────────
+
+export interface AdvisorAcquisition {
+  id: string;
+  status: "requested" | "sourcing" | "fulfilled" | "declined" | "cancelled";
+  /** Human-readable one-line spec ("2010 Château Lafite Rothschild × 1"). */
+  spec: string;
+  producer: string;
+  wineName: string | null;
+  vintageExact: number | null;
+  vintageMin: number | null;
+  vintageMax: number | null;
+  region: string | null;
+  varietal: string | null;
+  quantity: number;
+  maxBudgetUsd: number | null;
+  memberNote: string | null;
+  /** Visible to the member — the staff note is used for sourcing
+   *  communication (quote caveats, ETA, etc). */
+  sourcingNote: string | null;
+  /** Working-quote total the staff shared at the sourcing stage. Null
+   *  if not yet quoted. */
+  estimatedTotalUsd: number | null;
+  /** Final member-facing price once fulfilled. Null until fulfillment. */
+  memberPriceUsd: number | null;
+  source: "livex" | "broker" | "auction" | "caveau_private" | null;
+  /** Wine IDs written into the member's collection on fulfillment. */
+  sourcedWineIds: string[];
+  createdAt: string;
+  fulfilledAt: string | null;
+  declinedAt: string | null;
+  cancelledAt: string | null;
+}
+
+export interface AdvisorAcquisitions {
+  acquisitions: AdvisorAcquisition[];
+  filter: "open" | "fulfilled" | "all";
+}
+
+/**
+ * Return the member's acquisition sourcing requests (feature #62).
+ *
+ * Filter values:
+ *   - open (default): `requested` + `sourcing` — the slice the advisor
+ *     is usually answering about ("what's the status on my Margaux?")
+ *   - fulfilled: completed sourcing that's in the cellar
+ *   - all: everything including declined and cancelled
+ *
+ * Deliberately excludes `actualCostUsd` and `marginUsd` — slide 15's
+ * 8–12% margin is an operator reporting handle, not a member-facing
+ * disclosure. An advisor running in member context should not leak
+ * Caveau's cost basis even if the member asks "what did you pay for
+ * it?". If the member needs the cost, that's an admin-side answer.
+ */
+export async function getMyAcquisitions(params: {
+  status?: "open" | "fulfilled" | "all";
+}): Promise<AdvisorAcquisitions> {
+  const session = await requireSession();
+  const memberId = session.user.id;
+  const filter = params.status ?? "open";
+
+  const { AcquisitionStatus } = await import("@prisma/client");
+  const { formatAcquisitionSpec } = await import("@/lib/acquisitions");
+
+  const where = (() => {
+    if (filter === "fulfilled") {
+      return { memberId, status: AcquisitionStatus.fulfilled };
+    }
+    if (filter === "open") {
+      return {
+        memberId,
+        status: {
+          in: [AcquisitionStatus.requested, AcquisitionStatus.sourcing],
+        },
+      };
+    }
+    return { memberId };
+  })();
+
+  const acquisitions = await prisma.acquisition.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: {
+      sourcedWines: { select: { id: true } },
+    },
+    take: 50,
+  });
+
+  return {
+    acquisitions: acquisitions.map((a) => ({
+      id: a.id,
+      status: a.status,
+      spec: formatAcquisitionSpec(a),
+      producer: a.producer,
+      wineName: a.wineName,
+      vintageExact: a.vintageExact,
+      vintageMin: a.vintageMin,
+      vintageMax: a.vintageMax,
+      region: a.region,
+      varietal: a.varietal,
+      quantity: a.quantity,
+      maxBudgetUsd: a.maxBudgetUsd ? toNumber(a.maxBudgetUsd) : null,
+      memberNote: a.memberNote,
+      sourcingNote: a.staffNote,
+      estimatedTotalUsd: a.estimatedTotalUsd
+        ? toNumber(a.estimatedTotalUsd)
+        : null,
+      memberPriceUsd: a.memberPriceUsd ? toNumber(a.memberPriceUsd) : null,
+      source: a.source,
+      sourcedWineIds: a.sourcedWines.map((w) => w.id),
+      createdAt: a.createdAt.toISOString(),
+      fulfilledAt: a.fulfilledAt?.toISOString() ?? null,
+      declinedAt: a.declinedAt?.toISOString() ?? null,
+      cancelledAt: a.cancelledAt?.toISOString() ?? null,
+    })),
+    filter,
+  };
+}

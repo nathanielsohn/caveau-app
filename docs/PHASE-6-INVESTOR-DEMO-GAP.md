@@ -4,11 +4,12 @@
 **Author:** Nathaniel Sohn (CTO)
 **Purpose:** Inventory of features the app needs so Rob + Samuel can demo the full investor narrative solo.
 
-**Status as of 2026-04-18:**
+**Status as of 2026-04-22:**
 - ~~§1 AI Advisor~~ — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Persona expanded to dual-role investment advisor + sommelier.
 - ~~§2 Biometric-verified Deliver Now~~ — **shipped 2026-04-18.** Data model, member-side ladder, driver ladder, and wine-detail entry landed across `f46fd01`, `1bb372a`, `9285075`, `5303875`. Closing pass added Florida DABT age verification (name + DOB cross-check + ≥21 gate at `/id-scan`), member-side >$2K hint on the Deliver Now CTA, and a driver-side "Step-up OTP verified" badge for >$2K deliveries.
 - ~~§4 Events & tasting module~~ — **shipped 2026-04-18.** New `Event` / `EventRsvp` / `EventSignup` models (migration `0031`), public `/events` list + `/events/[slug]` detail with auth-aware rendering (members see RSVP form with seat count 1–4 and cancel; non-members see a signup form with 5/60s-per-IP rate limit mirroring `/waitlist`), admin `/admin/events` authoring + per-event attendee roster + CSV export of combined RSVPs + signups, member nav entry, Naples Winter Wine Festival + a member-only Bordeaux tasting seeded. Correction: the scaffold noted in the earlier CLAUDE.md at `/facility/events/[id]/` is actually the #42 facility resilience post-event report, not a #53 stub — the new module lives at `/events`.
-- §3 and §5–§8 remain open — next up: §3 Concierge migration.
+- ~~§15 Acquisition sourcing~~ — **shipped 2026-04-22** (feature #62). Last of the Phase 6 gap-list items. Details in §15 below.
+- §16 Insurance referral program and §18 Staff check-in remain as remaining P1 items.
 
 ## What the pitch deck promises
 
@@ -122,9 +123,9 @@ The deck is aggressive about the Sentinel hardware IP — *patent filing in prog
 
 ~~Slide 11 founding benefit. Slide 15 revenue stream (*Appraisal & Estate Docs, $5K–$15K*). Distinct from the Caveau Custody & Condition Report — an appraisal is a point-in-time valuation document for tax/insurance/estate purposes. Needs its own document type (basis, date, appraiser, purpose, heirs if estate-scoped). Extend onboarding to offer a welcome appraisal for founding members.~~ Shipped — `Appraisal` model in migration 0037 with three enums, HMAC-SHA256 hashed document (`src/lib/appraisal-hash.ts` reuses the CCR key), server-rendered PDF via `pdf-lib` (`src/lib/appraisal-pdf.ts`), tier-scaled per-document pricing ($495 / $795 / $1,195 / $1,595) with founding freebie, `/appraisals` member list + `/appraisals/new` request form + `/appraisals/[id]` detail that renders the live document when completed, `/admin/appraisals` queue with status chips and CSV export, `/verify/appraisal/[hash]` public verify page (no line items leaked), AI Advisor `getMyAppraisals` tool with a `welcomeState` signal, dashboard founding nudge, `/settings` Founding Circle row with claim/pending/completed states. Seeded CAV-APR-2026-0001 for Robert covering his full portfolio at fair-market-value basis for insurance purpose.
 
-### 15. Acquisition sourcing workflow
+### 15. ~~Acquisition sourcing workflow~~ — done 2026-04-22 (feature #62)
 
-Revenue stream #8, confirmed on slides 12 + 15 (8–12% margin). *Member requests specific bottle → Caveau sources from broker/auction/Caveau private network → margin recorded.* Minimum: request form, admin queue, fulfillment record with margin.
+~~Revenue stream #8, confirmed on slides 12 + 15 (8–12% margin). *Member requests specific bottle → Caveau sources from broker/auction/Caveau private network → margin recorded.* Minimum: request form, admin queue, fulfillment record with margin.~~ Shipped — `Acquisition` model in migration 0038 with a nullable `Wine.sourceAcquisitionId` back-link mirroring the #60 allocation pattern. Structured request spec (producer required; optional wine name, region, varietal, exact-or-range vintage, quantity 1–12, budget cap, free-text note) covers both "specific 2015 Margaux" and "anything under $2K in Northern Rhône" investor-demo edge cases. Single-stage lifecycle (`requested → sourcing → fulfilled` + `declined`/`cancelled`) with staff-recorded `estimatedTotalUsd` at the sourcing stage; the member-accept step gated on actual payment is deferred to when Stripe (#27) can back it. Fulfillment transactionally writes `quantity` Wine rows with `sourceAcquisitionId` set so the bottles carry provenance back to the request. Margin math in `src/lib/acquisitions.ts` (mark-up-on-price to match the slide-15 8–12% band); admin queue at `/admin/acquisitions` with status chips + CSV export, fulfill form has live margin preview and a budget-cap warning. AI Advisor `getMyAcquisitions` tool answers "what's the status on my 2015 Margaux hunt?" but deliberately omits cost + margin so the advisor can't leak Caveau's cost basis to the member. Seed: one sourcing request (2010 Lafite) + one fulfilled (2019 Sassicaia, 3 bottles, 9.7% margin, all back-linked into Robert's collection).
 
 ### 16. Insurance referral program (#31)
 

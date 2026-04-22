@@ -156,6 +156,10 @@ export const AdvisorAppraisalsParamSchema = z.object({
   status: z.enum(["open", "completed", "all"]).optional(),
 });
 
+export const AdvisorAcquisitionsParamSchema = z.object({
+  status: z.enum(["open", "fulfilled", "all"]).optional(),
+});
+
 // Chat route body. 8000 chars per turn is roughly ~2000 tokens — enough
 // for a long question without letting a single message balloon the
 // prompt. 40 turns caps total transcript cost per request; the chat UI
@@ -566,6 +570,139 @@ export const AppraisalLifecycleActionSchema = z.object({
       z.string().max(500).optional(),
     )
     .optional(),
+});
+
+// ── Acquisition sourcing (feature #62) ───────────────────────────────────
+
+/**
+ * Empty-string-to-undefined preprocessor for optional form inputs.
+ * FormData always carries a value (never undefined) for an unset input,
+ * so optional `z.string().optional()` alone can't distinguish "user
+ * left it blank" from "user sent an empty string". We treat either as
+ * absent so a blank vintage / region / varietal field doesn't get
+ * persisted as "" in the DB.
+ */
+const optionalString = (max: number) =>
+  z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(max).optional(),
+    )
+    .optional();
+
+/**
+ * Optional integer field that accepts "" / missing as absent.
+ * Used for vintage fields on the request form — a member entering only
+ * `vintageExact` shouldn't get a ZodError for the blank min/max inputs.
+ */
+const optionalVintage = z
+  .preprocess(
+    (v) => {
+      if (v === "" || v == null) return undefined;
+      const n = typeof v === "string" ? Number(v) : v;
+      return Number.isFinite(n) ? n : v;
+    },
+    z.number().int().min(1800).max(new Date().getFullYear() + 1).optional(),
+  )
+  .optional();
+
+/**
+ * Member-side acquisition request body.
+ *
+ * `producer` is the only required field — everything else is optional
+ * so a member can be as specific or as loose as they want ("2015
+ * Margaux" vs. "any Châteauneuf-du-Pape under $2K"). Vintage can be
+ * exact OR a range; the `.superRefine` below rejects mixing exact with
+ * a range, and rejects a range where min > max.
+ *
+ * `quantity` is capped at MAX_BOTTLES_PER_REQUEST (12) — a case is the
+ * largest typical ask; anything bigger belongs on a future bulk
+ * surface.
+ */
+export const RequestAcquisitionBodySchema = z
+  .object({
+    producer: z.string().trim().min(1).max(200),
+    wineName: optionalString(200),
+    vintageExact: optionalVintage,
+    vintageMin: optionalVintage,
+    vintageMax: optionalVintage,
+    region: optionalString(200),
+    varietal: optionalString(200),
+    quantity: z.coerce.number().int().min(1).max(12),
+    maxBudgetUsd: z
+      .preprocess(
+        (v) => {
+          if (v === "" || v == null) return undefined;
+          const n = typeof v === "string" ? Number(v) : v;
+          return Number.isFinite(n) ? n : v;
+        },
+        PriceSchema.optional(),
+      )
+      .optional(),
+    memberNote: optionalString(1000),
+  })
+  .superRefine((v, ctx) => {
+    const hasExact = v.vintageExact != null;
+    const hasRange = v.vintageMin != null || v.vintageMax != null;
+    if (hasExact && hasRange) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter either an exact vintage or a range, not both",
+        path: ["vintageExact"],
+      });
+    }
+    if (
+      v.vintageMin != null &&
+      v.vintageMax != null &&
+      v.vintageMin > v.vintageMax
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Vintage min must be at or before vintage max",
+        path: ["vintageMax"],
+      });
+    }
+  });
+
+/**
+ * Admin sourcing-start body. Staff begin sourcing, optionally attach a
+ * quote (`estimatedTotalUsd`) and a staff note visible to the member.
+ */
+export const StartAcquisitionSourcingSchema = z.object({
+  acquisitionId: UuidSchema,
+  estimatedTotalUsd: z
+    .preprocess(
+      (v) => {
+        if (v === "" || v == null) return undefined;
+        const n = typeof v === "string" ? Number(v) : v;
+        return Number.isFinite(n) ? n : v;
+      },
+      PriceSchema.optional(),
+    )
+    .optional(),
+  staffNote: optionalString(1000),
+});
+
+/**
+ * Admin fulfill body. Locks in cost + price + source and transactionally
+ * writes `quantity` Wine rows with the acquisition as the back-link.
+ */
+export const FulfillAcquisitionSchema = z.object({
+  acquisitionId: UuidSchema,
+  source: z.enum(["livex", "broker", "auction", "caveau_private"]),
+  actualCostUsd: z.coerce.number().pipe(PriceSchema),
+  memberPriceUsd: z.coerce.number().pipe(PriceSchema),
+  staffNote: optionalString(1000),
+});
+
+/**
+ * Admin decline body. Carries a required reason note so the member
+ * gets a human explanation on the detail page.
+ */
+export const DeclineAcquisitionSchema = z.object({
+  acquisitionId: UuidSchema,
+  staffNote: z.string().trim().min(1).max(1000),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────

@@ -237,6 +237,32 @@ enum AppraisalPurpose {
   personal
 }
 
+// Acquisition sourcing workflow (feature #62). Member asks for a
+// specific bottle → staff sources from Liv-ex, a broker, an auction, or
+// Caveau's private network → staff fulfills (writes a Wine row with
+// `sourceAcquisitionId` back-link). Single-stage lifecycle: the
+// member-accept step that would normally sit between `sourcing` and
+// `fulfilled` is deferred until Stripe (#27) lands and can actually
+// block on payment — pre-payment, it would be UX that doesn't do
+// anything. `estimated_total_usd` still carries the staff-to-member
+// quote communication.
+enum AcquisitionStatus {
+  requested
+  sourcing
+  fulfilled
+  declined
+  cancelled
+}
+
+// Where the fulfilled bottle came from. Drives per-source margin
+// reporting (admin-only). Null while sourcing is in progress.
+enum AcquisitionSource {
+  livex
+  broker
+  auction
+  caveau_private
+}
+
 model Facility {
   id                    String              @id @default(uuid())
   name                  String
@@ -339,6 +365,7 @@ model Member {
   sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
   allocationRequests            AllocationRequest[]
   appraisals                    Appraisal[]
+  acquisitions                  Acquisition[]
 
   @@index([tier])
   @@index([role, createdAt])
@@ -375,6 +402,12 @@ model Wine {
   // SET NULL on allocation delete so retiring a release doesn't
   // cascade away the member's physical inventory.
   sourceAllocationId   String?                 @map("source_allocation_id")
+  // Back-link to the Acquisition this bottle was sourced through
+  // (feature #62). Same rules as sourceAllocationId — nullable for
+  // manual / migration / legacy / allocation-sourced bottles; SET NULL
+  // on acquisition delete so a retired sourcing record doesn't cascade
+  // away the member's bottles.
+  sourceAcquisitionId  String?                 @map("source_acquisition_id")
   member               Member                  @relation(fields: [memberId], references: [id], onDelete: Restrict)
   lockerSlots          LockerSlot[]
   certificates         ProvenanceCertificate[]
@@ -386,11 +419,13 @@ model Wine {
   exitSignals          ExitSignal[]
   sentinelDevices      SentinelDevice[]
   sourceAllocation     Allocation?             @relation("WineAllocationSource", fields: [sourceAllocationId], references: [id], onDelete: SetNull)
+  sourceAcquisition    Acquisition?            @relation("WineAcquisitionSource", fields: [sourceAcquisitionId], references: [id], onDelete: SetNull)
 
   @@index([memberId, region, varietal])
   @@index([memberId, status])
   @@index([memberId, status, currentValue(sort: Desc)])
   @@index([sourceAllocationId])
+  @@index([sourceAcquisitionId])
   @@map("wines")
 }
 
@@ -1147,4 +1182,53 @@ model AllocationRequest {
   @@index([memberId, createdAt(sort: Desc)])
   @@index([status, allocationId])
   @@map("allocation_requests")
+}
+
+// Acquisition sourcing request (feature #62). Reverse of Allocation:
+// member asks for a specific bottle, staff sources it. Single-stage
+// lifecycle: requested → sourcing → fulfilled (+ declined / cancelled
+// branches). Fulfillment writes `quantity` Wine rows with
+// `sourceAcquisitionId` set so the bottle carries provenance back to
+// the request. Pricing fields split between staff-facing (cost,
+// margin) and member-facing (estimated_total, member_price). Margin is
+// admin-only reporting — slide 15's "8–12% margin tracked" is the
+// operator's handle, not member-facing.
+model Acquisition {
+  id                 String              @id @default(uuid())
+  memberId           String              @map("member_id")
+  // Request spec — producer is required; everything else is optional so
+  // a member can say "any vintage of X between 2015–2018" or "any
+  // Northern Rhône under $2K" in combination with `memberNote`.
+  producer           String
+  wineName           String?             @map("wine_name")
+  vintageExact       Int?                @map("vintage_exact")
+  vintageMin         Int?                @map("vintage_min")
+  vintageMax         Int?                @map("vintage_max")
+  region             String?
+  varietal           String?
+  quantity           Int
+  maxBudgetUsd       Decimal?            @map("max_budget_usd") @db.Decimal(14, 2)
+  memberNote         String?             @map("member_note")
+  // Sourcing state (staff-authored)
+  status             AcquisitionStatus   @default(requested)
+  staffNote          String?             @map("staff_note")
+  source             AcquisitionSource?
+  estimatedTotalUsd  Decimal?            @map("estimated_total_usd") @db.Decimal(14, 2)
+  actualCostUsd      Decimal?            @map("actual_cost_usd") @db.Decimal(14, 2)
+  memberPriceUsd     Decimal?            @map("member_price_usd") @db.Decimal(14, 2)
+  marginUsd          Decimal?            @map("margin_usd") @db.Decimal(14, 2)
+  // Lifecycle timestamps
+  sourcingStartedAt  DateTime?           @map("sourcing_started_at")
+  fulfilledAt        DateTime?           @map("fulfilled_at")
+  declinedAt         DateTime?           @map("declined_at")
+  cancelledAt        DateTime?           @map("cancelled_at")
+  fulfilledById      String?             @map("fulfilled_by_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  member             Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  sourcedWines       Wine[]              @relation("WineAcquisitionSource")
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("acquisitions")
 }
