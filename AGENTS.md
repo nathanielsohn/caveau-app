@@ -19,7 +19,7 @@ A luxury wine cellar management web app. Demonstrates the full Caveau value chai
 - **bcryptjs** (password hashing)
 - **Zod** (request/body validation via `src/lib/schemas.ts`)
 - **AWS SDK v3** — S3 + presigner (wine image upload, #18), SES (alert email, #19)
-- **Anthropic SDK** (AI Advisor chat streaming, #50 — Claude Sonnet 4.6)
+- **Anthropic SDK** (AI Advisor chat streaming, #50 — Codex Sonnet 4.6)
 - **Google Cloud Vision** (wine label OCR via REST, #24)
 - **Upstash Redis** (distributed rate limiting; in-memory fallback when unset)
 - **pdf-lib** + **qrcode.react** (Custody & Condition Report PDF + QR)
@@ -370,7 +370,7 @@ See SPEC.md "Post-Demo Roadmap" for full details. Done features are marked ~~str
 
 ## Development Workflow
 
-The user will open Claude Code and ask "what's next", "where are we", or "let's keep going". Here's how to handle that:
+The user will open Codex and ask "what's next", "where are we", or "let's keep going". Here's how to handle that:
 
 ### 1. Check Status
 

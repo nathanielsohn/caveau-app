@@ -1,0 +1,161 @@
+# Caveau App Changes — April 2026
+
+Auto-generated from git commits by the Claude Code Stop hook.
+
+- **2026-04-14** `83969bc` — fix: audit hardening pass (security, data, a11y, mobile sign-out)
+  - Bundled fixes from the in-depth repo audit:
+- **2026-04-14** `5dcfab8` — fix(middleware): skip HMAC production assertion under Edge runtime
+  - Vercel deploy of 83969bc started returning MIDDLEWARE_INVOCATION_FAILED.
+- **2026-04-14** `ad38509` — chore: rotate prod HMAC secrets, rehash 11 certificates
+  - Prod Vercel env was missing CERTIFICATE_HMAC_SECRET and FACILITY_COOKIE_SECRET
+- **2026-04-15** `c93443f` — chore(seed): resolve all active alerts in demo data
+- **2026-04-16** `d4553a6` — feat(42): rename Provenance Certificate → Custody & Condition Report
+  - Move primary route from /certificate/[id] to /report/[id] with legacy
+- **2026-04-16** `693e71a` — feat(45): investment portfolio view with CAGR + S&P 500 baseline
+  - Adds tier classification (Anchor/Icon/Blue-Chip/Prestige/Accessible/
+- **2026-04-16** `b241996` — feat(49): founding member waitlist + LOI tracking
+  - Public /waitlist marketing page with server-action form insert (rate-limited
+- **2026-04-16** `c05a594` — feat(41): auction / broker handoff package
+  - One-click bundle for Christie's / Sotheby's / Acker / private brokers:
+- **2026-04-16** `5e36f16` — feat(43): NFC bottle tracking + tap-to-verify
+  - Adds NfcTag + NfcScan models (migration 0016), staff intake workflow
+- **2026-04-16** `1058bd1` — feat(46): hurricane emergency collection protection
+  - Pre-landfall rescue protocol tying enrolled members at a facility into a
+- **2026-04-16** `febbb6d` — feat(44): membership tier pricing
+  - Add src/lib/tiers.ts with four public tiers (Collector $29, Reserve
+- **2026-04-16** `b504f1e` — feat(21): IoT sensor ingestion endpoint
+  - Add POST /api/ingest/sensor for real Sentinel device readings. Validates
+- **2026-04-16** `1c989c4` — feat(28): admin panel
+  - Admin-only /admin/* route group with its own sidebar nav (AdminNav) and
+- **2026-04-16** `0962222` — fix(disposition): release locker slot when wine is disposed
+  - WineDisposition inserts were leaving LockerSlot.wineId pointing at the
+- **2026-04-16** `713c04e` — fix(schema): promote locker_slots.wine_id partial unique to @@unique
+  - The partial unique index from 0002 only existed in SQL, so any future
+- **2026-04-16** `f4e5d7d` — fix(hurricane): make advanceStage all_clear transition transactional
+  - Two staff racing "Advance to All-Clear" both passed the
+- **2026-04-16** `8b82371` — fix(hurricane): narrow destructive actions to admin role only
+  - requireStaff checks role ∈ {admin, staff} globally with no per-facility
+- **2026-04-16** `52861db` — fix(ingest): dedup replayed sensor readings and bursty alert rows
+  - Two bugs shared the same surface:
+- **2026-04-16** `9fddd18` — fix(ingest): tighten Sentinel payload ranges to wine-vault bounds
+  - Reject physically-implausible readings at the schema layer so they 400
+- **2026-04-16** `238dca2` — fix(auth): add sessionVersion for server-driven JWT invalidation
+  - Every jwt callback now re-reads sessionVersion from the DB and returns
+- **2026-04-16** `1432aff` — fix(ui): convert locker picker to native <dialog> for focus trap + Escape
+  - Keyboard users had to tab past all 32 slot buttons to reach the picker's
+- **2026-04-16** `e679265` — fix(auth): prefer __Host- CSRF cookie over bare name in signup
+  - The double-submit CSRF check was reading the non-prefixed cookie first
+- **2026-04-16** `ffdaae5` — fix(auth): trust only x-real-ip in rate-limit clientIp
+  - The x-forwarded-for fallback made the limiter keyed on a client-
+- **2026-04-16** `9cf6e42` — fix(auth): flip HMAC assertion to NODE_ENV allowlist
+  - The boot-time HMAC secret check was gated on NODE_ENV === "production",
+- **2026-04-16** `07cf849` — fix(auth): use timingSafeEqual for Sentinel Bearer compare
+  - Naive string equality on the Authorization header leaks information
+- **2026-04-16** `61a5a85` — fix(ui): convert AddWineForm to native <dialog> for real focus trap
+  - The hand-rolled role="dialog" div handled Escape via a global keydown
+- **2026-04-16** `75bfbfd` — fix(ui): guard locker picker success paths against slot-switch races
+  - handleAssignWine / handleAddWineToSlot fire server actions inside a
+- **2026-04-16** `0586ffb` — fix(ui): move Sentinel tickRef assignment out of render into useLayoutEffect
+  - Reassigning tickRef.current directly in the render body is a side effect
+- **2026-04-16** `fff6371` — fix(ui): move Sentinel tickRef assignment out of render into useLayoutEffect
+  - Reassigning tickRef.current directly in the render body is a side effect
+- **2026-04-16** `fff3cd9` — fix(ui): keep toast live region mounted when empty
+  - Unmounting the aria-live region between toasts means screen readers have
+- **2026-04-16** `a33edde` — fix(ui): bump muted color token to pass WCAG AA at 12px
+  - Old muted #8B8B96 cleared 4.33:1 on caveau-graphite, which passes AA
+- **2026-04-16** `a17494c` — fix(ui): pass server session name to dashboard + nav to kill hydration flash
+  - useSession() returns null until the JWT hydrates on the client, so the
+- **2026-04-16** `55638b5` — fix(ingest): consume SES bounce/complaint feedback via SNS webhook
+  - Pause email_alerts_enabled and stamp emailBounced/emailComplained when
+- **2026-04-16** `94b228e` — fix(ingest): cap S3 presigned PUT body size at 5MB via ContentLength
+  - Sign contentLength into the presigned URL policy so the resulting URL
+- **2026-04-16** `031a635` — fix(ingest): add nightly sensor_readings retention sweep
+  - Delete raw SensorReading rows older than 90 days so the table doesn't
+- **2026-04-16** `a1cea2a` — fix(ingest): tag alert source as device or simulation
+  - Add an alert_source enum (default 'device') so /sentinel's
+- **2026-04-16** `b4fb3fc` — fix(ui): rename Custody & Condition Report → Caveau Certificate (placeholder)
+  - Rob asked for a different name one day after the prior rename. "Caveau
+- **2026-04-16** `99bdc39` — docs: add Phase 6 investor demo gap + AI Advisor priority pointer
+  - Phase 6 rows (#50-62) close the gap between pitch-deck claims and shipped
+- **2026-04-16** `fe5479f` — fix(ui): rename Caveau Certificate → Custody & Condition Report (CCR)
+  - Per Rob's 2026-04-16 email: "Provenance Certificate" / the interim
+- **2026-04-16** `7189106` — fix(db): rename alert-source enum type to match Prisma schema
+  - Migration 0023 created the type as `"alert_source"` (snake_case) but
+- **2026-04-16** `c80b897` — fix(ui): drop "(optional)" from intake photo label
+  - Rob's 2026-04-16 CCR email lists "photographic inventory from intake"
+- **2026-04-16** `95d1868` — docs: resync CLAUDE.md + SPEC.md with codebase reality
+  - Session 1 of the 2026-04-16 audit cleanup. Doc-only changes; no code
+- **2026-04-16** `67591ef` — fix(44): set Reserve tier to $149/mo to match pitch deck
+  - Deck slides 8 and 12 (and docs/PHASE-6-INVESTOR-DEMO-GAP.md #17) confirm
+- **2026-04-16** `a514e13` — fix(security): timing-safe comparison for cron Bearer tokens
+  - Both cron route guards compared the authorization header with ===, which
+- **2026-04-16** `b1f1b9c` — test: align rate-limit clientIp tests with documented x-real-ip-only behavior
+  - Two tests asserted clientIp() parses x-forwarded-for, but the
+- **2026-04-17** `452951a` — docs(50): add AI Advisor system prompt + tool spec
+  - Lock persona, tool surface, and acceptance tests before any chat code
+- **2026-04-17** `cb3901f` — feat: add error + loading boundaries across admin, auth, and member flows
+  - Adds error.tsx and loading.tsx to 15 routes (27 boundary files):
+- **2026-04-17** `86cc5f8` — test: cover notify-alert cooldown + s3 upload URL validation
+  - notify-alert.test.ts exercises the five gating decisions notifyAlert
+- **2026-04-17** `db97973` — perf(admin): aggregate members totals + composite role/createdAt index
+  - Replace the per-member `wines: { select: { currentValue } }` include on
+- **2026-04-17** `674222f` — feat(email): link to /settings in alert email body
+  - Adds a clickable "Caveau settings" link in the HTML body and a bare
+- **2026-04-17** `faeef1e` — feat(50): scaffold AI Advisor tool contract + Liv-ex benchmark seed
+  - Seven read-only tool functions the advisor will call (portfolio, Liv-ex
+- **2026-04-17** `eb30581` — feat(50): AI Advisor chat route + Anthropic SDK wiring
+  - Wires /api/advisor/chat to Claude Sonnet 4.6 via the Anthropic
+- **2026-04-17** `1eb05f5` — feat(50): AI Advisor chat UI with streaming + tool pills
+  - Adds /advisor — the member-facing conversational surface that
+- **2026-04-17** `4a42c15` — fix(csp): gate upgrade-insecure-requests to production
+  - Safari strictly honors the directive on localhost and upgrades
+- **2026-04-17** `f46fd01` — feat(51): scaffold biometric Deliver Now data model + helper lib
+  - Adds DeliveryRequest/Item/Event + AuthorizedRecipient models plus
+- **2026-04-17** `a794a3c` — fix(audit): address P0/P1/P2 findings from in-depth repo audit
+  - P0 — prevents production 500s under load:
+- **2026-04-17** `1bb372a` — feat(51): Deliver Now member-side API + ladder UI
+  - Adds 7 member-side API routes (create + biometric + PIN + address +
+- **2026-04-17** `9285075` — feat(51): Deliver Now door-side ladder + Deliver Now entry on wine detail
+  - Adds /handoff-driver/[token] public ladder (start → id-scan → photo)
+- **2026-04-17** `5303875` — feat(50): expand AI Advisor from institutional-only to dual-role wine assistant
+  - The original persona explicitly positioned the advisor "closer to a
+- **2026-04-17** `415eff0` — chore: enable noUncheckedIndexedAccess + tighten CSP, ingest replay, livex rotation
+  - Turning on `noUncheckedIndexedAccess` in tsconfig surfaced a handful of
+- **2026-04-18** `89d98d8` — chore: revert .claude/ ignore narrowing
+  - The previous commit narrowed `.gitignore` to only ignore machine-local
+- **2026-04-18** `5e4f6b7` — docs: rigorous audit resync across CLAUDE.md, SPEC.md, README, and docs/
+  - Audit identified ~40 factual drifts between docs and code across 14 files.
+- **2026-04-18** `a9f5942` — feat(51): FL DABT age verification + driver OTP badge
+  - Close out Deliver Now: the door-side ladder now enforces Florida's 21+
+- **2026-04-18** `1a1b991` — feat(53): events & tasting module with Naples WWF seed
+  - Member events are the largest single Y3 revenue category on pitch deck
+- **2026-04-18** `ac4a590` — feat(54): Founding Member pricing + Reserve self-serve
+  - Adds founding-discount pricing locked for life to the onboarding wizard
+- **2026-04-18** `88314fd` — feat(52): concierge CSV migration with admin fulfillment queue
+  - MigrationRequest model stores source + column mapping + parsed rows as
+- **2026-04-18** `ae73680` — fix(0028): reference waitlist_entries physical table name
+  - The Waitlist model is mapped to table waitlist_entries via @@map in
+- **2026-04-18** `f7d8b23` — feat(55): exit signals scored on drink window + price momentum
+  - Per pitch deck slides 5 and 6, surface AI-flagged sell windows on the
+- **2026-04-18** `bed3709` — fix(55): tighten exit-signal thresholds + widen seed valuation window
+  - First seed of feature #55 opened 58 signals (7 of every 8 wines) because
+- **2026-04-18** `75b5f64` — fix(nav): consolidate mobile bottom bar to 4 primary tabs + More sheet
+  - Nine tabs in a single flex row caused label truncation ("Dashboar",
+- **2026-04-21** `cf5bfc5` — feat(56): insurance savings estimate — tier-scaled 15–35% on dashboard, portfolio, advisor
+  - Static math in src/lib/insurance.ts (1.0–1.5% baseline × tier-scaled 15–35%
+- **2026-04-21** `f3016e7` — feat(57): portfolio vs. Liv-ex 100 — dashboard tile + chart + advisor tool
+  - Reconstructs portfolio value from WineValuation history at each Liv-ex
+- **2026-04-21** `6ef959c` — feat(58): Sentinel fleet / device admin — registry + heartbeat + ingest wiring
+  - SentinelDevice + SentinelDeviceEvent models (migration 0035) with a nullable
+- **2026-04-21** `9c02f84` — feat(59): Sentinel inventory & tier-bundled assignment at signup
+  - Onboarding wizard gains a fourth step between locker reservation and
+- **2026-04-21** `c389d76` — feat(60): Private Allocations — staff-authored limited releases with member request queue + fulfillment
+  - Delivers the Founding Circle "Day 1 access to private allocations" promise from slide 11 and the $1.5K–$5K/yr member value quoted on slide 9. Staff posts releases with tier + founding eligibility; eligible members see them on /allocations and submit a non-binding request capped at 3 bottles; staff accepts winners and fulfills, which transactionally writes Wine rows into the member's collection with a sourceAllocationId provenance back-link. Publish fires a best-effort SES dispatch to eligible opt-in members; AI Advisor gains a getMyAllocations tool so "what can I request right now?" resolves in one call.
+- **2026-04-22** `db66c38` — feat(61): Welcome appraisal — HMAC-hashed valuation document + founding freebie + AI Advisor tool
+  - Delivers the Founding Circle "Welcome appraisal by our head sommelier" benefit from slide 11 and the "Appraisal & Estate Docs $5K–$15K Y1" revenue line from slide 15. Distinct from the Caveau Custody & Condition Report — a CCR attests to how a bottle has been stored; an Appraisal attests to dollar value at a point in time, for a named purpose (insurance, estate, tax, divorce, gift, personal). Founding members get one free welcome appraisal at any time; all other tiers pay a tier-scaled per-document price ($495 Collector / $795 Reserve / $1,195 Private Vault / $1,595 Estate).
+- **2026-04-22** `dd0af8f` — feat(62): Acquisition sourcing — member-requested bottle hunts + admin queue + margin-tracked fulfillment
+  - Delivers revenue stream #8 from slides 12 + 15 (8–12% margin tracked on concierge sourcing). This is the reverse-direction twin of Allocations (#60): #60 is staff-posts-first + member-requests-off-a-release; #62 is member-requests-first + staff-sources-for-them. Closes the last item on the Phase 6 investor-demo-gap list (all 13 P0/P1 items now shipped).
+- **2026-04-22** `e61266c` — feat(47): Exit facilitation — member-initiated consignment + admin lifecycle + transactional sale close
+  - Closes the slide-5 narrative #55 opened: AI flags a sell window → member
+- **2026-04-23** `50e5d9a` — fix: race-safe status transitions in admin actions + centralize date validation
+  - Replace findUnique+update splits with atomic updateMany + status filter

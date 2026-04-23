@@ -1,12 +1,10 @@
 # Investor Demo — Feature Gap List
 
-**Date:** 2026-04-16 (revised after pitch deck skim); progress updates through 2026-04-22
+**Date:** 2026-04-16 (revised after pitch deck skim)
 **Author:** Nathaniel Sohn (CTO)
 **Purpose:** Inventory of features the app needs so Rob + Samuel can demo the full investor narrative solo.
 
-**Status as of 2026-04-22:** Phase 6 is complete — everything in **§1–§15 shipped**. Remaining P1 items from the original gap list are **§16 Insurance referral program** (roadmap #31) and **§18 staff check-in/out** (roadmap #25).
-
-The body below is preserved as the original gap framing **as of 2026-04-16**. Any “missing” language refers to that date, not the current app.
+**Status:** Phase 6 is complete — all items in this gap list shipped by **2026-04-22**. For the up-to-date annotated version, see [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](../../docs/PHASE-6-INVESTOR-DEMO-GAP.md).
 
 ## What the pitch deck promises
 
@@ -18,7 +16,7 @@ The deck (`Caveau_Pitch_Deck_FINAL.pptx`, 18 slides) organizes the product aroun
 
 These are the three things that appear as a trio on slides 1, 4, and 5. Pillar 1 is mostly built (facility resilience, Sentinel monitoring, vault structure). Pillar 2 is half-built (Liv-ex pricing yes, exit signals and benchmarking no). **Pillar 3 is completely absent from the app** — there is no AI Advisor surface at all, and it's the single most-hyped capability in the deck (slides 1, 4, 5, 6, 10, 17 all reference it).
 
-As of **2026-04-16**, Pillar 3 (**AI Advisor**) and secure, biometric-verified delivery were absent; both are now shipped (see Status above).
+The deck also promises a fourth pillar the earlier materials didn't emphasize as strongly: **secure, biometric-verified delivery** (slide 5 "Vault & Secure Delivery", slide 7 full trust/compliance page). This is entirely missing from the app.
 
 ## P0 — Demo-blocking. Fix before the next investor conversation.
 
@@ -100,9 +98,9 @@ Not a feature — a deliverable Rob asked for explicitly on Apr 16. I'll draft o
 
 ## P1 — Claimed in the deck or materials, visibly missing, not demo-blocking but investor-surprising
 
-### 10. ~~Portfolio vs. Liv-ex 100 benchmark~~ — done 2026-04-21 (feature #57)
+### 10. Portfolio vs. Liv-ex 100 benchmark
 
-~~Slide 5 dashboard tile: *"Live value, YTD performance, exit signals and advisor prompts — one view."* Slide 6 Q&A: *"How am I positioned vs the Liv-ex 100?"* The app shows portfolio value and CAGR but not YTD performance vs. an index benchmark. Add a YTD vs. Liv-ex 100 line to the portfolio view.~~ Shipped — dashboard teaser card, `/portfolio` chart (both indexed to 100 at the YTD anchor), and `getPortfolioVsLivex` advisor tool.
+Slide 5 dashboard tile: *"Live value, YTD performance, exit signals and advisor prompts — one view."* Slide 6 Q&A: *"How am I positioned vs the Liv-ex 100?"* The app shows portfolio value and CAGR but not YTD performance vs. an index benchmark. Add a YTD vs. Liv-ex 100 line to the portfolio view.
 
 ### 11. Sentinel fleet / device admin
 
@@ -110,19 +108,19 @@ The deck is aggressive about the Sentinel hardware IP — *patent filing in prog
 
 ### 12. Sentinel sensor inventory & tier-bundled assignment
 
-~~Related to #11 but different surface: at signup, per-tier device allocation needs to be visible. *"Your Private Vault membership includes 2 Sentinels — where do you want them installed?"* With serial number capture, location assignment, activation status.~~ Shipped 2026-04-21. Onboarding wizard gained a fourth step that reads `bundledSentinels`/`bundledBottleProbes` off the member's tier, consumes the oldest facility-pool units, and transactionally installs them in the reserved locker with a demo-alive heartbeat. Collector tier gets a pure-copy upsell panel instead. Settings page gets a read-only "Your Sentinel devices" card with a member-scoped Bottle Probe pairing action.
+Related to #11 but different surface: at signup, per-tier device allocation needs to be visible. *"Your Private Vault membership includes 2 Sentinels — where do you want them installed?"* With serial number capture, location assignment, activation status.
 
-### 13. ~~Allocation access / limited release queue~~ — done 2026-04-21 (feature #60)
+### 13. Allocation access / limited release queue
 
-~~Slide 11 founding benefits: *Day 1 allocation access.* Slide 9 value breakdown: *$1,500–$5,000 annual value from allocation access to limited releases & futures.* No feature exists. Minimum: a "Private Allocations" feed where staff can post limited releases with per-tier eligibility, members can request, staff fulfills.~~ Shipped — `Allocation` + `AllocationRequest` models in migration 0036 with a nullable `Wine.sourceAllocationId` back-link. Member feed at `/allocations` (authenticated) with a teaser preview for unauthenticated visitors; detail + request form at `/allocations/[slug]` capped at 3 bottles per member. Eligibility math in `src/lib/allocations.ts` combines tier floor (new `TIER_RANK` helper), `foundingOnly`, and `foundingEarlyAccess`. Two-stage accept → fulfill lifecycle so staff can reserve bottles before Stripe lands; fulfillment writes Wine rows transactionally. Admin list + roster with status chips + CSV export; publish fires best-effort SES dispatch via `notifyEligibleOnPublish`. AI Advisor `getMyAllocations` tool resolves "what can I request?" in one call. Seeded DRC 2021 (Estate + founding early), Opus One 2021 (Private Vault, Robert's pending), and Screaming Eagle 2020 (fulfilled, bottle already in his collection).
+Slide 11 founding benefits: *Day 1 allocation access.* Slide 9 value breakdown: *$1,500–$5,000 annual value from allocation access to limited releases & futures.* No feature exists. Minimum: a "Private Allocations" feed where staff can post limited releases with per-tier eligibility, members can request, staff fulfills.
 
-### 14. ~~Welcome appraisal flow~~ — done 2026-04-22 (feature #61)
+### 14. Welcome appraisal flow
 
-~~Slide 11 founding benefit. Slide 15 revenue stream (*Appraisal & Estate Docs, $5K–$15K*). Distinct from the Caveau Custody & Condition Report — an appraisal is a point-in-time valuation document for tax/insurance/estate purposes. Needs its own document type (basis, date, appraiser, purpose, heirs if estate-scoped). Extend onboarding to offer a welcome appraisal for founding members.~~ Shipped — `Appraisal` model in migration 0037 with three enums, HMAC-SHA256 hashed document (`src/lib/appraisal-hash.ts` reuses the CCR key), server-rendered PDF via `pdf-lib` (`src/lib/appraisal-pdf.ts`), tier-scaled per-document pricing ($495 / $795 / $1,195 / $1,595) with founding freebie, `/appraisals` member list + `/appraisals/new` request form + `/appraisals/[id]` detail that renders the live document when completed, `/admin/appraisals` queue with status chips and CSV export, `/verify/appraisal/[hash]` public verify page (no line items leaked), AI Advisor `getMyAppraisals` tool with a `welcomeState` signal, dashboard founding nudge, `/settings` Founding Circle row with claim/pending/completed states. Seeded CAV-APR-2026-0001 for Robert covering his full portfolio at fair-market-value basis for insurance purpose.
+Slide 11 founding benefit. Slide 15 revenue stream (*Appraisal & Estate Docs, $5K–$15K*). Distinct from the Caveau Custody & Condition Report — an appraisal is a point-in-time valuation document for tax/insurance/estate purposes. Needs its own document type (basis, date, appraiser, purpose, heirs if estate-scoped). Extend onboarding to offer a welcome appraisal for founding members.
 
-### 15. ~~Acquisition sourcing workflow~~ — done 2026-04-22 (feature #62)
+### 15. Acquisition sourcing workflow
 
-~~Revenue stream #8, confirmed on slides 12 + 15 (8–12% margin). *Member requests specific bottle → Caveau sources from broker/auction/Caveau private network → margin recorded.* Minimum: request form, admin queue, fulfillment record with margin.~~ Shipped — `Acquisition` model in migration 0038 with a nullable `Wine.sourceAcquisitionId` back-link mirroring the #60 allocation pattern. Structured request spec (producer required; optional wine name, region, varietal, exact-or-range vintage, quantity 1–12, budget cap, free-text note) covers both "specific 2015 Margaux" and "anything under $2K in Northern Rhône" investor-demo edge cases. Single-stage lifecycle (`requested → sourcing → fulfilled` + `declined`/`cancelled`) with staff-recorded `estimatedTotalUsd` at the sourcing stage; the member-accept step gated on actual payment is deferred to when Stripe (#27) can back it. Fulfillment transactionally writes `quantity` Wine rows with `sourceAcquisitionId` set so the bottles carry provenance back to the request. Margin math in `src/lib/acquisitions.ts` (mark-up-on-price to match the slide-15 8–12% band); admin queue at `/admin/acquisitions` with status chips + CSV export, fulfill form has live margin preview and a budget-cap warning. AI Advisor `getMyAcquisitions` tool answers "what's the status on my 2015 Margaux hunt?" but deliberately omits cost + margin so the advisor can't leak Caveau's cost basis to the member. Seed: one sourcing request (2010 Lafite) + one fulfilled (2019 Sassicaia, 3 bottles, 9.7% margin, all back-linked into Robert's collection).
+Revenue stream #8, confirmed on slides 12 + 15 (8–12% margin). *Member requests specific bottle → Caveau sources from broker/auction/Caveau private network → margin recorded.* Minimum: request form, admin queue, fulfillment record with margin.
 
 ### 16. Insurance referral program (#31)
 
@@ -176,7 +174,7 @@ P2 + P3 stay on the roadmap.
 
 ## Revised asks for Rob
 
-1. ~~**Pick the real Caveau Certificate name**~~ — **Resolved 2026-04-16 8:20 PM:** Rob locked "Caveau Custody & Condition Report" (CCR) as the final name. Rationale + rollout in ADR-010 in [DECISIONS.md](./DECISIONS.md). AI Advisor scaffolding should adopt CCR terminology from day one.
+1. ~~**Pick the real Caveau Certificate name**~~ — **Resolved 2026-04-16 8:20 PM:** Rob locked "Caveau Custody & Condition Report" (CCR) as the final name. Rationale + rollout in [decisions/2026-04-16-ccr-final-rename.md](../decisions/2026-04-16-ccr-final-rename.md). AI Advisor scaffolding should adopt CCR terminology from day one.
 2. **Confirm the Reserve tier is self-serve at $149** — `src/lib/tiers.ts` currently says "Contact us" because earlier guidance suggested sales-quoted. Deck says otherwise.
 3. **Confirm Berkley One joins PURE / Chubb / AXA XL as a named insurance partner** — Investor Summary listed three, deck lists four.
 4. **Who's running intake at launch — Samuel or Rob?** — drives whether the staff check-in flow (#18) is P0 or P1.

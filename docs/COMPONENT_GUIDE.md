@@ -1,12 +1,12 @@
 # Component Guide
 
-> Last updated: 2026-04-18 | All components built
+> Last updated: 2026-04-23 | 27 shared components documented
 
 ## Overview
 
-Caveau uses 21 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
+Caveau uses 27 shared components, each in its own file under `src/components/`. Related sub-components are colocated in the same file to keep the file count low.
 
-Components added since the original demo cohort: `admin-nav.tsx` (#28), `handoff-package-button.tsx` (#41), `provenance-timeline.tsx` (#40), and `hurricane-banner.tsx` (#46) — each documented below.
+Components added since the original demo cohort are concentrated in Phase 4–6: `admin-nav.tsx` (#28), `provenance-timeline.tsx` (#40), `handoff-package-button.tsx` (#41), `hurricane-banner.tsx` (#46), `insurance-savings-card.tsx` (#56), `portfolio-vs-livex-card.tsx` + `portfolio-vs-livex-chart.tsx` (#57), `device-status-pill.tsx` + `sentinel-devices-card.tsx` (#58/#59), and `appraisal-doc.tsx` (#61) — each documented below.
 
 ## Components
 
@@ -25,8 +25,8 @@ Thin client wrapper around NextAuth's `SessionProvider`. Exists as a separate fi
 **Status:** Complete (Feature 03)
 
 The app shell navigation. Two layouts:
-- **Desktop:** Fixed left sidebar — Caveau ◈ logo, 4 nav links (Dashboard, Collection, Locker, Sentinel), member name at bottom
-- **Mobile (<768px):** Fixed bottom tab bar with 4 icons
+- **Desktop:** Fixed left sidebar — Caveau ◈ logo, facility switcher (when the member has >1 facility and is on a facility-scoped page), full nav list (Dashboard, Collection, Portfolio, AI Advisor, Locker, Sentinel, Allocations, Sourcing, Exits, Appraisals, Events, Facility, Settings), member line + sign out at bottom.
+- **Mobile (<768px):** Top member line + sign out; bottom tab bar with 4 primary items (Dashboard, Collection, Portfolio, AI Advisor) plus a **More** button that opens a sheet for the secondary items.
 
 **Used in:** `layout.tsx` (wraps all pages)
 
@@ -126,6 +126,26 @@ All Recharts visualizations and access log in one file:
 
 ---
 
+### device-status-pill.tsx
+**Status:** Complete (Feature #58/#59 — Sentinel fleet)
+
+Pure display helpers for Sentinel device status:
+- `ConnectivityPill` — WiFi / LTE-M / Offline (or Pool / Retired), derived via `effectiveConnectivity()` from `src/lib/devices.ts`.
+- `BatteryBar` — 0–100% visual bar with low-battery coloring.
+
+**Used in:** `sentinel-devices-card.tsx`, admin Sentinel fleet pages
+
+---
+
+### sentinel-devices-card.tsx
+**Status:** Complete (Feature #59 — tier-bundled Sentinel assignment)
+
+Member-facing "Your Sentinel devices" card rendered on `/settings`. Lists installed Sentinels and Bottle Probes (connectivity, battery, last heartbeat, location) and exposes the Bottle Probe pairing dialog (Estate-only accessory) to link a probe to an in-cellar bottle.
+
+**Used in:** `/settings` page
+
+---
+
 ### dashboard-charts.tsx
 **Status:** Complete (Stretch Goal 16)
 
@@ -137,6 +157,33 @@ Analytics charts for the dashboard:
 **Props:** Valuation trend data, slot counts, alert frequency data
 
 **Used in:** Dashboard page
+
+---
+
+### insurance-savings-card.tsx
+**Status:** Complete (Feature #56 — insurance savings estimate)
+
+Server-component-safe stat card showing the tier-scaled 20–35% insurance discount estimate against a 1.0–1.5% premium baseline, plus named partner carriers. Display-only (no hooks) so it can render on both the dashboard and portfolio pages without a client boundary.
+
+**Used in:** Dashboard, Portfolio page
+
+---
+
+### portfolio-vs-livex-card.tsx
+**Status:** Complete (Feature #57 — dashboard teaser)
+
+Numeric-only dashboard tile for Portfolio vs. Liv-ex 100 (your YTD/trailing change, Liv-ex change, and your edge). Click-through to `/portfolio` for the full chart. Hides entirely when the series can't be built.
+
+**Used in:** Dashboard page
+
+---
+
+### portfolio-vs-livex-chart.tsx
+**Status:** Complete (Feature #57 — full chart)
+
+Client-side Recharts line chart comparing the member portfolio vs. the Liv-ex 100 index, both indexed to 100 at the anchor date. Dynamic-imported on the portfolio page to keep Recharts out of the server bundle.
+
+**Used in:** `/portfolio` page
 
 ---
 
@@ -159,6 +206,15 @@ Full Custody & Condition Report layout: gold double-line border, Caveau ◈ logo
 **Props:** ProvenanceCertificate with wine and locker relations
 
 **Used in:** Custody & Condition Report page
+
+---
+
+### appraisal-doc.tsx
+**Status:** Complete (Feature #61 — appraisal document)
+
+Client-side document renderer for completed Appraisals (distinct from the CCR). Mirrors the certificate visual language (gold border, Caveau ◈ chrome) and renders purpose, basis, effective date, line-item snapshot, and a public verification QR code (`/verify/appraisal/[hash]`).
+
+**Used in:** Appraisal detail page (`/appraisals/[id]`)
 
 ---
 
@@ -207,7 +263,7 @@ Loading skeleton primitives used by route-level `loading.tsx` files. Exports a b
 ### admin-nav.tsx
 **Status:** Complete (Feature #28 — admin panel)
 
-Sub-navigation rail for `/admin/*` surfaces. Four tabs: Members, Lockers, Alerts, Waitlist; Hurricane authoring lives under Alerts. Highlights the active segment against the admin layout's darker chrome so staff can tell they're in the admin shell vs. the member-facing app.
+Sub-navigation rail for `/admin/*` surfaces. Mirrors the member nav layout (desktop sidebar + mobile bottom tabs) and exposes the staff queue surfaces: Members, Lockers, Devices, Alerts, Events, Allocations, Sourcing, Exits, Appraisals, and Migrations.
 
 **Used in:** `src/app/admin/layout.tsx`
 
@@ -249,7 +305,7 @@ NextAuth v4 configuration: Credentials provider (email + bcrypt), JWT strategy, 
 Boot-time environment validation. Throws if `DATABASE_URL` or `NEXTAUTH_SECRET` is missing — fail fast at startup, not on the first request. All other vars are optional and surface as `string | undefined` so call sites handle the missing case explicitly. Current optional vars: `NEXTAUTH_URL`, `NEXT_PUBLIC_SHOW_DEMO_CREDS`, `SENTRY_DSN`, `CERTIFICATE_HMAC_SECRET`, `FACILITY_COOKIE_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `AWS_REGION`, `AWS_SES_FROM_EMAIL`, `AWS_S3_BUCKET`, `AWS_CLOUDFRONT_DOMAIN`, `S3_UPLOAD_URL_TTL_SECONDS`, `GOOGLE_CLOUD_VISION_API_KEY`, `LIVEX_API_KEY`, `LIVEX_BASE_URL`, `CRON_SECRET`, `SENTINEL_INGEST_SECRET`, `ANTHROPIC_API_KEY`.
 
 ### rate-limit.ts
-Per-IP token bucket with Upstash Redis backend when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set, otherwise an in-memory fallback that resets on Lambda cold start. Used by `middleware.ts` across auth, verify, sensors-history, handoff, handoff-driver, bottle-tap, and waitlist-submit buckets. Signup and login are configured fail-closed.
+Per-IP token bucket with Upstash Redis backend when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set, otherwise an in-memory fallback that resets on Lambda cold start. Used by `middleware.ts` across auth, verify, sensors-history, handoff, handoff-driver, bottle-tap, waitlist-submit, and event-signup buckets, plus a few member-scoped API throttles (e.g. Deliver Now create: 5/60s per member). Signup and login are configured fail-closed.
 
 ### safe-callback.ts
 Whitelists `callbackUrl` query params so the login page can't be turned into an open redirect. Only same-origin pathnames pass.

@@ -1,6 +1,6 @@
 # Authentication
 
-> Last updated: 2026-04-18 | NextAuth v4, JWT sessions, Credentials provider
+> Last updated: 2026-04-23 | NextAuth v4, JWT sessions, Credentials provider
 
 ## Overview
 
@@ -21,7 +21,7 @@ All application data is scoped to the authenticated member: every Prisma query i
 | `src/components/providers.tsx` | `SessionProvider` wrapper for client components |
 | `src/types/next-auth.d.ts` | Augments the session type with `id`, `role`, `tier`, `onboarded` |
 | `src/lib/safe-callback.ts` | Validates `callbackUrl` to prevent open redirects |
-| `src/app/onboarding/` | Guided 3-step wizard for new members (#20) — wizard, server actions, minimal layout |
+| `src/app/onboarding/` | Guided 4-step wizard for new members (#20, #59) — wizard, server actions, minimal layout |
 
 ## Session shape
 
@@ -31,7 +31,7 @@ session.user = {
   name: string;
   email: string;
   role: "admin" | "staff" | "member";
-  tier: "gold" | "platinum" | "black";
+  tier: "gold" | "reserve" | "platinum" | "black";
   onboarded: boolean; // Member.onboardedAt != null
 }
 ```
@@ -143,15 +143,16 @@ The onboarding gate runs after the auth check: members whose `onboardedAt` is nu
 
 ## Onboarding wizard (#20)
 
-After signup the client auto-signs in and pushes the new member to `/onboarding`. The wizard is a single client component (`src/app/onboarding/wizard.tsx`) that drives three steps via local state:
+After signup the client auto-signs in and pushes the new member to `/onboarding`. The wizard is a single client component (`src/app/onboarding/wizard.tsx`) that drives four steps via local state:
 
-1. **Tier** — pick gold / platinum / black. `setOnboardingTier(tier)` server action persists the choice. The signup endpoint defaults new members to gold so this step is a re-confirmation, not a hard requirement.
+1. **Tier** — pick gold / reserve / platinum / black (display-labelled Collector / Reserve / Private Vault / Estate). `setOnboardingTier(tier)` server action persists the choice. The signup endpoint defaults new members to gold so this step is a re-confirmation, not a hard requirement.
 2. **Locker reservation** — `reserveOnboardingLocker()` allocates the next free `locker_number`, creates the row in the demo facility, and creates 32 `LockerSlot` rows in a single Prisma call. Idempotent: a member who already owns a locker gets that one returned. Number collisions under contention bubble up as Prisma `P2002` and the action retries with a bumped number (up to three attempts).
-3. **First bottle** — optional. `addFirstWine(formData)` validates the inputs, creates a `Wine`, and assigns it to the first empty slot of the reserved locker inside a single transaction. The user can also skip the bottle and finish.
+3. **Sentinel devices (#59)** — for bundle tiers (Reserve / Private Vault / Estate) `assignOnboardingSentinels()` consumes the oldest pool units at the member's facility and transactionally flips them to installed in step 2's reserved locker with a demo-alive heartbeat (connectivity=wifi, batteryPct=100, lastHeartbeatAt=now). Shortage soft-fails with "N shipping this week" copy. Collector is an upsell panel with no server action.
+4. **First bottle** — optional. `addFirstWine(formData)` validates the inputs, creates a `Wine`, and assigns it to the first empty slot of the reserved locker inside a single transaction. The user can also skip the bottle and finish.
 
 Both terminal paths call `completeOnboarding()`, which sets `members.onboarded_at = NOW()`. The client then calls `useSession().update()`. That triggers the `jwt` callback with `trigger === "update"`, which re-reads the member row and refreshes `token.onboarded` → middleware lets the member into `/`.
 
-**Resume support** — the page server component reads the member row before rendering. If a previous attempt already reserved a locker, the wizard mounts at step 3 instead of step 1 so the user doesn't have to pick a tier or re-reserve a locker after a refresh.
+**Resume support** — the page server component reads the member row before rendering. If a previous attempt already reserved a locker, the wizard mounts at step 3 (devices) instead of step 1 so the user doesn't have to pick a tier or re-reserve a locker after a refresh.
 
 ```mermaid
 sequenceDiagram
@@ -162,11 +163,13 @@ sequenceDiagram
     participant JWT as JWT callback
 
     U->>W: Land after signup auto sign-in
-    W->>SA: setOnboardingTier(gold|platinum|black)
+    W->>SA: setOnboardingTier(gold|reserve|platinum|black)
     SA->>DB: UPDATE members SET tier
     W->>SA: reserveOnboardingLocker()
     SA->>DB: INSERT locker + 32 slots (idempotent)
     SA-->>W: { lockerNumber, zone }
+    W->>SA: assignOnboardingSentinels() (bundle tiers only)
+    SA->>DB: UPDATE tier-bundled devices → installed
     W->>SA: addFirstWine(form) OR skip
     SA->>DB: INSERT wine + assign to slot 1 (txn)
     W->>SA: completeOnboarding()

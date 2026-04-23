@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
+> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
 
 For the authoritative `src/` tree, see CLAUDE.md — the "Project Structure" block there is kept in lockstep with the code. The directory overview below is a conceptual map of the major surfaces and may not list every nested file.
 
@@ -26,40 +26,47 @@ Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend 
 
 ```
 caveau-app/
-├── prisma/                     # Database layer (24 models, 14 enums)
+├── prisma/                     # Database layer (36 models, 31 enums)
 │   ├── schema.prisma
-│   ├── migrations/             # Flat SQL migrations 0001..0029
+│   ├── migrations/             # Flat SQL migrations 0001..0039
 │   ├── seed.ts
 │   └── seed-sensors.ts
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (root)              # layout.tsx, page.tsx, dashboard-client.tsx, globals.css, error.tsx, not-found.tsx, loading.tsx, facility-actions.ts
-│   │   ├── admin/              # RBAC-gated admin shell (#28): members, lockers, alerts, waitlist, hurricane authoring (#46)
+│   │   ├── admin/              # RBAC-gated admin shell (#28): members, lockers, alerts, sentinels, events, allocations, appraisals, acquisitions, exits, migrations, waitlist, hurricane authoring (#46)
+│   │   ├── acquisitions/       # Member-side sourcing requests (#62)
 │   │   ├── advisor/            # AI Advisor chat UI (#50)
+│   │   ├── allocations/        # Member-side allocation browse + accept (#60)
+│   │   ├── appraisals/         # Member-side welcome/on-demand appraisals (#61)
 │   │   ├── auth/               # login, signup
 │   │   ├── bottle/[tagId]/     # NFC tap-to-verify landing (#43) — public
 │   │   ├── certificate/[id]/   # Legacy redirect → /report/[id]
 │   │   ├── collection/         # Wine inventory + label-scan action
 │   │   ├── deliveries/[id]/    # Deliver Now member ladder (#51)
-│   │   ├── facility/           # Facility views (#16), events/[id]/ scaffold (#53)
+│   │   ├── events/             # Events & tastings — public list, detail, RSVP (#53)
+│   │   ├── exits/              # Member-initiated consignment (#47)
+│   │   ├── facility/           # Facility views (#16) + resilience post-event reports (#42)
 │   │   ├── handoff/[token]/    # Auction/broker recipient scan (#41) — public
 │   │   ├── handoff-driver/[token]/ # Deliver Now driver portal (#51) — public
 │   │   ├── locker/             # 4×8 slot grid + server actions
-│   │   ├── onboarding/         # 3-step wizard (#20)
+│   │   ├── migrations/         # Concierge CSV import wizard — CellarTracker/Vivino (#52)
+│   │   ├── onboarding/         # 4-step wizard — tier → locker → Sentinel devices → first bottle (#20, #59)
 │   │   ├── portfolio/          # Portfolio vs. Liv-ex 100 investor view (#45)
 │   │   ├── report/[id]/        # Caveau Custody & Condition Report + QR (#30, #40)
 │   │   ├── sentinel/           # IoT monitoring + live sim
 │   │   ├── settings/           # Alert prefs (#19), hurricane prefs (#46)
-│   │   ├── verify/[hash]/      # Public CCR verification (#30)
+│   │   ├── verify/[hash]/      # Public CCR + appraisal verification (#30, #61)
 │   │   ├── waitlist/           # Public founding-member waitlist (#49)
 │   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
 │   │   └── api/                # REST endpoints
 │   │       ├── advisor/chat/   # SSE streaming AI Advisor (#50)
 │   │       ├── alerts/
+│   │       ├── appraisals/[id]/pdf/ # Appraisal PDF download (#61)
 │   │       ├── auth/           # [...nextauth], signup
 │   │       ├── certificates/[id]/ # ownership-checked GET + provenance subroute (#40)
 │   │       ├── cron/           # livex-sync (#39), sensor-retention (#22 interim)
-│   │       ├── deliveries/     # member [id]/* and public by-token/[token]/* (#51)
+│   │       ├── deliveries/     # Deliver Now endpoints (#51)
 │   │       ├── health/
 │   │       ├── ingest/sensor/  # Sentinel device ingest (#21) — bearer-guarded
 │   │       ├── lockers/
@@ -68,13 +75,15 @@ caveau-app/
 │   │       └── wines/
 │   ├── middleware.ts           # Auth + onboarding gate, admin gate, per-route rate limits, CSP
 │   ├── types/next-auth.d.ts    # Session augmentation (role, tier, onboarded)
-│   ├── components/             # 21 shared components — see COMPONENT_GUIDE.md
+│   ├── components/             # 27 shared components — see COMPONENT_GUIDE.md
 │   └── lib/                    # Shared utilities — auth, prisma, env, logger, request-context,
 │                               # rate-limit, safe-callback, schemas, current-facility, tiers,
 │                               # email, notify-alert, validate-live-alert, s3, vision,
 │                               # label-parser, certificate-hash, provenance, provenance-pdf,
-│                               # handoff, disposition-guard, nfc, hurricane, investment,
-│                               # delivery, advisor-system-prompt, advisor-tools,
+│                               # handoff, disposition-guard, nfc, hurricane, investment, insurance,
+│                               # portfolio-timeseries, exit-signals, exits, allocations, notify-allocation,
+│                               # appraisals, appraisal-hash, appraisal-pdf, acquisitions, migration-mapping,
+│                               # csv-parse, devices, delivery, advisor-system-prompt, advisor-tools,
 │                               # advisor-dispatch, livex, sensors, use-body-scroll-lock,
 │                               # utils, __tests__/
 ├── docs/                       # Developer documentation (you are here)
@@ -161,7 +170,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     B->>MW: Request /collection
-    MW->>MW: Rate limit check (auth endpoints only)
+    MW->>MW: Rate limit check (only when policy matches)
     MW->>MW: Check JWT token in cookie
     alt No token
         MW-->>B: Redirect → /auth/login
@@ -197,7 +206,14 @@ See [DECISIONS.md](./DECISIONS.md) for the full decision log.
 | Handoff driver (`/handoff-driver/[token]`, #51) | Server + Client hybrid | **Public** (token-scoped) | Prisma (delivery token → ladder, rate-limited) |
 | Advisor (`/advisor`, #50) | Client Component | Required | SSE streaming `/api/advisor/chat` |
 | Portfolio (`/portfolio`, #45) | Server Component | Required | Prisma (portfolio + Liv-ex benchmark) |
-| Onboarding (`/onboarding`) | Server + Client hybrid | Required (un-onboarded only) | Prisma fetch → 3-step wizard server actions |
+| Events (`/events`, `/events/[slug]`, #53) | Server + Client hybrid | **Public** (auth-aware) | Prisma + server actions (RSVP / signup) |
+| Allocations (`/allocations`, #60) | Server Component | **Public** (auth-aware teaser) | Prisma (teaser) / member feed |
+| Allocation detail (`/allocations/[slug]`, #60) | Server + Client hybrid | Required | Prisma + server actions (request) |
+| Appraisals (`/appraisals/*`, #61) | Server + Client hybrid | Required | Prisma + server actions + PDF route |
+| Acquisitions (`/acquisitions/*`, #62) | Server + Client hybrid | Required | Prisma + server actions |
+| Exits (`/exits/*`, #47) | Server + Client hybrid | Required | Prisma + server actions |
+| Migrations (`/migrations/*`, #52) | Client Component | Required | Client-side CSV parse + server actions |
+| Onboarding (`/onboarding`) | Server + Client hybrid | Required (un-onboarded only) | Prisma fetch → 4-step wizard server actions |
 | Settings (`/settings`) | Server Component | Required | Prisma (alert + hurricane prefs + form actions) |
 | Waitlist (`/waitlist`, #49) | Server + Client hybrid | **Public** | Prisma POST action, rate-limited |
 | Admin (`/admin/*`, #28) | Server + Client hybrid | Required + role=admin | Prisma (members, lockers, alerts, waitlist, hurricane) |

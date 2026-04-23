@@ -1,6 +1,6 @@
 # Deployment
 
-> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
+> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
 
 ## Infrastructure
 
@@ -131,11 +131,11 @@ Both routes are guarded by `CRON_SECRET` in production via timing-safe Bearer co
 
 When SES is live the operator must subscribe an SNS topic to `https://<host>/api/ses/webhook` and attach Bounce + Complaint event destinations on the SES Configuration Set / Identity. Without this wiring, hard-bounced and complaining members silently keep failing to receive alerts because SES drops them.
 
-### 3. Deploy
+### 5. Deploy
 
 Push to `main` → Vercel auto-deploys. Preview deployments are created for every PR.
 
-### 4. Custom domain (optional)
+### 6. Custom domain (optional)
 
 Add via Vercel Dashboard → Settings → Domains.
 
@@ -144,7 +144,7 @@ Add via Vercel Dashboard → Settings → Domains.
 The app's `src/middleware.ts` applies security controls to every request:
 
 - **Auth protection**: all routes require a valid JWT, with these exceptions: `/auth/*`, `/verify/*`, `/bottle/*` (#43), `/handoff/*` (#41), `/handoff-driver/*` (#51), `/waitlist` (#49), `/api/auth/*`, `/api/health`, `/api/ingest/sensor` (bearer-guarded, #21), `/api/ses/webhook` (SNS-signed, #19), `/api/cron/*` (bearer-guarded), and `/api/deliveries/by-token/*` (driver-facing). `/report/*` pages are auth-protected and enforce an ownership check before rendering. `/admin/*` additionally requires `role === "admin"`.
-- **Rate limiting** (per-IP): signup 5/60s fail-closed, login 10/60s fail-closed, `/verify/*` 20/60s, `/handoff/*` 30/60s, `/handoff-driver/*` 30/60s, `/bottle/*` 30/60s, `/waitlist` POST 5/60s, `/api/sensors/history` 30/60s. Upstash Redis backend when configured; in-memory fallback otherwise.
+- **Rate limiting** (per-IP): signup 5/60s fail-closed, login 10/60s fail-closed, `/verify/*` 20/60s, `/handoff/*` 30/60s, `/handoff-driver/*` 30/60s, `/bottle/*` 30/60s, `/waitlist` POST 5/60s, `/events/*` POST 5/60s, `/api/sensors/history` 30/60s. Upstash Redis backend when configured; in-memory fallback otherwise.
 - **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support). `connect-src` is derived from `AWS_S3_BUCKET` + `AWS_CLOUDFRONT_DOMAIN` at request time so the policy never wildcards `*.amazonaws.com`.
 - **Static security headers** (in `next.config.mjs`): HSTS (2 years + preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo), X-Permitted-Cross-Domain-Policies none.
 

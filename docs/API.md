@@ -1,10 +1,10 @@
 # API Reference
 
-> Last updated: 2026-04-18 | REST surface live (roadmap #17); expanded across #19, #21, #30, #39, #40, #50, #51
+> Last updated: 2026-04-23 | REST surface live (roadmap #17); expanded across #19, #21, #30, #39, #40, #50, #51, #61
 
 ## Status
 
-API routes are implemented. All endpoints require authentication via NextAuth JWT session except `/api/auth/*` and `/api/health`. Authenticated endpoints read `getServerAuth()` and scope all queries to the authenticated member. Request bodies and query strings are parsed with Zod schemas from `src/lib/schemas.ts` and return a generic 400 on validation failure.
+API routes are implemented. Member-facing endpoints require authentication via NextAuth JWT session. Public endpoints exist for health checks, device ingest, SES webhooks, Vercel cron, and token-scoped driver handoff flows (see tables below). Authenticated endpoints read `getServerAuth()` and scope all queries to the authenticated member. Request bodies and query strings are parsed with Zod schemas from `src/lib/schemas.ts` and return a generic 400 on validation failure.
 
 ## Endpoints
 
@@ -24,7 +24,9 @@ API routes are implemented. All endpoints require authentication via NextAuth JW
 | GET | `/api/alerts` | Recent alerts (`?resolved=true/false`) |
 | GET | `/api/certificates/[id]` | Custody & Condition Report data (ownership verified) |
 | GET | `/api/certificates/[id]/provenance` | Full provenance timeline payload for #40 (ownership verified) |
+| GET | `/api/appraisals/[id]/pdf` | Member-scoped appraisal PDF download (#61). 404 for non-owned or non-completed docs. |
 | POST | `/api/advisor/chat` | Streaming SSE AI Advisor chat (#50). Returns 503 when `ANTHROPIC_API_KEY` is unset. |
+| POST | `/api/deliveries` | Create a Deliver Now request and return the 4-digit PIN **once** (#51) |
 | POST | `/api/deliveries/[id]/biometric` | Deliver Now biometric re-auth step (#51) |
 | POST | `/api/deliveries/[id]/pin` | Delivery PIN verification step (#51) |
 | POST | `/api/deliveries/[id]/address` | Delivery address confirmation step (#51) |

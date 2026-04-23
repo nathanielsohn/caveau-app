@@ -143,11 +143,11 @@ Live updates via `setInterval` every 5 seconds. No SSE/WebSocket needed.
 
 ### Image Fallback
 
-When `Wine.imageUrl` is null, display a placeholder: a centered wine bottle silhouette icon (use Lucide `Wine` icon) on a dark card background (`bg-[#1C1C20]`) with muted text "No image". Apply this consistently on wine cards, wine detail page, and any other context where wine images appear.
+When `Wine.imageKey` is null (the S3 object key persisted on the row), display a placeholder: a centered wine bottle silhouette icon (use Lucide `Wine` icon) on a dark card background (`bg-[#1C1C20]`) with muted text "No image". Apply this consistently on wine cards, wine detail page, and any other context where wine images appear. Public URLs are derived from `imageKey` at read time via `src/lib/s3.ts` (`getPublicUrl`).
 
 ### Certificate Stats Calculation
 
-When seeding `ProvenanceCertificate` records, calculate `tempMean`, `tempMin`, `tempMax`, and `humidityMean` by querying `SensorReading` rows for the certificate's `lockerId` between `monitoringStart` and `monitoringEnd`, then aggregating with SQL `AVG()`, `MIN()`, `MAX()`. The `dataIntegrityHash` is a SHA-256 hash of the concatenated sensor reading IDs in that range (as a pipe-delimited string).
+When creating `ProvenanceCertificate` (CCR) records, calculate `tempMean`, `tempMin`, `tempMax`, and `humidityMean` by querying `SensorReading` rows for the certificate’s `lockerId` between `monitoringStart` and `monitoringEnd`, then aggregating with SQL `AVG()`, `MIN()`, `MAX()`. The `dataIntegrityHash` is an **HMAC-SHA256** over the identifying tuple `(wineId, lockerId, monitoringStart, monitoringEnd)` keyed by `CERTIFICATE_HMAC_SECRET` (with a dev fallback to `NEXTAUTH_SECRET`) — see `src/lib/certificate-hash.ts`.
 
 ---
 
@@ -156,7 +156,7 @@ When seeding `ProvenanceCertificate` records, calculate `tempMean`, `tempMin`, `
 See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
 - The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#62 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
-- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0029.sql).
+- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0039.sql).
 - Config files: package.json, next.config.mjs, tailwind.config.ts, .env, vitest.config.ts.
 
 ---
@@ -384,7 +384,7 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 
 ### Phase 6 — Investor Demo Gap (post-deck skim)
 
-Sourced from skimming the `Caveau_Pitch_Deck_FINAL.pptx` (18 slides) + equity summary on 2026-04-16. These close the gap between what the investor materials promise and what the app currently demos. Full rationale, P0/P1/P2 split, slide references, and 8–10 week build plan live in `~/Desktop/caveau-docs/product/2026-04-16-investor-demo-gap-list.md` — read that before planning a specific feature, not just the one-line entry here.
+Sourced from skimming the `Caveau_Pitch_Deck_FINAL.pptx` (18 slides) + equity summary on 2026-04-16. These close the gap between what the investor materials promise and what the app currently demos. Full rationale, P0/P1/P2 split, slide references, and build plan live in [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](docs/PHASE-6-INVESTOR-DEMO-GAP.md). (Raw investor materials live under `caveau-docs/`.)
 
 Priority: AI Advisor chat (#50) first — it's the single biggest gap and unlocks the deck's centerpiece narrative. Then #51–54 to round out P0.
 

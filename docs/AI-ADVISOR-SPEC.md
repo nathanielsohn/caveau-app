@@ -1,6 +1,6 @@
 # AI Advisor — System Prompt + Tool Spec
 
-> Last updated: 2026-04-18 | Phase 6 feature #50 — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Live code under `src/lib/advisor-*.ts`, `src/app/api/advisor/chat/route.ts`, `src/app/advisor/`.
+> Last updated: 2026-04-23 | Phase 6 feature #50 — **shipped 2026-04-17** (commits `faeef1e`, `eb30581`, `1eb05f5`, `5303875`). Live code under `src/lib/advisor-*.ts`, `src/app/api/advisor/chat/route.ts`, `src/app/advisor/`.
 
 ## Purpose
 
@@ -17,6 +17,7 @@ See [`docs/PHASE-6-INVESTOR-DEMO-GAP.md`](PHASE-6-INVESTOR-DEMO-GAP.md) §1 for 
 **Terminology discipline:**
 
 - The document the advisor references is the **Caveau Custody & Condition Report (CCR)** or **CCR** on subsequent mentions. Never "certificate", never "provenance certificate", never "Caveau certificate" — those terms are superseded per [`decisions/2026-04-16-ccr-final-rename.md`](../../caveau-docs/decisions/2026-04-16-ccr-final-rename.md) in the companion docs repo.
+- The document the advisor references is the **Caveau Custody & Condition Report (CCR)** or **CCR** on subsequent mentions. Never "certificate", never "provenance certificate", never "Caveau certificate" — those terms are superseded per ADR-010 in [`docs/DECISIONS.md`](./DECISIONS.md).
 - Bottle-level tracking uses **NFC tags** (capsule under foil for trophies, navy collar for standards), never QR.
 - Storage facility terminology is **vault** / **locker** / **slot**, not "cellar space" or "storage unit".
 - Tier names are the published four: **Collector**, **Reserve**, **Private Vault**, **Estate**. Internal DB enum values (`gold` / `platinum` / `black`) never appear in advisor output.
@@ -113,7 +114,7 @@ The advisor **does not**:
 
 ## Open Questions for Rob
 
-These need Rob's call. Resolved items move to `~/Desktop/caveau-docs/decisions/`.
+These need Rob's call. Resolved items should be captured as ADRs in [`docs/DECISIONS.md`](./DECISIONS.md). (Raw email threads and business docs live in `caveau-docs/`.)
 
 1. ~~**AI budget.**~~ Resolved provisionally — Sonnet 4.6 pinned, per-member rate limiting deferred until chat traffic warrants it. Revisit if monthly Anthropic spend jumps.
 2. ~~**Liv-ex 100 benchmark source.**~~ Resolved — seeded `LivexBenchmark` table (migration `0026_livex_benchmark.sql`) exposed via `getLivexBenchmark` tool. Swap to a live Liv-ex index feed when the contract covers it.

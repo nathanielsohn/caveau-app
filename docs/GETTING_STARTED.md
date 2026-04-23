@@ -1,10 +1,10 @@
 # Getting Started
 
-> Last updated: 2026-04-18 | 14 core + 3 stretch features complete; 27 of 47 post-demo roadmap features done
+> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
 
 ## Prerequisites
 
-- **Node.js** 18+ (LTS recommended)
+- **Node.js** 20+ (required — see `package.json` `engines.node`)
 - **npm** 9+ (comes with Node)
 - **PostgreSQL** database (local or AWS RDS — see [DEPLOYMENT.md](./DEPLOYMENT.md))
 
