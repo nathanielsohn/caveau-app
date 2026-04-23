@@ -443,37 +443,37 @@ export async function declineRequest(
   const { requestId, staffNote } = parsed.data;
 
   try {
-    const req = await prisma.allocationRequest.findUnique({
-      where: { id: requestId },
-      select: { status: true },
-    });
-    if (!req) {
-      return {
-        submittedAt: now,
-        ok: false,
-        error: "Request not found",
-        message: null,
-      };
-    }
-    if (
-      !canTransitionRequest(req.status, AllocationRequestStatus.declined)
-    ) {
-      return {
-        submittedAt: now,
-        ok: false,
-        error: "This request can't be declined.",
-        message: null,
-      };
-    }
-
-    await prisma.allocationRequest.update({
-      where: { id: requestId },
+    // Decline is legal from submitted or accepted. Encoding the allowed
+    // source states in the WHERE clause makes this race-safe against a
+    // concurrent accept/decline by a second admin.
+    const { count } = await prisma.allocationRequest.updateMany({
+      where: {
+        id: requestId,
+        status: {
+          in: [
+            AllocationRequestStatus.submitted,
+            AllocationRequestStatus.accepted,
+          ],
+        },
+      },
       data: {
         status: AllocationRequestStatus.declined,
         declinedAt: new Date(),
         staffNote: staffNote ?? null,
       },
     });
+    if (count === 0) {
+      const exists = await prisma.allocationRequest.findUnique({
+        where: { id: requestId },
+        select: { id: true },
+      });
+      return {
+        submittedAt: now,
+        ok: false,
+        error: exists ? "This request can't be declined." : "Request not found",
+        message: null,
+      };
+    }
   } catch (e) {
     logger.error("declineRequest failed", e, { action: "declineRequest" });
     return {

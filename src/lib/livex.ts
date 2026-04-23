@@ -87,6 +87,10 @@ async function livexFetch(path: string, apiKey: string): Promise<unknown> {
       },
       signal: controller.signal,
       cache: "no-store",
+      // SSRF defense-in-depth. LIVEX_BASE_URL is operator-controlled so
+      // redirect-chasing to an attacker-picked host requires a DNS
+      // compromise, but refusing redirects outright eliminates the class.
+      redirect: "error",
     });
     if (!res.ok) {
       logger.warn("[livex] non-2xx response", {

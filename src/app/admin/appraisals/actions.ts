@@ -47,32 +47,39 @@ export async function startAppraisal(
   });
   if (!parsed.success) return { ok: false, error: "invalid_input" };
 
-  const appraisal = await prisma.appraisal.findUnique({
-    where: { id: parsed.data.appraisalId },
-    select: { id: true, status: true },
-  });
-  if (!appraisal) return { ok: false, error: "not_found" };
-  if (appraisal.status !== AppraisalStatus.submitted) {
-    return { ok: false, error: "not_startable" };
-  }
-
-  await prisma.appraisal.update({
-    where: { id: appraisal.id },
+  // Atomic transition — same pattern as exits/listExit and
+  // completeAppraisal. A findUnique+update split would let two concurrent
+  // "start" clicks both pass the status check.
+  const { count } = await prisma.appraisal.updateMany({
+    where: {
+      id: parsed.data.appraisalId,
+      status: AppraisalStatus.submitted,
+    },
     data: {
       status: AppraisalStatus.in_progress,
       staffNote: parsed.data.staffNote ?? undefined,
     },
   });
+  if (count === 0) {
+    const exists = await prisma.appraisal.findUnique({
+      where: { id: parsed.data.appraisalId },
+      select: { id: true },
+    });
+    return {
+      ok: false,
+      error: exists ? "not_startable" : "not_found",
+    };
+  }
 
   logger.info("[admin-appraisals] started", {
-    appraisalId: appraisal.id,
+    appraisalId: parsed.data.appraisalId,
     adminId,
   });
 
   revalidatePath("/admin/appraisals");
-  revalidatePath(`/admin/appraisals/${appraisal.id}`);
+  revalidatePath(`/admin/appraisals/${parsed.data.appraisalId}`);
   revalidatePath("/appraisals");
-  revalidatePath(`/appraisals/${appraisal.id}`);
+  revalidatePath(`/appraisals/${parsed.data.appraisalId}`);
   return { ok: true };
 }
 
@@ -88,36 +95,39 @@ export async function cancelAppraisalAsAdmin(
   });
   if (!parsed.success) return { ok: false, error: "invalid_input" };
 
-  const appraisal = await prisma.appraisal.findUnique({
-    where: { id: parsed.data.appraisalId },
-    select: { id: true, status: true },
-  });
-  if (!appraisal) return { ok: false, error: "not_found" };
-  if (
-    appraisal.status !== AppraisalStatus.submitted &&
-    appraisal.status !== AppraisalStatus.in_progress
-  ) {
-    return { ok: false, error: "not_cancellable" };
-  }
-
-  await prisma.appraisal.update({
-    where: { id: appraisal.id },
+  const { count } = await prisma.appraisal.updateMany({
+    where: {
+      id: parsed.data.appraisalId,
+      status: {
+        in: [AppraisalStatus.submitted, AppraisalStatus.in_progress],
+      },
+    },
     data: {
       status: AppraisalStatus.cancelled,
       cancelledAt: new Date(),
       staffNote: parsed.data.staffNote ?? undefined,
     },
   });
+  if (count === 0) {
+    const exists = await prisma.appraisal.findUnique({
+      where: { id: parsed.data.appraisalId },
+      select: { id: true },
+    });
+    return {
+      ok: false,
+      error: exists ? "not_cancellable" : "not_found",
+    };
+  }
 
   logger.info("[admin-appraisals] cancelled", {
-    appraisalId: appraisal.id,
+    appraisalId: parsed.data.appraisalId,
     adminId,
   });
 
   revalidatePath("/admin/appraisals");
-  revalidatePath(`/admin/appraisals/${appraisal.id}`);
+  revalidatePath(`/admin/appraisals/${parsed.data.appraisalId}`);
   revalidatePath("/appraisals");
-  revalidatePath(`/appraisals/${appraisal.id}`);
+  revalidatePath(`/appraisals/${parsed.data.appraisalId}`);
   return { ok: true };
 }
 
@@ -139,33 +149,39 @@ export async function revokeAppraisal(
   });
   if (!parsed.success) return { ok: false, error: "invalid_input" };
 
-  const appraisal = await prisma.appraisal.findUnique({
-    where: { id: parsed.data.appraisalId },
-    select: { id: true, status: true, revokedAt: true },
-  });
-  if (!appraisal) return { ok: false, error: "not_found" };
-  if (appraisal.status !== AppraisalStatus.completed) {
-    return { ok: false, error: "not_revokable" };
-  }
-  if (appraisal.revokedAt) return { ok: false, error: "already_revoked" };
-
-  await prisma.appraisal.update({
-    where: { id: appraisal.id },
+  // Revoke is only legal on a completed appraisal that isn't already
+  // revoked — both guards fold into a single atomic WHERE clause so two
+  // concurrent revoke clicks can't double-stamp revokedAt.
+  const { count } = await prisma.appraisal.updateMany({
+    where: {
+      id: parsed.data.appraisalId,
+      status: AppraisalStatus.completed,
+      revokedAt: null,
+    },
     data: {
       revokedAt: new Date(),
       staffNote: parsed.data.staffNote ?? undefined,
     },
   });
+  if (count === 0) {
+    const existing = await prisma.appraisal.findUnique({
+      where: { id: parsed.data.appraisalId },
+      select: { status: true, revokedAt: true },
+    });
+    if (!existing) return { ok: false, error: "not_found" };
+    if (existing.revokedAt) return { ok: false, error: "already_revoked" };
+    return { ok: false, error: "not_revokable" };
+  }
 
   logger.info("[admin-appraisals] revoked", {
-    appraisalId: appraisal.id,
+    appraisalId: parsed.data.appraisalId,
     adminId,
   });
 
   revalidatePath("/admin/appraisals");
-  revalidatePath(`/admin/appraisals/${appraisal.id}`);
+  revalidatePath(`/admin/appraisals/${parsed.data.appraisalId}`);
   revalidatePath("/appraisals");
-  revalidatePath(`/appraisals/${appraisal.id}`);
+  revalidatePath(`/appraisals/${parsed.data.appraisalId}`);
   return { ok: true };
 }
 

@@ -35,6 +35,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { fetchLivexPrice, isLivexConfigured } from "@/lib/livex";
+import { reconcileMemberExitSignals } from "@/lib/exit-signals";
 import { logger } from "@/lib/logger";
 import { getRequestId } from "@/lib/request-context";
 
@@ -203,6 +204,7 @@ export async function GET(req: NextRequest) {
   let updated = 0;
   let skipped = 0;
   let failed = 0;
+  const updatedWineIds: string[] = [];
 
   // Bounded-concurrency worker pool: CONCURRENCY workers pull from a shared
   // cursor. Keeps us below the Liv-ex rate ceiling without serializing the
@@ -214,12 +216,43 @@ export async function GET(req: NextRequest) {
       const wine = wines[idx];
       if (!wine) continue;
       const outcome = await syncOneWine(wine, requestId);
-      if (outcome === "updated") updated += 1;
-      else if (outcome === "skipped") skipped += 1;
+      if (outcome === "updated") {
+        updated += 1;
+        updatedWineIds.push(wine.id);
+      } else if (outcome === "skipped") skipped += 1;
       else failed += 1;
     }
   });
   await Promise.all(workers);
+
+  // Re-score exit signals for every member whose wines got a price move
+  // this run. Without this pass, #55 signals would freeze at seed-time
+  // state — a fresh +20% jump in Liv-ex would never light up the
+  // dashboard teaser card. Best-effort: per-member failures are logged
+  // and skipped so one bad member doesn't fail the whole cron.
+  let signalsOpened = 0;
+  let signalsUpdated = 0;
+  let signalsClosed = 0;
+  if (updatedWineIds.length > 0) {
+    const affectedMembers = await prisma.wine.findMany({
+      where: { id: { in: updatedWineIds } },
+      select: { memberId: true },
+      distinct: ["memberId"],
+    });
+    for (const { memberId } of affectedMembers) {
+      try {
+        const stats = await reconcileMemberExitSignals(memberId);
+        signalsOpened += stats.opened;
+        signalsUpdated += stats.updated;
+        signalsClosed += stats.closed;
+      } catch (err) {
+        logger.error("[cron/livex-sync] exit-signal reconcile failed", err, {
+          requestId,
+          memberId,
+        });
+      }
+    }
+  }
 
   const durationMs = Date.now() - startedAt;
   // If most wines came back empty, upstream likely isn't indexed against the
@@ -240,6 +273,9 @@ export async function GET(req: NextRequest) {
     skipped,
     failed,
     total: wines.length,
+    signalsOpened,
+    signalsUpdated,
+    signalsClosed,
     durationMs,
   });
 
@@ -249,6 +285,9 @@ export async function GET(req: NextRequest) {
     skipped,
     failed,
     total: wines.length,
+    signalsOpened,
+    signalsUpdated,
+    signalsClosed,
     durationMs,
   });
 }

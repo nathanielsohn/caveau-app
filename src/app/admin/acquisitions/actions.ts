@@ -349,10 +349,33 @@ export async function updateAcquisitionNote(
       : null;
 
   try {
-    await prisma.acquisition.update({
-      where: { id: idCheck.data },
+    // Only allow note edits on in-flight requests. Editing a note on a
+    // fulfilled/declined row would silently overwrite the closing note
+    // written during the terminal transition — confusing for audit and
+    // pointless for operations.
+    const { count } = await prisma.acquisition.updateMany({
+      where: {
+        id: idCheck.data,
+        status: {
+          in: [AcquisitionStatus.requested, AcquisitionStatus.sourcing],
+        },
+      },
       data: { staffNote },
     });
+    if (count === 0) {
+      const exists = await prisma.acquisition.findUnique({
+        where: { id: idCheck.data },
+        select: { id: true },
+      });
+      return {
+        submittedAt: now,
+        ok: false,
+        error: exists
+          ? "Closed requests can't accept new notes."
+          : "Request not found",
+        message: null,
+      };
+    }
   } catch (e) {
     logger.error("updateAcquisitionNote failed", e, {
       action: "updateAcquisitionNote",

@@ -27,10 +27,19 @@ import {
   AdvisorBenchmarkParamSchema,
 } from "@/lib/schemas";
 import {
+  AcquisitionStatus,
   AllocationRequestStatus,
   AllocationStatus,
+  AppraisalStatus,
+  ExitStatus,
 } from "@prisma/client";
 import { decideEligibility, bottlesRemaining } from "@/lib/allocations";
+import {
+  checkWelcomeEligibility,
+  resolveAppraisalPrice,
+} from "@/lib/appraisals";
+import { formatAcquisitionSpec } from "@/lib/acquisitions";
+import { formatChannelWithHouse, MEMBER_STATUS_COPY } from "@/lib/exits";
 
 /**
  * Thrown when a tool is invoked without an authenticated session. The
@@ -1182,11 +1191,6 @@ export async function getMyAppraisals(params: {
   const memberId = session.user.id;
   const filter = params.status ?? "open";
 
-  const { AppraisalStatus } = await import("@prisma/client");
-  const { checkWelcomeEligibility, resolveAppraisalPrice } = await import(
-    "@/lib/appraisals"
-  );
-
   const member = await prisma.member.findUnique({
     where: { id: memberId },
     select: { tier: true, foundingMember: true },
@@ -1314,9 +1318,6 @@ export async function getMyAcquisitions(params: {
   const memberId = session.user.id;
   const filter = params.status ?? "open";
 
-  const { AcquisitionStatus } = await import("@prisma/client");
-  const { formatAcquisitionSpec } = await import("@/lib/acquisitions");
-
   const where = (() => {
     if (filter === "fulfilled") {
       return { memberId, status: AcquisitionStatus.fulfilled };
@@ -1435,11 +1436,6 @@ export async function getMyExits(params: {
   const session = await requireSession();
   const memberId = session.user.id;
   const filter = params.status ?? "open";
-
-  const { ExitStatus } = await import("@prisma/client");
-  const { formatChannelWithHouse, MEMBER_STATUS_COPY } = await import(
-    "@/lib/exits"
-  );
 
   const where = (() => {
     if (filter === "open") {
