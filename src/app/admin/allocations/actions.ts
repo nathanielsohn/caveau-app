@@ -345,14 +345,15 @@ export async function acceptRequest(
         },
       });
       if (!req) throw new InvalidStateError("Request not found");
-      if (
-        !canTransitionRequest(
-          req.status,
-          AllocationRequestStatus.accepted,
-        )
-      ) {
-        throw new InvalidStateError("This request can't be accepted.");
-      }
+
+      // Serialize all accept/fulfill decisions for this allocation
+      // against the parent row. Without this, two concurrent accept
+      // clicks against DIFFERENT requests under the same allocation
+      // can both pass the `remaining` check at Read Committed and
+      // over-commit inventory. The status-filter on the updateMany
+      // below only catches the same-request race.
+      await tx.$queryRaw`SELECT id FROM allocations WHERE id = ${req.allocation.id}::uuid FOR UPDATE`;
+
       if (!isOpenForRequests(req.allocation)) {
         throw new InvalidStateError(
           "Allocation is closed — re-open before accepting.",
@@ -360,8 +361,7 @@ export async function acceptRequest(
       }
 
       // Invariant check: claimed + this request must not exceed quantity.
-      // Read all accepted/fulfilled requests inside the transaction so two
-      // concurrent accept clicks can't over-commit the inventory.
+      // Read all accepted/fulfilled requests AFTER the row lock above.
       const siblings = await tx.allocationRequest.findMany({
         where: {
           allocationId: req.allocation.id,
@@ -381,14 +381,20 @@ export async function acceptRequest(
         );
       }
 
-      await tx.allocationRequest.update({
-        where: { id: requestId },
+      const { count } = await tx.allocationRequest.updateMany({
+        where: {
+          id: requestId,
+          status: AllocationRequestStatus.submitted,
+        },
         data: {
           status: AllocationRequestStatus.accepted,
           acceptedAt: new Date(),
           staffNote: staffNote ?? null,
         },
       });
+      if (count === 0) {
+        throw new InvalidStateError("This request can't be accepted.");
+      }
     });
   } catch (e) {
     if (e instanceof InvalidStateError) {
@@ -548,14 +554,25 @@ export async function fulfillRequest(
       }));
       await tx.wine.createMany({ data: wineRows });
 
-      await tx.allocationRequest.update({
-        where: { id: requestId },
+      // Atomic status transition guards against a concurrent double-click
+      // doubling the member's wine rows — the second transaction's count
+      // will be 0 and the whole txn (wine inserts included) rolls back.
+      const { count } = await tx.allocationRequest.updateMany({
+        where: {
+          id: requestId,
+          status: AllocationRequestStatus.accepted,
+        },
         data: {
           status: AllocationRequestStatus.fulfilled,
           fulfilledAt: new Date(),
           fulfilledById: adminId,
         },
       });
+      if (count === 0) {
+        throw new InvalidStateError(
+          "Another admin just fulfilled this request — refresh the queue.",
+        );
+      }
 
       // If this fulfillment satisfies the entire allocation (everyone
       // accepted is now fulfilled and nothing is still in accepted), flip

@@ -218,8 +218,13 @@ export async function fulfillMigration(
         })),
       });
 
-      await tx.migrationRequest.update({
-        where: { id },
+      // Atomic status transition — two concurrent "fulfill" clicks would
+      // otherwise both pass the status check above and both `createMany`
+      // under Read Committed, doubling the member's wine rows. The
+      // status filter here causes the second transaction's count to be 0
+      // and the whole txn (wine inserts included) rolls back.
+      const { count } = await tx.migrationRequest.updateMany({
+        where: { id, status: "submitted" },
         data: {
           status: "fulfilled",
           fulfilledAt: new Date(),
@@ -227,6 +232,11 @@ export async function fulfillMigration(
           fulfilledById: adminId,
         },
       });
+      if (count === 0) {
+        throw new InvalidStateError(
+          "Another admin just fulfilled this migration — refresh the queue.",
+        );
+      }
 
       createdCount = prepared.length;
     });

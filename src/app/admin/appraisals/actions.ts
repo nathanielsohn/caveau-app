@@ -289,8 +289,18 @@ export async function completeAppraisal(
       totalBasisUsd: snapshot.totalBasisUsd,
     });
 
-    await prisma.appraisal.update({
-      where: { id: appraisal.id },
+    // Atomic status filter — if two admins click "complete" at once,
+    // only one gets through. The loser's reserved appraisalNumber is
+    // already locked by nextAppraisalNumber()'s unique index; the rest
+    // of this write is idempotent against identical inputs, so rejecting
+    // the duplicate here just keeps the UI honest.
+    const { count } = await prisma.appraisal.updateMany({
+      where: {
+        id: appraisal.id,
+        status: {
+          in: [AppraisalStatus.submitted, AppraisalStatus.in_progress],
+        },
+      },
       data: {
         status: AppraisalStatus.completed,
         appraiserName: data.appraiserName,
@@ -306,6 +316,14 @@ export async function completeAppraisal(
         completedAt: new Date(),
       },
     });
+    if (count === 0) {
+      return {
+        submittedAt: now,
+        ok: false,
+        error: "Another admin just completed this appraisal — refresh the queue.",
+        appraisalNumber: null,
+      };
+    }
 
     logger.info("[admin-appraisals] completed", {
       appraisalId: appraisal.id,

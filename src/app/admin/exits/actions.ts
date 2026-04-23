@@ -77,19 +77,12 @@ export async function listExit(
     parsed.data;
 
   try {
-    const existing = await prisma.exitFacilitation.findUnique({
-      where: { id: exitId },
-      select: { status: true },
-    });
-    if (!existing) throw new InvalidStateError("Exit not found");
-    if (!canTransitionExit(existing.status, ExitStatus.listed)) {
-      throw new InvalidStateError(
-        "Only a new request can move to listed.",
-      );
-    }
-
-    await prisma.exitFacilitation.update({
-      where: { id: exitId },
+    // Single atomic transition — the status filter in the WHERE clause
+    // makes this race-safe against a second admin clicking "list" at the
+    // same moment. A `findUnique` + `update` split would let both reads
+    // pass the canTransition check and both writes succeed.
+    const { count } = await prisma.exitFacilitation.updateMany({
+      where: { id: exitId, status: ExitStatus.requested },
       data: {
         status: ExitStatus.listed,
         channel,
@@ -102,6 +95,17 @@ export async function listExit(
         listedAt: new Date(),
       },
     });
+    if (count === 0) {
+      const exists = await prisma.exitFacilitation.findUnique({
+        where: { id: exitId },
+        select: { id: true },
+      });
+      throw new InvalidStateError(
+        exists
+          ? "Only a new request can move to listed."
+          : "Exit not found",
+      );
+    }
   } catch (e) {
     if (e instanceof InvalidStateError) {
       return { submittedAt: now, ok: false, error: e.message, message: null };
@@ -232,9 +236,12 @@ export async function sellExit(
         },
       });
 
-      // 4. Stamp the facilitation itself.
-      await tx.exitFacilitation.update({
-        where: { id: exitId },
+      // 4. Stamp the facilitation itself. Use `updateMany` with a status
+      //    filter so two concurrent close-sale clicks can't both slip
+      //    through — the second transaction's count will be 0 and the
+      //    whole txn (disposition + wine flip) rolls back.
+      const stamped = await tx.exitFacilitation.updateMany({
+        where: { id: exitId, status: ExitStatus.listed },
         data: {
           status: ExitStatus.sold,
           grossProceedsUsd,
@@ -246,6 +253,11 @@ export async function sellExit(
           staffNote: staffNote ?? exit.staffNote ?? null,
         },
       });
+      if (stamped.count === 0) {
+        throw new InvalidStateError(
+          "Another admin just closed this sale — refresh the page.",
+        );
+      }
     });
   } catch (e) {
     if (e instanceof InvalidStateError) {
@@ -298,25 +310,28 @@ export async function withdrawExit(
   const { exitId, reason } = parsed.data;
 
   try {
-    const existing = await prisma.exitFacilitation.findUnique({
-      where: { id: exitId },
-      select: { status: true },
-    });
-    if (!existing) throw new InvalidStateError("Exit not found");
-    if (!canTransitionExit(existing.status, ExitStatus.withdrawn)) {
-      throw new InvalidStateError(
-        "This exit can no longer be withdrawn.",
-      );
-    }
-
-    await prisma.exitFacilitation.update({
-      where: { id: exitId },
+    // Withdrawal is legal from `requested` or `listed` — include both in
+    // the atomic WHERE so the status filter mirrors `canTransitionExit`.
+    const { count } = await prisma.exitFacilitation.updateMany({
+      where: {
+        id: exitId,
+        status: { in: [ExitStatus.requested, ExitStatus.listed] },
+      },
       data: {
         status: ExitStatus.withdrawn,
         withdrawnAt: new Date(),
         withdrawnReason: reason,
       },
     });
+    if (count === 0) {
+      const exists = await prisma.exitFacilitation.findUnique({
+        where: { id: exitId },
+        select: { id: true },
+      });
+      throw new InvalidStateError(
+        exists ? "This exit can no longer be withdrawn." : "Exit not found",
+      );
+    }
   } catch (e) {
     if (e instanceof InvalidStateError) {
       return { submittedAt: now, ok: false, error: e.message, message: null };

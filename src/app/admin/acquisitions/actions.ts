@@ -69,17 +69,8 @@ export async function startSourcing(
   const { acquisitionId, estimatedTotalUsd, staffNote } = parsed.data;
 
   try {
-    const existing = await prisma.acquisition.findUnique({
-      where: { id: acquisitionId },
-      select: { status: true },
-    });
-    if (!existing) throw new InvalidStateError("Request not found");
-    if (!canTransitionAcquisition(existing.status, AcquisitionStatus.sourcing)) {
-      throw new InvalidStateError("Only new requests can move to sourcing.");
-    }
-
-    await prisma.acquisition.update({
-      where: { id: acquisitionId },
+    const { count } = await prisma.acquisition.updateMany({
+      where: { id: acquisitionId, status: AcquisitionStatus.requested },
       data: {
         status: AcquisitionStatus.sourcing,
         sourcingStartedAt: new Date(),
@@ -87,6 +78,17 @@ export async function startSourcing(
         staffNote: staffNote ?? null,
       },
     });
+    if (count === 0) {
+      const exists = await prisma.acquisition.findUnique({
+        where: { id: acquisitionId },
+        select: { id: true },
+      });
+      throw new InvalidStateError(
+        exists
+          ? "Only new requests can move to sourcing."
+          : "Request not found",
+      );
+    }
   } catch (e) {
     if (e instanceof InvalidStateError) {
       return { submittedAt: now, ok: false, error: e.message, message: null };
@@ -191,8 +193,13 @@ export async function fulfillAcquisition(
       );
       await tx.wine.createMany({ data: wineRows });
 
-      await tx.acquisition.update({
-        where: { id: acquisitionId },
+      // Atomic status transition: if a second admin clicks "fulfill"
+      // concurrently, one of the two transactions will see count=0 here
+      // and roll back — wines included. Without this guard both
+      // transactions would createMany under Read Committed and double
+      // the member's wine rows.
+      const { count } = await tx.acquisition.updateMany({
+        where: { id: acquisitionId, status: AcquisitionStatus.sourcing },
         data: {
           status: AcquisitionStatus.fulfilled,
           source,
@@ -204,6 +211,11 @@ export async function fulfillAcquisition(
           fulfilledById: adminId,
         },
       });
+      if (count === 0) {
+        throw new InvalidStateError(
+          "Another admin just fulfilled this — refresh the queue.",
+        );
+      }
 
       createdCount = wineRows.length;
     });
@@ -259,25 +271,32 @@ export async function declineAcquisition(
   const { acquisitionId, staffNote } = parsed.data;
 
   try {
-    const existing = await prisma.acquisition.findUnique({
-      where: { id: acquisitionId },
-      select: { status: true },
-    });
-    if (!existing) throw new InvalidStateError("Request not found");
-    if (
-      !canTransitionAcquisition(existing.status, AcquisitionStatus.declined)
-    ) {
-      throw new InvalidStateError("This request can no longer be declined.");
-    }
-
-    await prisma.acquisition.update({
-      where: { id: acquisitionId },
+    // Decline is legal from `requested` or `sourcing` — both allowed in
+    // the atomic WHERE so the filter mirrors canTransitionAcquisition.
+    const { count } = await prisma.acquisition.updateMany({
+      where: {
+        id: acquisitionId,
+        status: {
+          in: [AcquisitionStatus.requested, AcquisitionStatus.sourcing],
+        },
+      },
       data: {
         status: AcquisitionStatus.declined,
         declinedAt: new Date(),
         staffNote,
       },
     });
+    if (count === 0) {
+      const exists = await prisma.acquisition.findUnique({
+        where: { id: acquisitionId },
+        select: { id: true },
+      });
+      throw new InvalidStateError(
+        exists
+          ? "This request can no longer be declined."
+          : "Request not found",
+      );
+    }
   } catch (e) {
     if (e instanceof InvalidStateError) {
       return { submittedAt: now, ok: false, error: e.message, message: null };

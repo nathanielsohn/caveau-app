@@ -96,7 +96,7 @@ export const ValuationBodySchema = z.object({
   source: z
     .enum(["manual", "liv-ex", "wine-searcher", "auction"])
     .optional(),
-  date: z.string().optional(),
+  date: DateSchema.optional(),
 });
 
 export const SensorHistoryQuerySchema = z.object({

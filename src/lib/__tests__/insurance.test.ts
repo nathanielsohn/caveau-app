@@ -43,8 +43,8 @@ describe("estimateInsuranceSavings", () => {
       "estate",
     ];
     for (let i = 1; i < tiers.length; i++) {
-      const prev = TIER_DISCOUNT_BANDS[tiers[i - 1]];
-      const curr = TIER_DISCOUNT_BANDS[tiers[i]];
+      const prev = TIER_DISCOUNT_BANDS[tiers[i - 1]!];
+      const curr = TIER_DISCOUNT_BANDS[tiers[i]!];
       expect(curr.low).toBeGreaterThan(prev.low);
       expect(curr.high).toBeGreaterThan(prev.high);
     }
@@ -143,9 +143,9 @@ describe("estimateInsuranceSavings", () => {
     ];
     for (let i = 1; i < tiers.length; i++) {
       expect(
-        INSURANCE_DISCIPLINE_BY_TIER[tiers[i]].length,
+        INSURANCE_DISCIPLINE_BY_TIER[tiers[i]!].length,
       ).toBeGreaterThanOrEqual(
-        INSURANCE_DISCIPLINE_BY_TIER[tiers[i - 1]].length,
+        INSURANCE_DISCIPLINE_BY_TIER[tiers[i - 1]!].length,
       );
     }
     // And every tier carries at least something — an empty list would

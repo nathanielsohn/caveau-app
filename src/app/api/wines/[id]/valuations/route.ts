@@ -99,11 +99,8 @@ export async function POST(
   const { price: priceNum, source, date } = parsed.data;
   const sourceStr = source ?? "manual";
 
-  // Date validation: parsed via schemas accepts ISO/yyyy-mm-dd; default to now.
-  const dateVal = date ? new Date(date) : new Date();
-  if (isNaN(dateVal.getTime())) {
-    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-  }
+  // DateSchema already coerced + range-checked; default to now when absent.
+  const dateVal = date ?? new Date();
 
   // Create the valuation. Only update wine.currentValue when this entry is
   // at least as recent as every existing valuation — otherwise a backdated

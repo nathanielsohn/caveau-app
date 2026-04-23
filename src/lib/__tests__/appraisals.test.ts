@@ -219,8 +219,8 @@ describe("parseLineItems", () => {
       "string nonsense",
     ]);
     expect(items).toHaveLength(1);
-    expect(items[0].wineId).toBe("w1");
-    expect(items[0].ccrAnchor).toBe("CAV-2026-0001");
+    expect(items[0]!.wineId).toBe("w1");
+    expect(items[0]!.ccrAnchor).toBe("CAV-2026-0001");
   });
 
   it("defaults missing optional scalars rather than dropping the row", () => {
@@ -233,9 +233,9 @@ describe("parseLineItems", () => {
       },
     ]);
     expect(items).toHaveLength(1);
-    expect(items[0].producer).toBe("");
-    expect(items[0].region).toBe("");
-    expect(items[0].varietal).toBe("");
-    expect(items[0].ccrAnchor).toBeNull();
+    expect(items[0]!.producer).toBe("");
+    expect(items[0]!.region).toBe("");
+    expect(items[0]!.varietal).toBe("");
+    expect(items[0]!.ccrAnchor).toBeNull();
   });
 });
