@@ -32,6 +32,12 @@ const POLICIES: Array<{
     policy: { limit: 10, windowMs: 60_000, failMode: "closed" },
   },
   {
+    bucket: "mobile-login",
+    match: (req) =>
+      req.method === "POST" && req.nextUrl.pathname === "/api/mobile/login",
+    policy: { limit: 10, windowMs: 60_000, failMode: "closed" },
+  },
+  {
     bucket: "verify",
     // Public certificate verification — primary attack surface for hash
     // enumeration. Tight per-IP cap; legitimate scans never come close.
@@ -262,6 +268,10 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/verify") ||
     pathname.startsWith("/api/auth") ||
+    // Mobile companion app bearer-token API (feature #29). Auth is the
+    // Authorization: Bearer token checked inside /api/mobile/*, not a
+    // NextAuth cookie session.
+    pathname.startsWith("/api/mobile/") ||
     pathname === "/api/health" ||
     // Handoff bundle pages (feature #41). The token-bearing path is public
     // so auction houses and brokers can view without a login; the member's
@@ -303,7 +313,11 @@ export async function middleware(req: NextRequest) {
     // signature verification done inside the route — there's no shared
     // secret because SNS doesn't carry one, so this endpoint must be
     // reachable without a session cookie for AWS to deliver to it.
-    pathname === "/api/ses/webhook";
+    pathname === "/api/ses/webhook" ||
+    // Stripe webhook (feature #27). Auth IS the Stripe signature
+    // verification done inside the route handler — Stripe can't present
+    // a session cookie.
+    pathname === "/api/stripe/webhook";
 
   if (isPublic) {
     return applySecurityHeaders(nextWithId(), csp, pathname, requestId);

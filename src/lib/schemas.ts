@@ -74,6 +74,35 @@ export const SignupBodySchema = z.object({
   csrfToken: z.string().min(1),
 });
 
+// Mobile companion app auth (feature #29). Login accepts any non-empty
+// password string so the seeded demo credentials remain valid even if
+// the signup password policy tightens over time.
+export const MobileLoginBodySchema = z.object({
+  email: EmailSchema,
+  password: z.string().min(1).max(200),
+});
+
+export const ExpoPushTokenSchema = z
+  .string()
+  .trim()
+  .min(10, "Push token is required")
+  .max(256, "Push token is too long");
+
+export const MobilePushRegisterBodySchema = z.object({
+  expoPushToken: ExpoPushTokenSchema,
+  platform: z.enum(["ios", "android"]).optional(),
+  deviceName: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined),
+      z.string().max(200).optional(),
+    )
+    .optional(),
+});
+
+export const MobilePushUnregisterBodySchema = z.object({
+  expoPushToken: ExpoPushTokenSchema,
+});
+
 export const CreateWineBodySchema = z.object({
   name: z.string().trim().min(1).max(500),
   vintage: z.coerce.number().pipe(VintageSchema),
@@ -97,6 +126,52 @@ export const ValuationBodySchema = z.object({
     .enum(["manual", "liv-ex", "wine-searcher", "auction"])
     .optional(),
   date: DateSchema.optional(),
+});
+
+// ── Locker check-in/out (feature #25) ─────────────────────────────────────
+
+export const BarcodeSchema = z
+  .string()
+  .trim()
+  .min(3, "Barcode is required")
+  .max(128, "Barcode is too long");
+
+export const LockerScanLookupBodySchema = z.object({
+  facilityId: UuidSchema,
+  barcode: BarcodeSchema,
+});
+
+export const LockerScanTargetsBodySchema = z.object({
+  facilityId: UuidSchema,
+  wineId: UuidSchema,
+});
+
+export const LockerCheckInBodySchema = z.object({
+  facilityId: UuidSchema,
+  wineId: UuidSchema,
+  lockerId: UuidSchema,
+  slotPosition: z.coerce.number().int().min(1).max(128),
+  notes: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
+});
+
+export const LockerCheckOutBodySchema = z.object({
+  facilityId: UuidSchema,
+  wineId: UuidSchema,
+  lockerId: UuidSchema,
+  slotPosition: z.coerce.number().int().min(1).max(128),
+  notes: z
+    .preprocess(
+      (v) =>
+        typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined,
+      z.string().max(500).optional(),
+    )
+    .optional(),
 });
 
 export const SensorHistoryQuerySchema = z.object({

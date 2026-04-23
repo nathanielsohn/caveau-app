@@ -237,7 +237,7 @@ Custom domain (optional): Add in Vercel Dashboard → Settings → Domains.
 
 ## What to Skip
 
-See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth (#15), the admin panel (#28), Liv-ex live pricing (#39), and Sentinel device ingest (#21) are all now implemented. Still excluded from the demo path: Wine-Searcher integration, payments / Stripe (#27), the mobile app (#29), and carrier-API integrations for insurance (#31).
+See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth (#15), membership + payments (#27), the admin panel (#28), Liv-ex live pricing (#39), and Sentinel device ingest (#21) are all now implemented. Still excluded from the demo path: Wine-Searcher integration, the mobile app (#29), and carrier-API integrations for insurance (#31).
 
 ---
 
@@ -286,17 +286,17 @@ gantt
 
     section Phase 2 — IoT & Data
     IoT ingestion endpoint    :p2a, 2026-05-05, 5d
-    Sensor data pipeline      :p2b, after p2a, 5d
+    Sensor data pipeline      :done, p2b, after p2a, 5d
     Wine valuation engine     :done, p2c, after p2a, 7d
     Label scanning            :done, p2d, after p2c, 5d
-    Locker check-in/out       :p2e, after p2b, 4d
+    Locker check-in/out       :done, p2e, after p2b, 4d
     Add wine from locker slot :done, p2g, after p2e, 3d
     Dashboard analytics       :done, p2f, after p2g, 4d
 
     section Phase 3 — Monetization & Scale
-    Membership + payments     :p3a, 2026-05-26, 7d
+    Membership + payments     :done, p3a, 2026-05-26, 7d
     Admin panel               :p3b, after p3a, 7d
-    Mobile app                :p3c, after p3a, 14d
+    Mobile app                :done, p3c, after p3a, 14d
     Certificate PDF + verify  :done, p3d, after p3b, 5d
     Insurance partner program :p3e, after p3d, 7d
     Multi-location mgmt       :p3f, after p3e, 5d
@@ -332,10 +332,10 @@ Connect to real hardware. Make the data real.
 | # | Feature | Description |
 |---|---------|-------------|
 | 21 | ~~IoT ingestion endpoint~~ | ~~HTTP webhook or MQTT bridge for real Sentinel sensor devices. Validates payload, writes to SensorReading, triggers alert evaluation. Done.~~ |
-| 22 | Sensor data pipeline | Partition `sensor_readings` by month. Background job aggregates raw readings into hourly/daily rollup tables. Retention policy: raw data 90 days, rollups indefinitely. |
+| 22 | ~~Sensor data pipeline~~ | ~~Partition `sensor_readings` by month. Nightly cron aggregates raw readings into hourly/daily rollup tables; raw data retained 90 days, rollups indefinitely. Done.~~ |
 | 23 | ~~Wine valuation engine~~ | ~~WineValuation model, price history chart on wine detail, appreciation metrics on dashboard. Done.~~ |
 | 24 | ~~Label scanning~~ | ~~Phone camera → OCR via Google Cloud Vision. Photo uploaded directly to S3 via presigned PUT, server runs TEXT_DETECTION, parsed fields pre-fill the add-wine form, and the same image becomes the wine's photo (single S3 object). Done.~~ |
-| 25 | Locker check-in / check-out | Staff workflow: scan bottle barcode → assign to slot or remove from slot. Full audit trail in a new `LockerActivity` model. |
+| 25 | ~~Locker check-in / check-out~~ | ~~Staff workflow: scan bottle barcode → assign to slot or remove from slot. Full audit trail in a new `LockerActivity` model. Done.~~ |
 | 26 | ~~Dashboard analytics~~ | ~~Collection value trend, storage utilization donut, alert frequency bar chart. Done.~~ |
 
 ### Phase 3 — Monetization & Scale (weeks 7–12)
@@ -344,9 +344,9 @@ Turn it into a business.
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 27 | Membership + payments | Stripe integration. Tier-based monthly subscriptions. Storage fees per locker slot. Billing portal. |
+| 27 | ~~Membership + payments~~ | ~~Stripe integration. Tier-based monthly subscriptions. Storage fees per locker slot. Billing portal. Done.~~ |
 | 28 | ~~Admin panel~~ | ~~Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. Done.~~ |
-| 29 | Mobile app | React Native (Expo). Push notifications for alerts. Collection browsing, locker check-in via camera, certificate sharing. |
+| 29 | ~~Mobile app~~ | ~~React Native (Expo) companion app in `/mobile`. Bearer-token API under `/api/mobile/*` (mobile login + `/me` + wines), certificate sharing via public `/verify/<hash>` links, staff-only locker scan check-in/out via camera barcode scan, and Expo push token registration + alert-triggered push fanout (`EXPO_PUSH_ENABLED`). Done.~~ |
 | 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
 | 31 | Insurance partner program | Two-sided: member-facing enrollment flow that applies carrier discounts on collection coverage for wines stored in an approved Caveau facility, plus a carrier-facing proof-of-storage API and standardized condition report exports. Expanded from the original PDF-export scope after the April 2026 investor review. |
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
@@ -375,7 +375,7 @@ Features sourced from Robert Saenz's April 2026 business docs (Equity Investor S
 | # | Feature | Description |
 |---|---------|-------------|
 | 43 | ~~NFC bottle tracking + tap-to-verify~~ | ~~NFC tag intake workflow: tag bottle at intake, photograph, assign to member portfolio. Phone tap on tag opens the bottle's Caveau Custody & Condition Report (public `/bottle/[tag-id]` landing page). Two tag tiers: invisible capsule tag under foil for trophy bottles ($1,000+), branded navy/gold Caveau neck collar with embedded NFC for standard bottles (under $1,000). No QR stickers — auction houses notice post-production label modification. Done.~~ |
-| 44 | ~~Membership tier pricing~~ | ~~Four tiers with pricing: Collector ($29/mo), Reserve (TBD), Private Vault ($349/mo), Estate ($999/mo). Tier determines included services vs. fee-based add-ons. Hurricane Emergency Collection Protection included in Private Vault and Estate; available as $500–$1,500 fee for Reserve. Update onboarding wizard, settings, and billing UI. Stripe integration (extends #27). Done — tier metadata in `src/lib/tiers.ts`; Stripe wiring still deferred to #27.~~ |
+| 44 | ~~Membership tier pricing~~ | ~~Four tiers with pricing: Collector ($29/mo), Reserve (TBD), Private Vault ($349/mo), Estate ($999/mo). Tier determines included services vs. fee-based add-ons. Hurricane Emergency Collection Protection included in Private Vault and Estate; available as $500–$1,500 fee for Reserve. Update onboarding wizard, settings, and billing UI. Stripe integration (extends #27). Done — tier metadata in `src/lib/tiers.ts`; Stripe wiring shipped in #27.~~ |
 | 45 | ~~Investment portfolio view~~ | ~~Per-bottle CAGR projections, portfolio total with 5-year projection, tier labels (Anchor/Icon/Blue-Chip/Prestige/Accessible/Approachable). Sourced from Liv-ex historical data (#39). Dashboard card showing portfolio appreciation vs. S&P 500 baseline. Matches the 10-Bottle PDF format. Done.~~ |
 | 46 | ~~Hurricane Emergency Collection Protection~~ | ~~Pre-landfall activation protocol: NHC Watch trigger → dispatch refrigerated transport → photograph + inventory against live portfolio → transport to airport vault → hold until all-clear. Sentinel continues transmitting from member home during storm. Post-event report auto-generated (#42). Insurance angle: PURE/Chubb premium discount for members with active protocol. Done.~~ |
 | 47 | ~~Exit facilitation workflow~~ | ~~Commission tracking (10–12% on sales), auction house handoff (extends #41), acquisition sourcing margin tracking (8–12%). Member-facing "ready to sell" flow: select bottles → generate handoff package → choose channel (auction, broker, private sale) → track proceeds. Done. `ExitFacilitation` model added in migration 0039 with `ExitStatus` (requested / listed / sold / withdrawn / cancelled) and `ExitChannel` (auction / broker / private_sale / self_handled) enums, plus a partial unique index preventing two active facilitations per wine. Lifecycle + commission math in `src/lib/exits.ts` (10–12% target band, `computeCommission` returns dollars + net + band check, zero-commission `self_handled` invariant). Member surfaces at `/exits` (list), `/exits/new?wineId=X` (request form, pre-fills target range from the open ExitSignal — the #55 → #47 pivot), and `/exits/[id]` (detail with no commission leaked). Admin surfaces at `/admin/exits` (status-chip queue + CSV export with commission columns) and `/admin/exits/[id]` (list-on-channel form + close-sale form with live commission preview + withdraw-with-reason form). Sale close is transactional: single $transaction writes a WineDisposition row (type=sold, recipient=channel/auction-house), flips Wine.status=sold, closes the open ExitSignal with closedReason=exit_facilitated, and stamps commission + proceeds on the facilitation row. Wine-detail Exit Signal panel CTA rewired from HandoffPackageButton to `Link /exits/new?wineId=X`; HandoffPackageButton moves to the primary actions row for ad-hoc recipient bundles. AI Advisor `getMyExits` tool returns status / channel / gross / net but deliberately omits commissionPct and commissionUsd (admin-only, same contract as #62 margin). Seed: three rows on Robert's portfolio — Pétrus listed at Sotheby's, Opus One sold (10% commission, WineDisposition written, Wine flipped to sold), Harlan Estate listed self-handled.~~ |

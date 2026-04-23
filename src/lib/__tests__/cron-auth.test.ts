@@ -13,10 +13,13 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     sensorReading: { create: vi.fn(), findUnique: vi.fn() },
+    sensorRollupState: { findUnique: vi.fn().mockResolvedValue({ dailyLastBucket: new Date() }) },
     wine: { findMany: vi.fn().mockResolvedValue([]) },
     locker: { findUnique: vi.fn() },
     alert: { findFirst: vi.fn(), create: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([]),
     $executeRaw: vi.fn().mockResolvedValue(0),
+    $executeRawUnsafe: vi.fn().mockResolvedValue(0),
     $transaction: vi.fn(),
   },
 }));

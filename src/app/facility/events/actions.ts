@@ -76,13 +76,21 @@ export async function buildEventReport(
 
   const windowEnd = event.endedAt ?? new Date();
 
-  const [readings, alertCount] = await Promise.all([
-    prisma.sensorReading.findMany({
+  const [rollups, alertCount] = await Promise.all([
+    prisma.sensorReadingHourlyRollup.findMany({
       where: {
         lockerId: { in: lockerIds },
-        timestamp: { gte: event.startedAt, lte: windowEnd },
+        bucket: { gte: event.startedAt, lte: windowEnd },
       },
-      select: { temperature: true, humidity: true },
+      select: {
+        temperatureAvg: true,
+        temperatureMin: true,
+        temperatureMax: true,
+        humidityAvg: true,
+        humidityMin: true,
+        humidityMax: true,
+        sampleCount: true,
+      },
     }),
     prisma.alert.count({
       where: {
@@ -96,7 +104,59 @@ export async function buildEventReport(
     }),
   ]);
 
-  if (readings.length === 0) {
+  let readingCount = 0;
+  let tempMean = 0;
+  let tempMin = Number.POSITIVE_INFINITY;
+  let tempMax = Number.NEGATIVE_INFINITY;
+  let humidityMean = 0;
+  let humidityMin = Number.POSITIVE_INFINITY;
+  let humidityMax = Number.NEGATIVE_INFINITY;
+
+  if (rollups.length > 0) {
+    for (const r of rollups) {
+      const count = r.sampleCount;
+      if (count <= 0) continue;
+      readingCount += count;
+      const tAvg = toNumber(r.temperatureAvg);
+      const tMin = toNumber(r.temperatureMin);
+      const tMax = toNumber(r.temperatureMax);
+      const hAvg = toNumber(r.humidityAvg);
+      const hMin = toNumber(r.humidityMin);
+      const hMax = toNumber(r.humidityMax);
+      tempMean += tAvg * count;
+      humidityMean += hAvg * count;
+      if (tMin < tempMin) tempMin = tMin;
+      if (tMax > tempMax) tempMax = tMax;
+      if (hMin < humidityMin) humidityMin = hMin;
+      if (hMax > humidityMax) humidityMax = hMax;
+    }
+    if (readingCount > 0) {
+      tempMean /= readingCount;
+      humidityMean /= readingCount;
+    }
+  } else {
+    const agg = await prisma.sensorReading.aggregate({
+      where: {
+        lockerId: { in: lockerIds },
+        timestamp: { gte: event.startedAt, lte: windowEnd },
+      },
+      _min: { temperature: true, humidity: true },
+      _max: { temperature: true, humidity: true },
+      _avg: { temperature: true, humidity: true },
+      _count: { _all: true },
+    });
+    readingCount = agg._count._all;
+    if (readingCount > 0) {
+      tempMean = toNumber(agg._avg.temperature);
+      tempMin = toNumber(agg._min.temperature);
+      tempMax = toNumber(agg._max.temperature);
+      humidityMean = toNumber(agg._avg.humidity);
+      humidityMin = toNumber(agg._min.humidity);
+      humidityMax = toNumber(agg._max.humidity);
+    }
+  }
+
+  if (readingCount === 0) {
     return {
       eventId: event.id,
       lockerCount: lockerIds.length,
@@ -111,34 +171,16 @@ export async function buildEventReport(
     };
   }
 
-  let tempSum = 0;
-  let tempMin = Number.POSITIVE_INFINITY;
-  let tempMax = Number.NEGATIVE_INFINITY;
-  let humSum = 0;
-  let humMin = Number.POSITIVE_INFINITY;
-  let humMax = Number.NEGATIVE_INFINITY;
-
-  for (const r of readings) {
-    const t = toNumber(r.temperature);
-    const h = toNumber(r.humidity);
-    tempSum += t;
-    if (t < tempMin) tempMin = t;
-    if (t > tempMax) tempMax = t;
-    humSum += h;
-    if (h < humMin) humMin = h;
-    if (h > humMax) humMax = h;
-  }
-
   return {
     eventId: event.id,
     lockerCount: lockerIds.length,
-    readingCount: readings.length,
-    tempMean: tempSum / readings.length,
+    readingCount,
+    tempMean,
     tempMin,
     tempMax,
-    humidityMean: humSum / readings.length,
-    humidityMin: humMin,
-    humidityMax: humMax,
+    humidityMean,
+    humidityMin,
+    humidityMax,
     alertCount,
   };
 }

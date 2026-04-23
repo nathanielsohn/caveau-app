@@ -33,6 +33,7 @@
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^2.15.4",
+    "stripe": "^22.0.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   Bell,
   Check,
+  CreditCard,
   Crown,
   FileText,
   Mail,
@@ -21,10 +22,40 @@ import {
   tierSpecForDbTier,
 } from "@/lib/tiers";
 import { checkWelcomeEligibility } from "@/lib/appraisals";
+import { getReservedSlotCountForMember } from "@/lib/billing";
 import SentinelDevicesCard from "@/components/sentinel-devices-card";
 import PreferencesForm from "./preferences-form";
+import BillingButtons from "./billing-buttons";
 
 export const dynamic = "force-dynamic";
+
+function hasActiveStripeMembership(status: string | null | undefined): boolean {
+  return (
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due" ||
+    status === "unpaid" ||
+    status === "incomplete"
+  );
+}
+
+function billingBadge(status: string | null | undefined): {
+  label: string;
+  className: string;
+} {
+  const s = status ?? "";
+  if (!s) return { label: "Not started", className: "badge-info" };
+  if (s === "active") return { label: "Active", className: "badge-ok" };
+  if (s === "trialing") return { label: "Trial", className: "badge-ok" };
+  if (s === "past_due") return { label: "Past due", className: "badge-warn" };
+  if (s === "unpaid") return { label: "Unpaid", className: "badge-danger" };
+  if (s === "canceled") return { label: "Canceled", className: "badge-danger" };
+  if (s === "paused") return { label: "Paused", className: "badge-info" };
+  if (s === "incomplete") return { label: "Incomplete", className: "badge-warn" };
+  if (s === "incomplete_expired")
+    return { label: "Expired", className: "badge-danger" };
+  return { label: s.replace(/_/g, " "), className: "badge-info" };
+}
 
 export default async function SettingsPage() {
   const session = await getServerAuth();
@@ -44,16 +75,23 @@ export default async function SettingsPage() {
       hurricaneProtectionActive: true,
       foundingMember: true,
       foundingLockedAt: true,
+      stripeCustomerId: true,
+      stripeSubscriptionStatus: true,
+      stripeCurrentPeriodEnd: true,
     },
   });
   if (!member) redirect("/auth/login");
 
   const sesConfigured = Boolean(env.AWS_SES_FROM_EMAIL);
+  const stripeConfigured = Boolean(env.STRIPE_SECRET_KEY);
   const tierSpec = tierSpecForDbTier(member.tier);
   const effectivePrice = effectivePriceForMember(tierSpec, member.foundingMember);
   const foundingSavings = member.foundingMember
     ? foundingSavingsUsd(tierSpec)
     : 0;
+  const reservedSlots = await getReservedSlotCountForMember(session.user.id);
+  const activeMembership = hasActiveStripeMembership(member.stripeSubscriptionStatus);
+  const badge = billingBadge(member.stripeSubscriptionStatus);
 
   // Welcome-appraisal state (feature #61). Founding members see either
   // a "claim now" CTA or a "completed on" row inside the Founding Circle
@@ -77,11 +115,13 @@ export default async function SettingsPage() {
         </div>
         <div>
           <h1 className="font-serif text-2xl text-primary">Settings</h1>
-          <p className="text-sm text-muted">Manage your notification preferences</p>
+          <p className="text-sm text-muted">
+            Manage billing, alerts, and protection preferences
+          </p>
         </div>
       </div>
 
-      {/* Membership tier card (#44) — read-only summary, no billing. */}
+      {/* Membership tier card (#44) — summary + billing (#27). */}
       <div className="glass-card p-6 md:p-8 mb-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
@@ -111,6 +151,59 @@ export default async function SettingsPage() {
             </li>
           ))}
         </ul>
+
+        {/* Billing status + CTAs (#27) */}
+        <div className="mt-6 pt-6 border-t border-[#2A2A30]/50">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <CreditCard className="w-4 h-4 text-gold" />
+                <h3 className="font-serif text-base text-primary">Billing</h3>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={badge.className}>{badge.label}</span>
+                {member.stripeCurrentPeriodEnd && (
+                  <span className="text-xs text-muted">
+                    {member.stripeSubscriptionStatus === "canceled" ? "Ends" : "Renews"}{" "}
+                    {member.stripeCurrentPeriodEnd.toLocaleDateString("en-US", {
+                      dateStyle: "medium",
+                    })}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted mt-2">
+                Storage is billed per reserved locker slot — {reservedSlots}{" "}
+                {reservedSlots === 1 ? "slot" : "slots"} reserved.
+              </p>
+            </div>
+
+            <BillingButtons
+              startDisabled={!stripeConfigured || activeMembership || reservedSlots <= 0}
+              manageDisabled={!stripeConfigured || !member.stripeCustomerId}
+            />
+          </div>
+
+          {!stripeConfigured && (
+            <div className="mt-4 px-4 py-3 rounded-xl border border-warn/30 bg-warn/10 text-xs text-warn">
+              Billing is not configured for this environment (Stripe is inactive).
+              Membership checkout and billing management are disabled until an
+              administrator configures Stripe.
+            </div>
+          )}
+
+          {stripeConfigured && reservedSlots <= 0 && (
+            <div className="mt-4 px-4 py-3 rounded-xl border border-warn/30 bg-warn/10 text-xs text-warn">
+              No lockers are assigned to your account, so storage billing cannot
+              be computed. Contact support to reserve a locker.
+            </div>
+          )}
+
+          {activeMembership && (
+            <div className="mt-4 text-xs text-muted">
+              Need to update your card or cancel? Use <span className="text-primary">Manage billing</span>.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Founding Member bundle (#54). Rendered only for members whose

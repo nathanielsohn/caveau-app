@@ -16,6 +16,7 @@
  */
 import { prisma } from "./prisma";
 import { sendAlertEmail } from "./email";
+import { sendAlertPush } from "./push";
 
 type Severity = "info" | "warning" | "critical";
 
@@ -80,7 +81,19 @@ export async function notifyAlert(alertId: string): Promise<void> {
       },
     );
 
-    if (delivered) {
+    const pushDelivered = await sendAlertPush({
+      memberId: member.id,
+      title: `Caveau Alert • ${alert.type.replace(/_/g, " ")}`,
+      body: alert.message,
+      data: {
+        alertId: alert.id,
+        lockerId: alert.lockerId,
+        type: alert.type,
+        severity: alertSeverity,
+      },
+    });
+
+    if (delivered || pushDelivered) {
       await prisma.alert.update({
         where: { id: alert.id },
         data: { notifiedAt: new Date() },

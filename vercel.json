@@ -5,6 +5,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/sensor-rollups",
+      "schedule": "30 2 * * *"
+    },
+    {
       "path": "/api/cron/sensor-retention",
       "schedule": "0 3 * * *"
     }

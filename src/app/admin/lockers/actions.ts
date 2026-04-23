@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
+import { syncStorageQuantityForMember } from "@/lib/billing";
+import { logger } from "@/lib/logger";
 
 /**
  * Reassign a locker to a different member (or unassign entirely).
@@ -20,15 +22,15 @@ export async function reassignLockerAction(
 
   if (!lockerId) return { ok: false, error: "Missing locker ID" };
 
+  const locker = await prisma.locker.findUnique({
+    where: { id: lockerId },
+    select: { facilityId: true, memberId: true },
+  });
+  if (!locker) return { ok: false, error: "Locker not found" };
+
   // If assigning, confirm the member exists and is a member of the
   // locker's facility so we don't cross-assign across locations.
   if (memberId) {
-    const locker = await prisma.locker.findUnique({
-      where: { id: lockerId },
-      select: { facilityId: true },
-    });
-    if (!locker) return { ok: false, error: "Locker not found" };
-
     const membership = await prisma.facilityMember.findUnique({
       where: {
         memberId_facilityId: { memberId, facilityId: locker.facilityId },
@@ -46,6 +48,24 @@ export async function reassignLockerAction(
     where: { id: lockerId },
     data: { memberId: memberId },
   });
+
+  // Keep Stripe storage quantity in sync for both the old and new member.
+  // Best-effort — never block admin reassignment on billing plumbing.
+  const toSync = new Set<string>();
+  if (locker.memberId) toSync.add(locker.memberId);
+  if (memberId) toSync.add(memberId);
+  for (const id of Array.from(toSync)) {
+    try {
+      await syncStorageQuantityForMember(id);
+    } catch (err) {
+      logger.warn("syncStorageQuantityForMember failed after locker reassignment", {
+        action: "reassignLockerAction",
+        memberId: id,
+        lockerId,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   revalidatePath("/admin/lockers");
   revalidatePath("/admin");

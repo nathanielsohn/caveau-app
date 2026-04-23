@@ -21,6 +21,7 @@ import { prisma } from "./prisma";
 import { env } from "./env";
 import { getPublicUrl } from "./s3";
 import { toNumber } from "./utils";
+import { getLockerEnvelope } from "./sensor-rollups";
 
 /** URL-path format for a tag serial. Keep this in sync with
  *  `TagIdSchema` in `app/wine/[id]/nfc-actions.ts` — they guard the same
@@ -130,15 +131,12 @@ export async function loadBottleByTag(tagId: string): Promise<BottleBundle | nul
   // no custody summary to show.
   let sampleCount = 0;
   if (certificate) {
-    sampleCount = await prisma.sensorReading.count({
-      where: {
-        lockerId: certificate.lockerId,
-        timestamp: {
-          gte: certificate.monitoringStart,
-          lte: certificate.monitoringEnd,
-        },
-      },
-    });
+    const envelope = await getLockerEnvelope(
+      certificate.lockerId,
+      certificate.monitoringStart,
+      certificate.monitoringEnd,
+    );
+    sampleCount = envelope.sampleCount;
   }
 
   return {

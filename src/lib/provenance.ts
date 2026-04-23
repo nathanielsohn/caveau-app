@@ -13,6 +13,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { provenanceBundleHash } from "./certificate-hash";
 import { toNumber } from "./utils";
+import { getLockerEnvelope } from "./sensor-rollups";
 
 export type ProvenanceEventKind =
   | "intake"
@@ -91,14 +92,8 @@ export async function buildProvenanceBundle(
   const start = cert.monitoringStart;
   const end = cert.monitoringEnd;
 
-  const [agg, alerts, placements, dispositions] = await Promise.all([
-    prisma.sensorReading.aggregate({
-      where: { lockerId: cert.lockerId, timestamp: { gte: start, lte: end } },
-      _min: { temperature: true, humidity: true },
-      _max: { temperature: true, humidity: true },
-      _avg: { temperature: true, humidity: true },
-      _count: { _all: true },
-    }),
+  const [envelopeStats, alerts, placements, dispositions] = await Promise.all([
+    getLockerEnvelope(cert.lockerId, start, end),
     prisma.alert.findMany({
       where: {
         lockerId: cert.lockerId,
@@ -141,21 +136,17 @@ export async function buildProvenanceBundle(
   const envelope: ProvenanceEnvelope = {
     start: start.toISOString(),
     end: end.toISOString(),
-    sampleCount: agg._count._all,
-    temp: agg._count._all
-      ? {
-          min: round(agg._min.temperature),
-          max: round(agg._max.temperature),
-          avg: round(agg._avg.temperature),
-        }
-      : null,
-    humidity: agg._count._all
-      ? {
-          min: round(agg._min.humidity),
-          max: round(agg._max.humidity),
-          avg: round(agg._avg.humidity),
-        }
-      : null,
+    sampleCount: envelopeStats.sampleCount,
+    temp: envelopeStats.temp ? {
+      min: round(envelopeStats.temp.min),
+      max: round(envelopeStats.temp.max),
+      avg: round(envelopeStats.temp.avg),
+    } : null,
+    humidity: envelopeStats.humidity ? {
+      min: round(envelopeStats.humidity.min),
+      max: round(envelopeStats.humidity.max),
+      avg: round(envelopeStats.humidity.avg),
+    } : null,
   };
 
   const events: ProvenanceEvent[] = [];

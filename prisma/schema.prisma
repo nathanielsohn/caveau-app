@@ -54,6 +54,11 @@ enum DispositionType {
   removed
 }
 
+enum LockerActivityAction {
+  check_in
+  check_out
+}
+
 enum FacilityEventType {
   weather
   hurricane
@@ -374,6 +379,16 @@ model Member {
   // promise survives post-launch tier changes.
   foundingMember                Boolean                   @default(false) @map("founding_member")
   foundingLockedAt              DateTime?                 @map("founding_locked_at")
+  // Stripe billing (feature #27). These stay nullable so dev/demo runs
+  // can ship without Stripe configured; /settings renders a disabled
+  // state and server actions return friendly errors when unset.
+  stripeCustomerId              String?                   @unique @map("stripe_customer_id")
+  stripeSubscriptionId          String?                   @unique @map("stripe_subscription_id")
+  stripeSubscriptionStatus      String?                   @map("stripe_subscription_status")
+  stripeCurrentPeriodEnd        DateTime?                 @map("stripe_current_period_end")
+  // Stripe subscription item ID for the per-slot storage line item so we
+  // can update its quantity as lockers are reassigned.
+  stripeStorageItemId           String?                   @map("stripe_storage_item_id")
   sessionVersion                Int                       @default(0) @map("session_version")
   createdAt                     DateTime                  @default(now()) @map("created_at")
   updatedAt                     DateTime                  @updatedAt @map("updated_at")
@@ -391,14 +406,31 @@ model Member {
   sentinelDevices               SentinelDevice[]
   sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
   allocationRequests            AllocationRequest[]
+  mobilePushTokens              MobilePushToken[]
   appraisals                    Appraisal[]
   acquisitions                  Acquisition[]
   exitFacilitations             ExitFacilitation[]
   exitFacilitationsClosed       ExitFacilitation[]        @relation("ExitFacilitationSoldBy")
+  lockerActivities              LockerActivity[]          @relation("LockerActivityActor")
 
   @@index([tier])
   @@index([role, createdAt])
   @@map("members")
+}
+
+model MobilePushToken {
+  id            String   @id @default(uuid())
+  memberId      String   @map("member_id")
+  expoPushToken String   @unique @map("expo_push_token")
+  platform      String?  @map("platform")
+  deviceName    String?  @map("device_name")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  member        Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, active])
+  @@map("mobile_push_tokens")
 }
 
 model Wine {
@@ -408,6 +440,7 @@ model Wine {
   region               String
   varietal             String
   producer             String
+  barcode              String?
   purchasePrice        Decimal                 @map("purchase_price") @db.Decimal(14, 2)
   currentValue         Decimal                 @map("current_value") @db.Decimal(14, 2)
   tastingNotes         String?                 @map("tasting_notes")
@@ -448,9 +481,11 @@ model Wine {
   exitSignals          ExitSignal[]
   sentinelDevices      SentinelDevice[]
   exitFacilitations    ExitFacilitation[]
+  lockerActivities     LockerActivity[]
   sourceAllocation     Allocation?             @relation("WineAllocationSource", fields: [sourceAllocationId], references: [id], onDelete: SetNull)
   sourceAcquisition    Acquisition?            @relation("WineAcquisitionSource", fields: [sourceAcquisitionId], references: [id], onDelete: SetNull)
 
+  @@index([barcode])
   @@index([memberId, region, varietal])
   @@index([memberId, status])
   @@index([memberId, status, currentValue(sort: Desc)])
@@ -498,9 +533,12 @@ model Locker {
   member       Member?                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
   slots            LockerSlot[]
   readings         SensorReading[]
+  hourlyRollups    SensorReadingHourlyRollup[]
+  dailyRollups     SensorReadingDailyRollup[]
   alerts           Alert[]
   certificates     ProvenanceCertificate[]
   sentinelDevices  SentinelDevice[]
+  activities       LockerActivity[]
 
   @@unique([facilityId, lockerNumber])
   @@index([memberId])
@@ -522,8 +560,27 @@ model LockerSlot {
   @@map("locker_slots")
 }
 
+model LockerActivity {
+  id            String               @id @default(uuid())
+  action        LockerActivityAction
+  lockerId      String               @map("locker_id")
+  slotPosition  Int                  @map("slot_position")
+  wineId        String               @map("wine_id")
+  actorMemberId String               @map("actor_member_id")
+  occurredAt    DateTime             @default(now()) @map("occurred_at")
+  notes         String?
+  createdAt     DateTime             @default(now()) @map("created_at")
+  locker        Locker               @relation(fields: [lockerId], references: [id], onDelete: Restrict)
+  wine          Wine                 @relation(fields: [wineId], references: [id], onDelete: Restrict)
+  actorMember   Member               @relation("LockerActivityActor", fields: [actorMemberId], references: [id], onDelete: Restrict)
+
+  @@index([lockerId, occurredAt(sort: Desc)])
+  @@index([wineId, occurredAt(sort: Desc)])
+  @@map("locker_activities")
+}
+
 model SensorReading {
-  id          Int             @id @default(autoincrement())
+  id          Int             @default(autoincrement())
   lockerId    String          @map("locker_id")
   // Nullable FK to the device that emitted this reading (feature #58).
   // Ingest resolves `deviceSignature` → device at write time; historical
@@ -538,10 +595,70 @@ model SensorReading {
   locker      Locker          @relation(fields: [lockerId], references: [id], onDelete: Cascade)
   device      SentinelDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
+  @@id([id, timestamp])
   @@unique([lockerId, timestamp])
   @@index([lockerId, timestamp(sort: Desc)])
   @@index([deviceId, timestamp(sort: Desc)])
   @@map("sensor_readings")
+}
+
+model SensorReadingHourlyRollup {
+  lockerId        String   @map("locker_id")
+  bucket          DateTime
+  temperatureAvg  Decimal  @map("temperature_avg") @db.Decimal(5, 2)
+  temperatureMin  Decimal  @map("temperature_min") @db.Decimal(5, 2)
+  temperatureMax  Decimal  @map("temperature_max") @db.Decimal(5, 2)
+  humidityAvg     Decimal  @map("humidity_avg") @db.Decimal(5, 2)
+  humidityMin     Decimal  @map("humidity_min") @db.Decimal(5, 2)
+  humidityMax     Decimal  @map("humidity_max") @db.Decimal(5, 2)
+  vibrationAvg    Decimal  @map("vibration_avg") @db.Decimal(5, 3)
+  vibrationMin    Decimal  @map("vibration_min") @db.Decimal(5, 3)
+  vibrationMax    Decimal  @map("vibration_max") @db.Decimal(5, 3)
+  lightLuxAvg     Decimal  @map("light_lux_avg") @db.Decimal(5, 2)
+  lightLuxMin     Decimal  @map("light_lux_min") @db.Decimal(5, 2)
+  lightLuxMax     Decimal  @map("light_lux_max") @db.Decimal(5, 2)
+  sampleCount     Int      @map("sample_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  locker          Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+
+  @@id([lockerId, bucket])
+  @@index([lockerId, bucket(sort: Desc)])
+  @@map("sensor_reading_hourly_rollups")
+}
+
+model SensorReadingDailyRollup {
+  lockerId        String   @map("locker_id")
+  bucket          DateTime
+  temperatureAvg  Decimal  @map("temperature_avg") @db.Decimal(5, 2)
+  temperatureMin  Decimal  @map("temperature_min") @db.Decimal(5, 2)
+  temperatureMax  Decimal  @map("temperature_max") @db.Decimal(5, 2)
+  humidityAvg     Decimal  @map("humidity_avg") @db.Decimal(5, 2)
+  humidityMin     Decimal  @map("humidity_min") @db.Decimal(5, 2)
+  humidityMax     Decimal  @map("humidity_max") @db.Decimal(5, 2)
+  vibrationAvg    Decimal  @map("vibration_avg") @db.Decimal(5, 3)
+  vibrationMin    Decimal  @map("vibration_min") @db.Decimal(5, 3)
+  vibrationMax    Decimal  @map("vibration_max") @db.Decimal(5, 3)
+  lightLuxAvg     Decimal  @map("light_lux_avg") @db.Decimal(5, 2)
+  lightLuxMin     Decimal  @map("light_lux_min") @db.Decimal(5, 2)
+  lightLuxMax     Decimal  @map("light_lux_max") @db.Decimal(5, 2)
+  sampleCount     Int      @map("sample_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  locker          Locker   @relation(fields: [lockerId], references: [id], onDelete: Cascade)
+
+  @@id([lockerId, bucket])
+  @@index([lockerId, bucket(sort: Desc)])
+  @@map("sensor_reading_daily_rollups")
+}
+
+model SensorRollupState {
+  id              Int      @id
+  hourlyLastBucket DateTime? @map("hourly_last_bucket")
+  dailyLastBucket  DateTime? @map("daily_last_bucket")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("sensor_rollup_state")
 }
 
 model Alert {

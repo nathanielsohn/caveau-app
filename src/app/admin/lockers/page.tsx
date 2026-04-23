@@ -1,4 +1,5 @@
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { Lock, ScanLine } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import ReassignForm from "./reassign-form";
 
@@ -40,17 +41,27 @@ export default async function AdminLockersPage() {
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
-          <Lock className="w-5 h-5 text-gold" />
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-gold" />
+          </div>
+          <div>
+            <h1 className="font-serif text-2xl text-primary">Lockers</h1>
+            <p className="text-sm text-muted">
+              {lockers.length} total · {assignedLockers} assigned ·{" "}
+              {occupiedSlots}/{totalSlots} slots occupied
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-serif text-2xl text-primary">Lockers</h1>
-          <p className="text-sm text-muted">
-            {lockers.length} total · {assignedLockers} assigned ·{" "}
-            {occupiedSlots}/{totalSlots} slots occupied
-          </p>
-        </div>
+
+        <Link
+          href="/admin/lockers/scan"
+          className="inline-flex items-center gap-2 rounded-xl bg-gold px-3 py-2 text-xs font-medium text-black hover:bg-gold/90"
+        >
+          <ScanLine className="w-4 h-4" />
+          Scanner
+        </Link>
       </div>
 
       {/* Desktop table */}

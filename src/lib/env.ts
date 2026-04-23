@@ -17,6 +17,34 @@ type OptionalKey =
   | "UPSTASH_REDIS_REST_URL"
   | "UPSTASH_REDIS_REST_TOKEN"
   | "NEXT_PUBLIC_SHOW_DEMO_CREDS"
+  // Mobile companion app (feature #29). MOBILE_TOKEN_SECRET signs the
+  // bearer tokens returned by /api/mobile/login. It falls back to
+  // NEXTAUTH_SECRET for dev/demo, but production should set an
+  // independent random value so a leak of one secret doesn't compromise
+  // the other.
+  | "MOBILE_TOKEN_SECRET"
+  // Token TTL in seconds. Optional; defaults to 30 days.
+  | "MOBILE_TOKEN_TTL_SECONDS"
+  // Expo push notifications (feature #29). When unset or not "true",
+  // push sending is disabled and /api/mobile/push/* returns a friendly
+  // 503. EXPO_PUSH_ACCESS_TOKEN is optional; when set, requests include
+  // it as a bearer token.
+  | "EXPO_PUSH_ENABLED"
+  | "EXPO_PUSH_ACCESS_TOKEN"
+  // Stripe billing (feature #27). Optional so the demo can run without
+  // payment plumbing; /settings renders a disabled state and server
+  // actions return friendly errors when unset.
+  | "STRIPE_SECRET_KEY"
+  | "STRIPE_WEBHOOK_SECRET"
+  | "STRIPE_PRICE_COLLECTOR"
+  | "STRIPE_PRICE_RESERVE"
+  | "STRIPE_PRICE_PRIVATE_VAULT"
+  | "STRIPE_PRICE_ESTATE"
+  | "STRIPE_PRICE_COLLECTOR_FOUNDING"
+  | "STRIPE_PRICE_RESERVE_FOUNDING"
+  | "STRIPE_PRICE_PRIVATE_VAULT_FOUNDING"
+  | "STRIPE_PRICE_ESTATE_FOUNDING"
+  | "STRIPE_PRICE_STORAGE_PER_SLOT"
   | "AWS_REGION"
   | "AWS_SES_FROM_EMAIL"
   | "AWS_S3_BUCKET"
@@ -113,6 +141,31 @@ export const env = {
   UPSTASH_REDIS_REST_URL: read("UPSTASH_REDIS_REST_URL"),
   UPSTASH_REDIS_REST_TOKEN: read("UPSTASH_REDIS_REST_TOKEN"),
   NEXT_PUBLIC_SHOW_DEMO_CREDS: read("NEXT_PUBLIC_SHOW_DEMO_CREDS") === "true",
+  MOBILE_TOKEN_SECRET:
+    read("MOBILE_TOKEN_SECRET") ??
+    required.NEXTAUTH_SECRET ??
+    read("NEXTAUTH_SECRET") ??
+    "",
+  MOBILE_TOKEN_TTL_SECONDS: (() => {
+    const raw = read("MOBILE_TOKEN_TTL_SECONDS");
+    if (!raw) return 60 * 60 * 24 * 30; // 30d
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return 60 * 60 * 24 * 30;
+    return Math.min(60 * 60 * 24 * 180, Math.max(60 * 60, n));
+  })(),
+  EXPO_PUSH_ENABLED: read("EXPO_PUSH_ENABLED") === "true",
+  EXPO_PUSH_ACCESS_TOKEN: read("EXPO_PUSH_ACCESS_TOKEN"),
+  STRIPE_SECRET_KEY: read("STRIPE_SECRET_KEY"),
+  STRIPE_WEBHOOK_SECRET: read("STRIPE_WEBHOOK_SECRET"),
+  STRIPE_PRICE_COLLECTOR: read("STRIPE_PRICE_COLLECTOR"),
+  STRIPE_PRICE_RESERVE: read("STRIPE_PRICE_RESERVE"),
+  STRIPE_PRICE_PRIVATE_VAULT: read("STRIPE_PRICE_PRIVATE_VAULT"),
+  STRIPE_PRICE_ESTATE: read("STRIPE_PRICE_ESTATE"),
+  STRIPE_PRICE_COLLECTOR_FOUNDING: read("STRIPE_PRICE_COLLECTOR_FOUNDING"),
+  STRIPE_PRICE_RESERVE_FOUNDING: read("STRIPE_PRICE_RESERVE_FOUNDING"),
+  STRIPE_PRICE_PRIVATE_VAULT_FOUNDING: read("STRIPE_PRICE_PRIVATE_VAULT_FOUNDING"),
+  STRIPE_PRICE_ESTATE_FOUNDING: read("STRIPE_PRICE_ESTATE_FOUNDING"),
+  STRIPE_PRICE_STORAGE_PER_SLOT: read("STRIPE_PRICE_STORAGE_PER_SLOT"),
   AWS_REGION: read("AWS_REGION"),
   AWS_SES_FROM_EMAIL: read("AWS_SES_FROM_EMAIL"),
   AWS_S3_BUCKET: read("AWS_S3_BUCKET"),

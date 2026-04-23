@@ -2,10 +2,18 @@
 
 import { z } from "zod";
 import { SentinelEventType, SentinelModel } from "@prisma/client";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
+import { env } from "@/lib/env";
+import {
+  getStripeClient,
+  selectStripeCheckoutPricesForMember,
+  STRIPE_MEMBER_ID_METADATA_KEY,
+} from "@/lib/stripe";
+import { getReservedSlotCountForMember } from "@/lib/billing";
 
 const VALID_SEVERITIES = ["info", "warning", "critical"] as const;
 type ValidSeverity = (typeof VALID_SEVERITIES)[number];
@@ -79,6 +87,190 @@ export async function updateAlertPreferences(
       ok: false,
       error: "Could not save preferences. Try again in a moment.",
     };
+  }
+}
+
+// ── Billing (feature #27) ────────────────────────────────────────────
+
+export type BillingActionResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+function getAppBaseUrlFromHeaders(): string | null {
+  if (env.NEXTAUTH_URL) return env.NEXTAUTH_URL.replace(/\/$/, "");
+  const h = headers();
+  const origin = h.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return `${proto}://${host}`.replace(/\/$/, "");
+  }
+  const vercel = process.env.VERCEL_URL;
+  if (vercel) return `https://${vercel}`.replace(/\/$/, "");
+  return null;
+}
+
+function hasActiveStripeMembership(status: string | null | undefined): boolean {
+  // Stripe statuses: active, trialing, past_due, unpaid, canceled,
+  // incomplete, incomplete_expired, paused.
+  return (
+    status === "active" ||
+    status === "trialing" ||
+    status === "past_due" ||
+    status === "unpaid" ||
+    status === "incomplete"
+  );
+}
+
+export async function createCheckoutSessionAction(): Promise<BillingActionResult> {
+  try {
+    const session = await getServerAuth();
+    if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+
+    const member = await prisma.member.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        tier: true,
+        foundingMember: true,
+        stripeCustomerId: true,
+        stripeSubscriptionStatus: true,
+      },
+    });
+    if (!member) return { ok: false, error: "Member not found" };
+
+    if (hasActiveStripeMembership(member.stripeSubscriptionStatus)) {
+      return { ok: false, error: "Membership is already active. Use Manage billing." };
+    }
+
+    const prices = selectStripeCheckoutPricesForMember({
+      tier: member.tier,
+      foundingMember: member.foundingMember,
+    });
+    if (!prices.ok) return { ok: false, error: prices.error };
+
+    const reservedSlots = await getReservedSlotCountForMember(member.id);
+    if (reservedSlots <= 0) {
+      return {
+        ok: false,
+        error:
+          "No locker storage is reserved for your account yet. Contact support to assign a locker before starting membership.",
+      };
+    }
+
+    const stripe = getStripeClient();
+    if (!stripe) return { ok: false, error: "Billing is not configured." };
+
+    const baseUrl = getAppBaseUrlFromHeaders();
+    if (!baseUrl) {
+      return {
+        ok: false,
+        error:
+          "Could not determine this app's URL. Set NEXTAUTH_URL in the environment.",
+      };
+    }
+
+    let customerId = member.stripeCustomerId ?? null;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: member.email,
+        name: member.name,
+        metadata: { [STRIPE_MEMBER_ID_METADATA_KEY]: member.id },
+      });
+      customerId = customer.id;
+      await prisma.member.update({
+        where: { id: member.id },
+        data: { stripeCustomerId: customerId },
+      });
+      revalidatePath("/settings");
+    } else {
+      // Ensure metadata is present for webhook correlation.
+      try {
+        await stripe.customers.update(customerId, {
+          metadata: { [STRIPE_MEMBER_ID_METADATA_KEY]: member.id },
+        });
+      } catch (err) {
+        logger.warn("stripe.customers.update metadata failed", {
+          action: "createCheckoutSessionAction",
+          memberId: member.id,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    const checkout = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      client_reference_id: member.id,
+      allow_promotion_codes: true,
+      metadata: { [STRIPE_MEMBER_ID_METADATA_KEY]: member.id },
+      subscription_data: {
+        metadata: { [STRIPE_MEMBER_ID_METADATA_KEY]: member.id },
+      },
+      line_items: [
+        { price: prices.membershipPriceId, quantity: 1 },
+        { price: prices.storagePriceId, quantity: reservedSlots },
+      ],
+      success_url: `${baseUrl}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/settings?billing=cancelled`,
+    });
+
+    if (!checkout.url) {
+      return { ok: false, error: "Could not start checkout. Try again." };
+    }
+    return { ok: true, url: checkout.url };
+  } catch (e) {
+    logger.error("createCheckoutSessionAction failed", e, {
+      action: "createCheckoutSessionAction",
+    });
+    return { ok: false, error: "Could not start checkout. Try again in a moment." };
+  }
+}
+
+export async function createBillingPortalAction(): Promise<BillingActionResult> {
+  try {
+    const session = await getServerAuth();
+    if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+
+    const member = await prisma.member.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, stripeCustomerId: true },
+    });
+    if (!member) return { ok: false, error: "Member not found" };
+
+    if (!member.stripeCustomerId) {
+      return { ok: false, error: "No billing profile on file yet." };
+    }
+
+    const stripe = getStripeClient();
+    if (!stripe) return { ok: false, error: "Billing is not configured." };
+
+    const baseUrl = getAppBaseUrlFromHeaders();
+    if (!baseUrl) {
+      return {
+        ok: false,
+        error:
+          "Could not determine this app's URL. Set NEXTAUTH_URL in the environment.",
+      };
+    }
+
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: member.stripeCustomerId,
+      return_url: `${baseUrl}/settings`,
+    });
+
+    if (!portal.url) {
+      return { ok: false, error: "Could not open billing portal. Try again." };
+    }
+    return { ok: true, url: portal.url };
+  } catch (e) {
+    logger.error("createBillingPortalAction failed", e, {
+      action: "createBillingPortalAction",
+    });
+    return { ok: false, error: "Could not open billing portal. Try again in a moment." };
   }
 }
 

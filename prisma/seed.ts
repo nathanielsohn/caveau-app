@@ -36,6 +36,12 @@ import {
 
 const prisma = new PrismaClient();
 
+// Per-bottle barcode identifiers for the staff scanner workflow (feature #25).
+// Demo barcodes are synthetic 12-digit strings so a keyboard-wedge scanner
+// can be used without needing real UPC/EAN labels.
+let barcodeSeed = 0;
+const nextBarcode = () => String(900_000_000_000 + (barcodeSeed += 1));
+
 // ── Wine catalog ──────────────────────────────────────────────────────
 
 const wines = [
@@ -377,6 +383,7 @@ async function main() {
         region: w.region,
         varietal: w.varietal,
         producer: w.producer,
+        barcode: nextBarcode(),
         purchasePrice: w.purchasePrice,
         currentValue: w.currentValue,
         tastingNotes: w.tastingNotes,
@@ -928,6 +935,7 @@ async function main() {
         region: hw.region,
         varietal: hw.varietal,
         producer: hw.producer,
+        barcode: nextBarcode(),
         purchasePrice: hw.purchasePrice,
         currentValue: hw.currentValue,
         tastingNotes: hw.tastingNotes,
@@ -1456,6 +1464,7 @@ async function main() {
       region: 'Napa Valley',
       varietal: 'Cabernet Sauvignon',
       producer: 'Screaming Eagle',
+      barcode: nextBarcode(),
       purchasePrice: 4500,
       currentValue: 4800,
       tastingNotes:
@@ -1594,6 +1603,7 @@ async function main() {
       region: 'Tuscany',
       varietal: 'Cabernet Sauvignon Blend',
       producer: 'Tenuta San Guido',
+      barcode: nextBarcode(),
       purchasePrice: sassicaiaPrice,
       currentValue: sassicaiaPrice,
       tastingNotes:

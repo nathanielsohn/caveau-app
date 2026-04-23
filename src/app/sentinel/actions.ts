@@ -59,11 +59,20 @@ const fetchSentinelDataForLocker = unstable_cache(
   async (lockerId: string, hoursBack: number, includeSimulation: boolean) => {
     const since = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
-    const [readings, alerts] = await Promise.all([
-      prisma.sensorReading.findMany({
-        where: { lockerId, timestamp: { gte: since } },
-        orderBy: { timestamp: "asc" },
-      }),
+    const [readingsRaw, rollups, alerts] = await Promise.all([
+      hoursBack <= 24
+        ? prisma.sensorReading.findMany({
+            where: { lockerId, timestamp: { gte: since } },
+            orderBy: { timestamp: "asc" },
+          })
+        : Promise.resolve([]),
+      hoursBack > 24
+        ? prisma.sensorReadingHourlyRollup.findMany({
+            where: { lockerId, bucket: { gte: since } },
+            orderBy: { bucket: "asc" },
+            take: 5_000,
+          })
+        : Promise.resolve([]),
       prisma.alert.findMany({
         where: includeSimulation
           ? { lockerId }
@@ -72,6 +81,23 @@ const fetchSentinelDataForLocker = unstable_cache(
         take: 50,
       }),
     ]);
+
+    const readings =
+      hoursBack <= 24
+        ? readingsRaw.map((r) => ({
+            temperature: Number(r.temperature),
+            humidity: Number(r.humidity),
+            vibration: Number(r.vibration),
+            lightLux: Number(r.lightLux),
+            timestamp: r.timestamp.toISOString(),
+          }))
+        : rollups.map((r) => ({
+            temperature: Number(r.temperatureAvg),
+            humidity: Number(r.humidityAvg),
+            vibration: Number(r.vibrationAvg),
+            lightLux: Number(r.lightLuxAvg),
+            timestamp: r.bucket.toISOString(),
+          }));
 
     // Downsample readings to ~500 points for large datasets
     const TARGET_POINTS = 500;
@@ -90,13 +116,7 @@ const fetchSentinelDataForLocker = unstable_cache(
     }
 
     return {
-      readings: sampled.map((r) => ({
-        temperature: Number(r.temperature),
-        humidity: Number(r.humidity),
-        vibration: Number(r.vibration),
-        lightLux: Number(r.lightLux),
-        timestamp: r.timestamp.toISOString(),
-      })),
+      readings: sampled,
       alerts: alerts.map((a) => ({
         id: a.id,
         type: a.type,

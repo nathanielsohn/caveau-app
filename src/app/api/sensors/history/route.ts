@@ -39,22 +39,40 @@ export async function GET(request: NextRequest) {
   const hours = RANGE_HOURS[range as keyof typeof RANGE_HOURS];
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-  const readings = await prisma.sensorReading.findMany({
-    where: {
-      lockerId,
-      timestamp: { gte: since },
-    },
-    orderBy: { timestamp: "asc" },
-    take: hours <= 24 ? 500 : 1000,
-  });
-
-  const serialized = readings.map((r) => ({
-    temperature: Number(r.temperature),
-    humidity: Number(r.humidity),
-    vibration: Number(r.vibration),
-    lightLux: Number(r.lightLux),
-    timestamp: r.timestamp.toISOString(),
-  }));
+  const serialized =
+    hours <= 24
+      ? (
+          await prisma.sensorReading.findMany({
+            where: {
+              lockerId,
+              timestamp: { gte: since },
+            },
+            orderBy: { timestamp: "asc" },
+            take: 500,
+          })
+        ).map((r) => ({
+          temperature: Number(r.temperature),
+          humidity: Number(r.humidity),
+          vibration: Number(r.vibration),
+          lightLux: Number(r.lightLux),
+          timestamp: r.timestamp.toISOString(),
+        }))
+      : (
+          await prisma.sensorReadingHourlyRollup.findMany({
+            where: {
+              lockerId,
+              bucket: { gte: since },
+            },
+            orderBy: { bucket: "asc" },
+            take: 2_000,
+          })
+        ).map((r) => ({
+          temperature: Number(r.temperatureAvg),
+          humidity: Number(r.humidityAvg),
+          vibration: Number(r.vibrationAvg),
+          lightLux: Number(r.lightLuxAvg),
+          timestamp: r.bucket.toISOString(),
+        }));
 
   return NextResponse.json(serialized);
 }
