@@ -349,7 +349,7 @@ Turn it into a business.
 | 29 | ~~Mobile app~~ | ~~React Native (Expo) companion app in `/mobile`. Bearer-token API under `/api/mobile/*` (mobile login + `/me` + wines), certificate sharing via public `/verify/<hash>` links, staff-only locker scan check-in/out via camera barcode scan, and Expo push token registration + alert-triggered push fanout (`EXPO_PUSH_ENABLED`). Done.~~ |
 | 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
 | 31 | ~~Insurance partner program~~ | ~~Two-sided: member-facing insurance referral/enrollment requests (PURE / Chubb / AXA XL / Berkley One), plus a carrier-facing proof-of-storage API (`/api/insurance/*`, Bearer secret) and partner-auth’d CCR exports (signed provenance bundle JSON/PDF). Done.~~ |
-| 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
+| 32 | ~~Multi-location management~~ | ~~Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. Done.~~ |
 | 33 | ~~Wine marketplace~~ | ~~Member-to-member trading within the platform.~~ **Deprioritized 2026-04-14** — dilutes the vault-custodian positioning that came out of the investor review. Revisit post-pilot. |
 | 34 | ~~Wine disposition tracking~~ | ~~WineStatus enum, WineDisposition model, history toggle on collection page, dashboard metrics scoped to active wines. Done.~~ |
 | 35 | ~~Locker self-service (member)~~ | ~~Assign/remove wines from locker slots via modal picker. Done.~~ |

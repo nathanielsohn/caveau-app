@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
+  Building2,
   Users,
   Lock,
   Bell,
@@ -17,10 +18,13 @@ import {
   ArrowLeft,
   Search,
   Target,
+  ArrowRightLeft,
 } from "lucide-react";
 
 const adminNavItems = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/facilities", label: "Facilities", icon: Building2 },
+  { href: "/admin/transfers", label: "Transfers", icon: ArrowRightLeft },
   { href: "/admin/members", label: "Members", icon: Users },
   { href: "/admin/lockers", label: "Lockers", icon: Lock },
   { href: "/admin/sentinels", label: "Devices", icon: Cpu },

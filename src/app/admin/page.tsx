@@ -187,7 +187,10 @@ export default async function AdminOverviewPage() {
           <ul className="divide-y divide-[#2A2A30]/50">
             {facilities.map((f) => (
               <li key={f.id} className="py-3 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-3">
+                <Link
+                  href={`/admin/facilities/${f.id}`}
+                  className="group flex items-center gap-3 rounded-xl px-2 py-2 -mx-2 hover:bg-[#1C1C20]/60 transition-colors"
+                >
                   <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
                     <Building2 className="w-4 h-4 text-gold" />
                   </div>
@@ -200,7 +203,8 @@ export default async function AdminOverviewPage() {
                       {f._count.members} members
                     </p>
                   </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-muted group-hover:text-secondary" />
+                </Link>
               </li>
             ))}
           </ul>
