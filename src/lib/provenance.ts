@@ -84,7 +84,14 @@ export async function buildProvenanceBundle(
           varietal: true,
         },
       },
-      locker: { select: { id: true, lockerNumber: true, zone: true } },
+      locker: {
+        select: {
+          id: true,
+          lockerNumber: true,
+          zone: true,
+          facility: { select: { name: true } },
+        },
+      },
     },
   });
   if (!cert) return null;
@@ -117,7 +124,13 @@ export async function buildProvenanceBundle(
       select: {
         slotPosition: true,
         dateStored: true,
-        locker: { select: { lockerNumber: true, zone: true } },
+        locker: {
+          select: {
+            lockerNumber: true,
+            zone: true,
+            facility: { select: { name: true } },
+          },
+        },
       },
     }),
     prisma.wineDisposition.findMany({
@@ -155,7 +168,7 @@ export async function buildProvenanceBundle(
     kind: "intake",
     date: start.toISOString(),
     title: "Bottle entered Caveau custody",
-    detail: `Locker #${cert.locker.lockerNumber} · ${cert.locker.zone} Zone`,
+    detail: formatLockerLocation(cert.locker),
   });
 
   for (const slot of placements) {
@@ -163,7 +176,7 @@ export async function buildProvenanceBundle(
     events.push({
       kind: "placement",
       date: slot.dateStored.toISOString(),
-      title: `Placed in Locker #${slot.locker.lockerNumber}, Slot ${slot.slotPosition}`,
+      title: `Placed in ${slot.locker.facility.name} · Locker #${slot.locker.lockerNumber} · Slot ${slot.slotPosition}`,
       detail: `${slot.locker.zone} Zone`,
     });
   }
@@ -218,7 +231,11 @@ export async function buildProvenanceBundle(
     certificateNumber: cert.certificateNumber,
     generatedAt: new Date().toISOString(),
     bottle: cert.wine,
-    locker: cert.locker,
+    locker: {
+      id: cert.locker.id,
+      lockerNumber: cert.locker.lockerNumber,
+      zone: cert.locker.zone,
+    },
     envelope,
     events,
   };
@@ -233,4 +250,12 @@ function round(value: Prisma.Decimal | number | null): number {
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatLockerLocation(locker: {
+  facility: { name: string };
+  lockerNumber: number;
+  zone: string;
+}): string {
+  return `${locker.facility.name} · Locker #${locker.lockerNumber} · ${locker.zone} Zone`;
 }

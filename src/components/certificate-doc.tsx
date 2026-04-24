@@ -30,6 +30,9 @@ interface CertificateData {
   locker: {
     lockerNumber: number;
     zone: string;
+    facility: {
+      name: string;
+    };
   };
 }
 
@@ -93,7 +96,8 @@ export default function CertificateDoc({
               Storage Location
             </p>
             <p className="text-sm text-secondary">
-              Locker #{locker.lockerNumber} &mdash; {locker.zone} Zone
+              {locker.facility.name} · Locker #{locker.lockerNumber} ·{" "}
+              {locker.zone} Zone
             </p>
           </div>
 

@@ -81,7 +81,11 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
           slotPosition: true,
           dateStored: true,
           locker: {
-            select: { lockerNumber: true, zone: true },
+            select: {
+              lockerNumber: true,
+              zone: true,
+              facility: { select: { name: true } },
+            },
           },
         },
       },
@@ -469,12 +473,12 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
                   </div>
                   <div>
                     <p className="text-xs text-muted uppercase tracking-wide">
-                      Locker
+                      Location
                     </p>
                     <p className="text-lg font-semibold text-primary mt-0.5">
-                      #{slot.locker.lockerNumber}
+                      {slot.locker.facility.name} · Locker #{slot.locker.lockerNumber} ·{" "}
+                      {slot.locker.zone} Zone
                     </p>
-                    <p className="text-xs text-muted">{slot.locker.zone}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

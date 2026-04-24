@@ -42,6 +42,7 @@ export default async function ReportPage({
         select: {
           lockerNumber: true,
           zone: true,
+          facility: { select: { name: true } },
         },
       },
     },
