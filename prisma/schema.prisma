@@ -146,6 +146,17 @@ enum MigrationStatus {
   cancelled
 }
 
+// Insurance partner program (feature #31). Members submit a referral request
+// to apply the Caveau storage-discipline discount with a named carrier.
+enum InsuranceReferralStatus {
+  submitted
+  in_review
+  introduced
+  bound
+  declined
+  cancelled
+}
+
 // Exit signals (feature #55). `drink_window_closing` triggers when a
 // bottle is within its drink window and approaching the end; `peak_momentum`
 // when 12-month Liv-ex change crosses a threshold; `dual` when both hit
@@ -402,6 +413,7 @@ model Member {
   authorizedRecipients          AuthorizedRecipient[]
   eventRsvps                    EventRsvp[]
   migrationRequests             MigrationRequest[]
+  insuranceReferrals            InsuranceReferral[]
   exitSignals                   ExitSignal[]
   sentinelDevices               SentinelDevice[]
   sentinelDeviceEvents          SentinelDeviceEvent[] @relation("SentinelDeviceEventActor")
@@ -1116,6 +1128,35 @@ model MigrationRequest {
   @@index([memberId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("migration_requests")
+}
+
+// Insurance partner referral request (feature #31). Member asks Caveau to
+// introduce them to a partner carrier and share proof-of-storage + CCR
+// exports. `shareToken` is the partner-safe reference the member provides
+// their carrier — partner APIs scope all reads to the token.
+model InsuranceReferral {
+  id           String                 @id @default(uuid())
+  memberId     String                 @map("member_id")
+  partnerName  String                 @map("partner_name")
+  status       InsuranceReferralStatus @default(submitted)
+  shareToken   String                 @unique @default(uuid()) @map("share_token")
+  contactName  String?                @map("contact_name")
+  contactEmail String?                @map("contact_email")
+  contactPhone String?                @map("contact_phone")
+  policyNumber String?                @map("policy_number")
+  memberNote   String?                @map("member_note")
+  staffNote    String?                @map("staff_note")
+  introducedAt DateTime?              @map("introduced_at")
+  boundAt      DateTime?              @map("bound_at")
+  declinedAt   DateTime?              @map("declined_at")
+  cancelledAt  DateTime?              @map("cancelled_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+  member       Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("insurance_referrals")
 }
 
 // Exit signals (feature #55). AI-surfaced sell-window alerts per bottle,

@@ -17,6 +17,14 @@ type OptionalKey =
   | "UPSTASH_REDIS_REST_URL"
   | "UPSTASH_REDIS_REST_TOKEN"
   | "NEXT_PUBLIC_SHOW_DEMO_CREDS"
+  // Insurance partner program (feature #31). When INSURANCE_PARTNER_ENABLED
+  // is not "true", the member referral UI renders a disabled state and
+  // /api/insurance/* returns a friendly 503. When enabled, carriers
+  // authenticate to /api/insurance/* via Authorization: Bearer
+  // INSURANCE_API_SECRET. In dev/test the secret can be omitted for local
+  // testing, but non-dev/test should always set it.
+  | "INSURANCE_PARTNER_ENABLED"
+  | "INSURANCE_API_SECRET"
   // Mobile companion app (feature #29). MOBILE_TOKEN_SECRET signs the
   // bearer tokens returned by /api/mobile/login. It falls back to
   // NEXTAUTH_SECRET for dev/demo, but production should set an
@@ -141,6 +149,8 @@ export const env = {
   UPSTASH_REDIS_REST_URL: read("UPSTASH_REDIS_REST_URL"),
   UPSTASH_REDIS_REST_TOKEN: read("UPSTASH_REDIS_REST_TOKEN"),
   NEXT_PUBLIC_SHOW_DEMO_CREDS: read("NEXT_PUBLIC_SHOW_DEMO_CREDS") === "true",
+  INSURANCE_PARTNER_ENABLED: read("INSURANCE_PARTNER_ENABLED") === "true",
+  INSURANCE_API_SECRET: read("INSURANCE_API_SECRET"),
   MOBILE_TOKEN_SECRET:
     read("MOBILE_TOKEN_SECRET") ??
     required.NEXTAUTH_SECRET ??

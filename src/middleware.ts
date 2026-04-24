@@ -317,14 +317,26 @@ export async function middleware(req: NextRequest) {
     // Stripe webhook (feature #27). Auth IS the Stripe signature
     // verification done inside the route handler — Stripe can't present
     // a session cookie.
-    pathname === "/api/stripe/webhook";
+    pathname === "/api/stripe/webhook" ||
+    // Insurance partner APIs (feature #31). Auth'd via shared-secret Bearer
+    // token (INSURANCE_API_SECRET) inside the route handler, not session
+    // cookies. Carriers and agents need to access without a Caveau login.
+    pathname.startsWith("/api/insurance/");
 
   if (isPublic) {
     return applySecurityHeaders(nextWithId(), csp, pathname, requestId);
   }
 
   // --- Protected paths — require auth ---
-  const token = await getToken({ req });
+  // Force `getToken` to use the cookie prefix that matches the actual request
+  // protocol. next-auth's default `secureCookie` heuristic uses
+  // `process.env.NEXTAUTH_URL?.startsWith("https://")`, which breaks if
+  // NEXTAUTH_URL is set without a scheme (common on Vercel) — the auth route
+  // still issues `__Secure-next-auth.session-token` cookies, but middleware
+  // would look for the unprefixed name and treat every request as signed-out.
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const proto = forwardedProto?.split(",")[0]?.trim() || req.nextUrl.protocol.replace(":", "");
+  const token = await getToken({ req, secureCookie: proto === "https" });
 
   if (!token) {
     const loginUrl = new URL("/auth/login", req.url);

@@ -10,8 +10,9 @@ import {
   ShieldCheck,
   Sparkles,
   ChevronRight,
+  Shield,
 } from "lucide-react";
-import { AppraisalStatus } from "@prisma/client";
+import { AppraisalStatus, InsuranceReferralStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -57,6 +58,16 @@ function billingBadge(status: string | null | undefined): {
   return { label: s.replace(/_/g, " "), className: "badge-info" };
 }
 
+function insuranceStatusLabel(status: InsuranceReferralStatus): string {
+  if (status === "submitted") return "Submitted";
+  if (status === "in_review") return "In review";
+  if (status === "introduced") return "Introduced";
+  if (status === "bound") return "Enrolled";
+  if (status === "declined") return "Declined";
+  if (status === "cancelled") return "Cancelled";
+  return String(status).replace(/_/g, " ");
+}
+
 export default async function SettingsPage() {
   const session = await getServerAuth();
   if (!session?.user?.id) redirect("/auth/login");
@@ -84,6 +95,11 @@ export default async function SettingsPage() {
 
   const sesConfigured = Boolean(env.AWS_SES_FROM_EMAIL);
   const stripeConfigured = Boolean(env.STRIPE_SECRET_KEY);
+  const insuranceConfigured =
+    env.INSURANCE_PARTNER_ENABLED &&
+    (Boolean(env.INSURANCE_API_SECRET) ||
+      env.NODE_ENV === "development" ||
+      env.NODE_ENV === "test");
   const tierSpec = tierSpecForDbTier(member.tier);
   const effectivePrice = effectivePriceForMember(tierSpec, member.foundingMember);
   const foundingSavings = member.foundingMember
@@ -105,6 +121,19 @@ export default async function SettingsPage() {
       : null;
   const welcomePending =
     welcome?.existing && !welcomeCompleted ? welcome.existing : null;
+
+  const latestInsuranceReferral = await prisma.insuranceReferral.findFirst({
+    where: { memberId: session.user.id },
+    orderBy: { createdAt: "desc" },
+    select: { partnerName: true, status: true, createdAt: true },
+  });
+  const insuranceSummary = !insuranceConfigured
+    ? "Disabled — not configured in this environment"
+    : latestInsuranceReferral
+      ? `${latestInsuranceReferral.partnerName} · ${insuranceStatusLabel(
+          latestInsuranceReferral.status,
+        )}`
+      : "Apply Caveau certified storage discount with your carrier";
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
@@ -361,7 +390,7 @@ export default async function SettingsPage() {
           </div>
         )}
 
-        <PreferencesForm
+      <PreferencesForm
           defaults={{
             email: member.email,
             emailAlertsEnabled: member.emailAlertsEnabled,
@@ -370,6 +399,29 @@ export default async function SettingsPage() {
           }}
         />
       </div>
+
+      {/* Insurance partner program card (#31) */}
+      <Link
+        href="/settings/insurance"
+        className="glass-card p-6 md:p-8 mt-6 block hover:bg-[#1C1C20]/40 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+              <Shield className="w-4 h-4 text-gold" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-serif text-lg text-primary">
+                Insurance partner program
+              </h2>
+              <p className="text-xs text-muted mt-0.5 truncate">
+                {insuranceSummary}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+        </div>
+      </Link>
 
       {/* Hurricane Protection card (#46) */}
       <Link

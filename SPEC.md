@@ -298,7 +298,7 @@ gantt
     Admin panel               :p3b, after p3a, 7d
     Mobile app                :done, p3c, after p3a, 14d
     Certificate PDF + verify  :done, p3d, after p3b, 5d
-    Insurance partner program :p3e, after p3d, 7d
+    Insurance partner program :done, p3e, after p3d, 7d
     Multi-location mgmt       :p3f, after p3e, 5d
     Wine disposition          :done, p3h, after p3f, 3d
     Locker self-service       :done, p3i, after p3h, 3d
@@ -348,7 +348,7 @@ Turn it into a business.
 | 28 | ~~Admin panel~~ | ~~Staff-facing dashboard: manage members, assign/reassign lockers, review alerts, issue certificates. Separate layout from member-facing app. Done.~~ |
 | 29 | ~~Mobile app~~ | ~~React Native (Expo) companion app in `/mobile`. Bearer-token API under `/api/mobile/*` (mobile login + `/me` + wines), certificate sharing via public `/verify/<hash>` links, staff-only locker scan check-in/out via camera barcode scan, and Expo push token registration + alert-triggered push fanout (`EXPO_PUSH_ENABLED`). Done.~~ |
 | 30 | ~~Certificate PDF export + public verification~~ | ~~QR codes on certificates, public `/verify/[hash]` verification page. Done.~~ |
-| 31 | Insurance partner program | Two-sided: member-facing enrollment flow that applies carrier discounts on collection coverage for wines stored in an approved Caveau facility, plus a carrier-facing proof-of-storage API and standardized condition report exports. Expanded from the original PDF-export scope after the April 2026 investor review. |
+| 31 | ~~Insurance partner program~~ | ~~Two-sided: member-facing insurance referral/enrollment requests (PURE / Chubb / AXA XL / Berkley One), plus a carrier-facing proof-of-storage API (`/api/insurance/*`, Bearer secret) and partner-auth’d CCR exports (signed provenance bundle JSON/PDF). Done.~~ |
 | 32 | Multi-location management | Cross-facility transfers, consolidated dashboard for operators with multiple locations, location-level analytics. |
 | 33 | ~~Wine marketplace~~ | ~~Member-to-member trading within the platform.~~ **Deprioritized 2026-04-14** — dilutes the vault-custodian positioning that came out of the investor review. Revisit post-pilot. |
 | 34 | ~~Wine disposition tracking~~ | ~~WineStatus enum, WineDisposition model, history toggle on collection page, dashboard metrics scoped to active wines. Done.~~ |
