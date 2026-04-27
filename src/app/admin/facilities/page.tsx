@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   Building2,
+  BadgeCheck,
   Users,
   Lock,
   Grid3x3,
@@ -69,6 +70,13 @@ export default async function AdminFacilitiesPage() {
             </p>
           </div>
         </div>
+        <Link
+          href="/admin/installers"
+          className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl border border-[#2A2A30] text-sm text-secondary hover:text-primary hover:bg-[#1C1C20]/60 transition-colors"
+        >
+          <BadgeCheck className="w-4 h-4" />
+          Installers
+        </Link>
       </div>
 
       {facilities.length === 0 ? (
@@ -94,9 +102,25 @@ export default async function AdminFacilitiesPage() {
                 <div className="glass-card p-5 hover:border-gold/40 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-serif text-lg text-primary truncate">
-                        {row.facility.name}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-serif text-lg text-primary truncate">
+                          {row.facility.name}
+                        </p>
+                        {row.facility.type === "home_cellar" && (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${
+                              row.facility.homeCellarCertifiedAt
+                                ? "bg-gold/10 text-gold border-gold/30"
+                                : "bg-warn/10 text-warn border-warn/30"
+                            }`}
+                          >
+                            Home cellar
+                            {row.facility.homeCellarCertifiedAt
+                              ? " · Certified"
+                              : " · Pending"}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted truncate">
                         {row.facility.location}
                       </p>
@@ -146,4 +170,3 @@ export default async function AdminFacilitiesPage() {
     </div>
   );
 }
-

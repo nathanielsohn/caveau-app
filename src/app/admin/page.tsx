@@ -5,6 +5,7 @@ import {
   Bell,
   Wine,
   Building2,
+  BadgeCheck,
   ChevronRight,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -21,6 +22,8 @@ export default async function AdminOverviewPage() {
     totalValueAgg,
     unresolvedAlertCount,
     criticalAlertCount,
+    homeCellarCount,
+    certifiedHomeCellarCount,
     recentAlerts,
     facilities,
   ] = await Promise.all([
@@ -35,6 +38,10 @@ export default async function AdminOverviewPage() {
     prisma.alert.count({ where: { resolved: false, source: "device" } }),
     prisma.alert.count({
       where: { resolved: false, severity: "critical", source: "device" },
+    }),
+    prisma.facility.count({ where: { type: "home_cellar" } }),
+    prisma.facility.count({
+      where: { type: "home_cellar", homeCellarCertifiedAt: { not: null } },
     }),
     prisma.alert.findMany({
       where: { resolved: false, source: "device" },
@@ -69,6 +76,16 @@ export default async function AdminOverviewPage() {
       href: "/admin/lockers",
     },
     {
+      label: "Certified cellars",
+      value: certifiedHomeCellarCount.toLocaleString(),
+      sub:
+        homeCellarCount > 0
+          ? `${homeCellarCount} home cellars enrolled`
+          : "no home cellars yet",
+      icon: BadgeCheck,
+      href: "/admin/facilities",
+    },
+    {
       label: "Active wines",
       value: activeWineCount.toLocaleString(),
       sub: formatCurrencyCompact(totalValue) + " under custody",
@@ -96,7 +113,7 @@ export default async function AdminOverviewPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-8">
         {metrics.map((m) => {
           const Card = (
             <div

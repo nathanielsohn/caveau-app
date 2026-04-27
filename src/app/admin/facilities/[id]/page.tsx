@@ -3,16 +3,20 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
+  Home,
+  BadgeCheck,
   Users,
   Lock,
   Grid3x3,
   Bell,
   DollarSign,
 } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 import { getFacilityAnalyticsKpis } from "@/lib/facility-analytics";
 import { UuidSchema } from "@/lib/schemas";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils";
 import OccupancyDonut from "../occupancy-donut";
+import { setHomeCellarCertification, setHomeCellarInstaller } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +34,20 @@ export default async function AdminFacilityDetailPage({
   const idCheck = UuidSchema.safeParse(id);
   if (!idCheck.success) notFound();
 
-  const kpis = await getFacilityAnalyticsKpis(idCheck.data);
+  const [kpis, facility, installers] = await Promise.all([
+    getFacilityAnalyticsKpis(idCheck.data),
+    prisma.facility.findUnique({
+      where: { id: idCheck.data },
+      include: { homeCellarInstaller: true },
+    }),
+    prisma.homeCellarInstaller.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, company: true, region: true },
+    }),
+  ]);
   if (!kpis) notFound();
+  if (!facility) notFound();
 
   const slotPct = percent(kpis.slots.occupied, kpis.slots.total);
 
@@ -116,6 +132,129 @@ export default async function AdminFacilityDetailPage({
           </div>
         ))}
       </div>
+
+      {facility.type === "home_cellar" && (
+        <div className="glass-card p-5 mb-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+            <div className="flex items-center gap-2">
+              <Home className="w-4 h-4 text-gold" />
+              <h2 className="font-serif text-lg text-primary">
+                Home cellar program
+              </h2>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${
+                facility.homeCellarCertifiedAt
+                  ? "bg-gold/10 text-gold border-gold/30"
+                  : "bg-warn/10 text-warn border-warn/30"
+              }`}
+            >
+              <BadgeCheck className="w-3.5 h-3.5" />
+              {facility.homeCellarCertifiedAt ? "Certified" : "Pending"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted">
+                Installer
+              </p>
+              {facility.homeCellarInstaller ? (
+                <>
+                  <p className="text-sm text-primary font-medium mt-1">
+                    {facility.homeCellarInstaller.name}
+                  </p>
+                  <p className="text-xs text-muted mt-1">
+                    {facility.homeCellarInstaller.company
+                      ? facility.homeCellarInstaller.company
+                      : "Caveau partner"}
+                    {facility.homeCellarInstaller.region
+                      ? ` · ${facility.homeCellarInstaller.region}`
+                      : ""}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted mt-1 italic">Unassigned</p>
+              )}
+            </div>
+
+            <form
+              action={setHomeCellarInstaller}
+              className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4"
+            >
+              <input type="hidden" name="facilityId" value={facility.id} />
+              <p className="text-[10px] uppercase tracking-wider text-muted">
+                Assign installer
+              </p>
+              <select
+                name="installerId"
+                defaultValue={facility.homeCellarInstallerId ?? ""}
+                className="mt-2 w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-gold/60"
+              >
+                <option value="">Unassigned</option>
+                {installers.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                    {i.company ? ` · ${i.company}` : ""}
+                    {i.region ? ` (${i.region})` : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="mt-3 inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-gold text-black text-sm font-medium hover:bg-gold/90 transition-colors w-full"
+              >
+                Save installer
+              </button>
+            </form>
+
+            <form
+              action={setHomeCellarCertification}
+              className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4"
+            >
+              <input type="hidden" name="facilityId" value={facility.id} />
+              <p className="text-[10px] uppercase tracking-wider text-muted">
+                Certification
+              </p>
+              <p className="text-sm text-secondary mt-1">
+                {facility.homeCellarCertifiedAt
+                  ? `Certified at ${facility.homeCellarCertifiedAt.toLocaleDateString(
+                      "en-US",
+                      { dateStyle: "medium" },
+                    )}`
+                  : "Mark certified after install + calibration."}
+              </p>
+              <input
+                type="hidden"
+                name="certified"
+                value={facility.homeCellarCertifiedAt ? "0" : "1"}
+              />
+              <button
+                type="submit"
+                className={`mt-3 inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl text-sm font-medium transition-colors w-full ${
+                  facility.homeCellarCertifiedAt
+                    ? "bg-danger/10 text-danger border border-danger/30 hover:bg-danger/15"
+                    : "bg-gold text-black hover:bg-gold/90"
+                }`}
+              >
+                {facility.homeCellarCertifiedAt
+                  ? "Revoke certification"
+                  : "Mark certified"}
+              </button>
+              <p className="text-[11px] text-muted mt-2">
+                Installer roster lives at{" "}
+                <Link
+                  href="/admin/installers"
+                  className="text-gold hover:text-gold-text"
+                >
+                  /admin/installers
+                </Link>
+                .
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <OccupancyDonut occupied={kpis.slots.occupied} total={kpis.slots.total} />

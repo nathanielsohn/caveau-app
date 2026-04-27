@@ -59,6 +59,14 @@ enum LockerActivityAction {
   check_out
 }
 
+// Facility type (feature #48). Vault facilities are Caveau-operated
+// storage locations; home_cellar facilities represent a member's
+// on-prem cellar enrolled in the Home Cellar Program.
+enum FacilityType {
+  vault
+  home_cellar
+}
+
 enum FacilityEventType {
   weather
   hurricane
@@ -308,12 +316,15 @@ enum AcquisitionSource {
 
 model Facility {
   id                    String              @id @default(uuid())
+  type                  FacilityType        @default(vault)
   name                  String
   location              String
   elevationFt           Int?                @map("elevation_ft")
   generatorStatus       String              @default("operational") @map("generator_status")
   fireSuppressionStatus String              @default("operational") @map("fire_suppression_status")
   lastInspectionAt      DateTime?           @map("last_inspection_at")
+  homeCellarCertifiedAt DateTime?           @map("home_cellar_certified_at")
+  homeCellarInstallerId String?             @map("home_cellar_installer_id")
   createdAt             DateTime            @default(now()) @map("created_at")
   lockers               Locker[]
   members               FacilityMember[]
@@ -321,6 +332,7 @@ model Facility {
   hurricaneProtocols    HurricaneProtocol[]
   tastingEvents         Event[]
   sentinelDevices       SentinelDevice[]
+  homeCellarInstaller   HomeCellarInstaller? @relation(fields: [homeCellarInstallerId], references: [id], onDelete: SetNull)
 
   @@map("facilities")
 }
@@ -351,6 +363,24 @@ model FacilityMember {
   @@id([memberId, facilityId])
   @@index([facilityId])
   @@map("facility_members")
+}
+
+// Certified installer network (feature #48). Used to track who installed
+// and certified a member's enrolled home cellar.
+model HomeCellarInstaller {
+  id        String    @id @default(uuid())
+  name      String
+  company   String?
+  email     String?
+  phone     String?
+  region    String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  facilities Facility[]
+
+  @@index([active, createdAt(sort: Desc)])
+  @@map("home_cellar_installers")
 }
 
 model Member {

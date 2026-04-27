@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/utils";
+import type { FacilityType } from "@prisma/client";
 
 export interface FacilityAnalyticsKpis {
   facility: {
     id: string;
     name: string;
     location: string;
+    type: FacilityType;
+    homeCellarCertifiedAt: Date | null;
   };
   membersCount: number;
   lockers: {
@@ -41,7 +44,13 @@ export async function listFacilityAnalyticsKpis(): Promise<
 > {
   const facilities = await prisma.facility.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true, location: true },
+    select: {
+      id: true,
+      name: true,
+      location: true,
+      type: true,
+      homeCellarCertifiedAt: true,
+    },
   });
   if (facilities.length === 0) return [];
 
@@ -173,7 +182,13 @@ export async function getFacilityAnalyticsKpis(
 ): Promise<FacilityAnalyticsKpis | null> {
   const facility = await prisma.facility.findUnique({
     where: { id: facilityId },
-    select: { id: true, name: true, location: true },
+    select: {
+      id: true,
+      name: true,
+      location: true,
+      type: true,
+      homeCellarCertifiedAt: true,
+    },
   });
   if (!facility) return null;
 

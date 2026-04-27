@@ -33,6 +33,7 @@ export default async function SentinelDevicesCard({
       where: { memberId, retiredAt: null },
       orderBy: [{ model: "asc" }, { installedAt: "asc" }],
       include: {
+        facility: { select: { name: true, type: true } },
         locker: { select: { lockerNumber: true, zone: true } },
         wine: {
           select: { id: true, name: true, vintage: true, producer: true },
@@ -97,8 +98,13 @@ export default async function SentinelDevicesCard({
             .map((d) => {
               const isProbe = d.model === SentinelModel.bottle_probe;
               const location = d.locker
-                ? `Locker #${d.locker.lockerNumber}, Zone ${d.locker.zone}`
-                : "Unassigned";
+                ? `${d.facility.name} · Locker #${d.locker.lockerNumber}, Zone ${d.locker.zone}`
+                : d.facility.name;
+              const modelLabel = isProbe
+                ? "Bottle Probe"
+                : d.facility.type === "home_cellar"
+                  ? "Sentinel (home cellar)"
+                  : "Sentinel (locker)";
               const pairingText = isProbe
                 ? d.wine
                   ? `Paired with ${d.wine.vintage} ${d.wine.name}`
@@ -121,7 +127,7 @@ export default async function SentinelDevicesCard({
                             {d.serialNumber}
                           </div>
                           <div className="text-xs text-muted mt-0.5">
-                            {isProbe ? "Bottle Probe" : "Sentinel (locker)"}
+                            {modelLabel}
                             {d.bundledWithTier && (
                               <span>
                                 {" · "}Bundled ·{" "}

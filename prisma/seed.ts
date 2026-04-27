@@ -5,6 +5,7 @@ import {
   Tier,
   AlertType,
   Severity,
+  FacilityType,
   FacilityEventType,
   DispositionType,
   WineStatus,
@@ -220,10 +221,11 @@ async function main() {
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
-    prisma.facilityMember.deleteMany(),
-    prisma.member.deleteMany(),
-    prisma.facility.deleteMany(),
-  ]);
+      prisma.facilityMember.deleteMany(),
+      prisma.member.deleteMany(),
+      prisma.facility.deleteMany(),
+      prisma.homeCellarInstaller.deleteMany(),
+    ]);
 
   // 1. Facilities — Naples is the flagship, Miami opened later as a 2nd location
   const naples = await prisma.facility.create({
@@ -317,6 +319,19 @@ async function main() {
   });
   console.log('  ✓ Facility events: 6 (Naples: 3, Miami: 3)');
 
+  // 1c. Home Cellar Program installer network (feature #48)
+  const installer = await prisma.homeCellarInstaller.create({
+    data: {
+      name: 'Gulf Coast Cellarworks',
+      company: 'Gulf Coast Cellarworks',
+      region: 'Southwest Florida',
+      email: 'install@gulfcoastcellarworks.com',
+      phone: '+1 (239) 555-0199',
+      active: true,
+    },
+  });
+  console.log(`  ✓ Home cellar installer: ${installer.name}`);
+
   // 2. Member (password: demo1234)
   const passwordHash = await bcrypt.hash('demo1234', 10);
   const member = await prisma.member.create({
@@ -342,16 +357,30 @@ async function main() {
   });
   console.log(`  ✓ Member: ${member.name}`);
 
-  // 2b. Facility memberships — Robert holds wine in both locations
+  // 2b. Home Cellar Program — enrolled location (feature #48).
+  const homeCellar = await prisma.facility.create({
+    data: {
+      type: FacilityType.home_cellar,
+      name: 'Saenz Home Cellar',
+      location: 'Port Royal, Naples, FL',
+      elevationFt: 7,
+      homeCellarInstallerId: installer.id,
+      homeCellarCertifiedAt: daysAgo(34),
+    },
+  });
+  console.log(`  ✓ Home cellar facility: ${homeCellar.name}`);
+
+  // 2c. Facility memberships — Robert holds wine in both vault locations + his home cellar
   await prisma.facilityMember.createMany({
     data: [
       { memberId: member.id, facilityId: naples.id },
       { memberId: member.id, facilityId: miami.id },
+      { memberId: member.id, facilityId: homeCellar.id },
     ],
   });
-  console.log('  ✓ Facility memberships: Naples + Miami');
+  console.log('  ✓ Facility memberships: Naples + Miami + Home cellar');
 
-  // 2c. Admin user — staff-facing /admin panel (feature #28). Seeded
+  // 2d. Admin user — staff-facing /admin panel (feature #28). Seeded
   // alongside Robert so the panel has someone to log in as during demos;
   // onboardedAt is pre-filled so the wizard doesn't intercept.
   const adminPasswordHash = await bcrypt.hash('admin1234', 10);
@@ -410,6 +439,18 @@ async function main() {
     data: { lockerNumber: 24, zone: 'A', facilityId: miami.id, memberId: member.id },
   });
   console.log('  ✓ Lockers: Naples #7/#12/#19, Miami #24');
+
+  // 4b. Home cellar monitor locker (feature #48). Monitor-only — no slots,
+  // so it does not count toward storage billing.
+  const homeLocker = await prisma.locker.create({
+    data: {
+      lockerNumber: 1,
+      zone: 'HC',
+      facilityId: homeCellar.id,
+      memberId: member.id,
+    },
+  });
+  console.log('  ✓ Home cellar monitor locker: #1 (HC)');
 
   // 5. Locker slots — all 32 per locker, some occupied
   let wineIndex = 0;
@@ -551,13 +592,32 @@ async function main() {
       lockerId: locker24.id,
       memberId: member.id,
       wineId: null,
-      bundledWithTier: Tier.black,
-      purchasedAt: null,
+      bundledWithTier: null,
+      purchasedAt: daysAgo(110),
       installedAt: daysAgo(95),
       retiredAt: null,
       connectivity: SentinelConnectivity.lte_m,
       batteryPct: 17,
       lastHeartbeatAt: hoursAgo(0.1),
+    },
+    // Home Cellar Program sensor (feature #48). Phase 1 is a white-label
+    // SensorPush unit; represented as a locker sensor in the demo model.
+    {
+      serialNumber: 'HCP-2026-00001',
+      model: SentinelModel.sentinel_locker,
+      hardwareRev: 'SP1',
+      firmwareVersion: '2.4.1',
+      facilityId: homeCellar.id,
+      lockerId: homeLocker.id,
+      memberId: member.id,
+      wineId: null,
+      bundledWithTier: null,
+      purchasedAt: daysAgo(45),
+      installedAt: daysAgo(34),
+      retiredAt: null,
+      connectivity: SentinelConnectivity.wifi,
+      batteryPct: 88,
+      lastHeartbeatAt: hoursAgo(0.2),
     },
     // Bottle Probe paired with Pétrus — Estate-tier accessory, slide 8.
     {
