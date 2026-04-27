@@ -103,6 +103,7 @@ Add in Vercel Dashboard → Settings → Environment Variables. **Only two vars 
 | `UPSTASH_REDIS_REST_TOKEN` | No | Companion token for Upstash Redis. Both must be set for the Redis limiter to activate. |
 | `AWS_REGION` | No | AWS region for SES + S3 clients (e.g. `us-east-1`) |
 | `AWS_SES_FROM_EMAIL` | No | Enables feature #19 alert emails. If unset, the app logs + no-ops instead of calling SES. |
+| `AWS_SES_SNS_TOPIC_ARNS` | No | Comma-separated allowlist of SNS topic ARNs allowed to hit `/api/ses/webhook`. In production, the webhook rejects all requests unless this is set. |
 | `AWS_S3_BUCKET` | No | Enables feature #18 wine image upload. If unset, the upload UI shows a friendly "disabled" state and the rest of the app keeps working. |
 | `AWS_CLOUDFRONT_DOMAIN` | No | When set, public image URLs go through the CDN instead of S3 directly. |
 | `GOOGLE_CLOUD_VISION_API_KEY` | No | Enables wine label OCR (feature #24). If unset, the Scan Label button renders disabled with a tooltip. Restrict the key to the Vision API only in Google Cloud Console. |
@@ -131,6 +132,8 @@ Both routes are guarded by `CRON_SECRET` in production via timing-safe Bearer co
 
 When SES is live the operator must subscribe an SNS topic to `https://<host>/api/ses/webhook` and attach Bounce + Complaint event destinations on the SES Configuration Set / Identity. Without this wiring, hard-bounced and complaining members silently keep failing to receive alerts because SES drops them.
 
+Set `AWS_SES_SNS_TOPIC_ARNS` to the TopicArn(s) you expect; the webhook rejects requests from any other SNS topic.
+
 ### 5. Deploy
 
 Push to `main` → Vercel auto-deploys. Preview deployments are created for every PR.
@@ -146,7 +149,7 @@ The app's `src/middleware.ts` applies security controls to every request:
 - **Auth protection**: all routes require a valid JWT, with these exceptions: `/auth/*`, `/verify/*`, `/bottle/*` (#43), `/handoff/*` (#41), `/handoff-driver/*` (#51), `/waitlist` (#49), `/api/auth/*`, `/api/health`, `/api/ingest/sensor` (bearer-guarded, #21), `/api/ses/webhook` (SNS-signed, #19), `/api/cron/*` (bearer-guarded), and `/api/deliveries/by-token/*` (driver-facing). `/report/*` pages are auth-protected and enforce an ownership check before rendering. `/admin/*` additionally requires `role === "admin"`.
 - **Rate limiting** (per-IP): signup 5/60s fail-closed, login 10/60s fail-closed, `/verify/*` 20/60s, `/handoff/*` 30/60s, `/handoff-driver/*` 30/60s, `/bottle/*` 30/60s, `/waitlist` POST 5/60s, `/events/*` POST 5/60s, `/api/sensors/history` 30/60s. Upstash Redis backend when configured; in-memory fallback otherwise.
 - **CSP headers**: Content-Security-Policy is built per-request. Production uses `'unsafe-inline'` for scripts due to Next.js App Router limitations (inline scripts without nonce support). `connect-src` is derived from `AWS_S3_BUCKET` + `AWS_CLOUDFRONT_DOMAIN` at request time so the policy never wildcards `*.amazonaws.com`.
-- **Static security headers** (in `next.config.mjs`): HSTS (2 years + preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo), X-Permitted-Cross-Domain-Policies none.
+- **Static security headers** (in `src/middleware.ts`): HSTS (1 year, no preload, prod only), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy (no camera/mic/geo/payment), Referrer-Policy strict-origin-when-cross-origin (and no-referrer on `/verify/*` + `/report/*`), X-Permitted-Cross-Domain-Policies none.
 
 ## Troubleshooting
 

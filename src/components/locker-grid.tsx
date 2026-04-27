@@ -771,6 +771,7 @@ export default function LockerGrid({
                       <input
                         ref={pickerSearchRef}
                         type="text"
+                        aria-label="Search wines"
                         placeholder="Search wines..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

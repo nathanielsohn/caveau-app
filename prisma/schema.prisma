@@ -748,6 +748,7 @@ model ProvenanceCertificate {
   locker            Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade)
 
   @@index([wineId, lockerId])
+  @@index([dataIntegrityHash, revokedAt])
   @@map("provenance_certificates")
 }
 

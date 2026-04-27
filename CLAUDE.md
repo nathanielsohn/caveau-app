@@ -79,6 +79,7 @@ UPSTASH_REDIS_REST_TOKEN=xxx
 # alerts (because SES drops them) and their dashboard stays silent.
 AWS_REGION=us-east-1
 AWS_SES_FROM_EMAIL=alerts@caveau.com
+AWS_SES_SNS_TOPIC_ARNS=arn:aws:sns:us-east-1:123456789012:caveau-ses-feedback
 
 # Optional — enables wine bottle photo uploads to S3 (feature #18).
 # If AWS_S3_BUCKET is unset, the upload UI shows a friendly "disabled" state

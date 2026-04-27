@@ -32,6 +32,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createVerify, createPublicKey } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,6 +41,9 @@ export const maxDuration = 15;
 // SNS pins its signing cert to its own regional domain. Anything else is
 // either a misrouted message or a forgery; reject early.
 const SNS_CERT_HOST_RE = /^sns\.[a-z0-9-]+\.amazonaws\.com$/;
+const IS_DEV_OR_TEST = env.NODE_ENV === "development" || env.NODE_ENV === "test";
+const ALLOWED_TOPIC_ARNS = new Set(env.AWS_SES_SNS_TOPIC_ARNS);
+let allowlistMissingLogged = false;
 
 interface SnsEnvelope {
   Type: string;
@@ -186,6 +190,31 @@ export async function POST(req: NextRequest) {
   const headerType = req.headers.get("x-amz-sns-message-type");
   if (!headerType || headerType !== body.Type) {
     return badRequest("Type mismatch");
+  }
+
+  // Defense in depth: SNS signature verification proves "this came from *an*
+  // SNS topic", but not which one. Without a TopicArn allowlist, an attacker
+  // can subscribe this endpoint to their own topic and deliver signed
+  // Bounce/Complaint payloads that disable member alerts.
+  if (ALLOWED_TOPIC_ARNS.size > 0) {
+    if (!ALLOWED_TOPIC_ARNS.has(body.TopicArn)) {
+      logger.warn("[ses/webhook] rejecting SNS message from unallowlisted topic", {
+        messageId: body.MessageId,
+        type: body.Type,
+        topic: body.TopicArn,
+      });
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+  } else if (!IS_DEV_OR_TEST) {
+    if (!allowlistMissingLogged) {
+      allowlistMissingLogged = true;
+      logger.error(
+        "[ses/webhook] AWS_SES_SNS_TOPIC_ARNS unset — refusing to process SNS messages",
+        new Error("ses_sns_topic_allowlist_unset"),
+        { type: body.Type, topic: body.TopicArn },
+      );
+    }
+    return NextResponse.json({ error: "not_configured" }, { status: 500 });
   }
 
   if (!(await verifySnsSignature(body))) {

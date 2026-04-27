@@ -55,6 +55,7 @@ type OptionalKey =
   | "STRIPE_PRICE_STORAGE_PER_SLOT"
   | "AWS_REGION"
   | "AWS_SES_FROM_EMAIL"
+  | "AWS_SES_SNS_TOPIC_ARNS"
   | "AWS_S3_BUCKET"
   | "AWS_CLOUDFRONT_DOMAIN"
   | "S3_UPLOAD_URL_TTL_SECONDS"
@@ -103,6 +104,14 @@ function assertRequired(): Record<RequiredKey, string> {
 // we're conservative — only skip when explicitly opted out.
 const SKIP = process.env.SKIP_ENV_VALIDATION === "true";
 const required = SKIP ? ({} as Record<RequiredKey, string>) : assertRequired();
+
+function commaSeparatedList(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 // In any non-dev/test environment both HMAC secrets must be set
 // independently — the dev fallback to NEXTAUTH_SECRET means a single
@@ -178,6 +187,11 @@ export const env = {
   STRIPE_PRICE_STORAGE_PER_SLOT: read("STRIPE_PRICE_STORAGE_PER_SLOT"),
   AWS_REGION: read("AWS_REGION"),
   AWS_SES_FROM_EMAIL: read("AWS_SES_FROM_EMAIL"),
+  // Comma-separated list of SNS TopicArns allowed to hit /api/ses/webhook.
+  // When empty in production, the webhook rejects all requests so an
+  // attacker can't subscribe this endpoint to an arbitrary SNS topic and
+  // disable member alerts with forged bounces/complaints.
+  AWS_SES_SNS_TOPIC_ARNS: commaSeparatedList(read("AWS_SES_SNS_TOPIC_ARNS")),
   AWS_S3_BUCKET: read("AWS_S3_BUCKET"),
   AWS_CLOUDFRONT_DOMAIN: read("AWS_CLOUDFRONT_DOMAIN"),
   // Presigned upload URL TTL in seconds. Defaults to 5 minutes; bump it if
