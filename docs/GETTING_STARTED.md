@@ -56,6 +56,9 @@ UPSTASH_REDIS_REST_TOKEN=
 # If AWS_SES_FROM_EMAIL is unset, the app logs + no-ops instead of calling SES.
 AWS_REGION=us-east-1
 AWS_SES_FROM_EMAIL=alerts@caveau.com
+# Comma-separated allowlist of SNS topic ARNs allowed to hit `/api/ses/webhook`.
+# In production, the webhook rejects all requests unless this is set.
+AWS_SES_SNS_TOPIC_ARNS=arn:aws:sns:us-east-1:123456789012:caveau-ses-feedback
 
 # Optional — enable wine bottle photo uploads (feature #18) to S3.
 # If AWS_S3_BUCKET is unset, the upload UI shows a friendly "disabled" state.

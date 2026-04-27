@@ -1,28 +1,29 @@
 /** @type {import('next').NextConfig} */
+const bucket = process.env.AWS_S3_BUCKET;
+const region = process.env.AWS_REGION ?? "us-east-1";
+const cloudfrontDomain = process.env.AWS_CLOUDFRONT_DOMAIN;
+
+const remotePatterns = [];
+if (cloudfrontDomain) {
+  remotePatterns.push({ protocol: "https", hostname: cloudfrontDomain });
+}
+if (bucket) {
+  remotePatterns.push({
+    protocol: "https",
+    hostname: `${bucket}.s3.${region}.amazonaws.com`,
+  });
+  remotePatterns.push({
+    protocol: "https",
+    hostname: `s3.${region}.amazonaws.com`,
+    pathname: `/${bucket}/**`,
+  });
+}
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "**.amazonaws.com" },
-      { protocol: "https", hostname: "**.cloudfront.net" },
-    ],
-  },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
-          // CSP is now set dynamically in middleware.ts (per-request nonce)
-        ],
-      },
-    ];
+    remotePatterns,
   },
 };
 

@@ -175,7 +175,11 @@ export async function checkInWine(input: {
       if (!wine) throw new Error("wine_not_found");
 
       const locker = await tx.locker.findFirst({
-        where: { id: input.lockerId, facilityId: input.facilityId },
+        where: {
+          id: input.lockerId,
+          facilityId: input.facilityId,
+          memberId: wine.memberId,
+        },
         select: { id: true },
       });
       if (!locker) throw new Error("locker_not_found");
@@ -273,4 +277,3 @@ export async function checkOutWine(input: {
     return { ok: false, error: mutationError(err) };
   }
 }
-

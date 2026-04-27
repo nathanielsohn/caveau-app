@@ -197,6 +197,7 @@ function applySecurityHeaders(
   // sniffing from promoting a JSON/text response into executable HTML.
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("X-Permitted-Cross-Domain-Policies", "none");
   res.headers.set(
     "Permissions-Policy",
     "geolocation=(), microphone=(), camera=(), payment=()",
@@ -213,6 +214,8 @@ function applySecurityHeaders(
   // (and its log drains / analytics / CDN access logs).
   if (pathname.startsWith("/verify/") || pathname.startsWith("/report/")) {
     res.headers.set("Referrer-Policy", "no-referrer");
+  } else {
+    res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   }
   return res;
 }
