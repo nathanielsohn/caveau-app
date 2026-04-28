@@ -75,7 +75,7 @@ export async function requestWineUploadUrl(
   // Cap presigned-URL signing so a misbehaving client (or attacker) can't
   // burn AWS API quota or make the bucket fanout expensive. Mirrors the
   // limit on `requestScanUploadUrl` in label-scan-actions.ts.
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `wine-upload:${session.user.id}:${ip}`,
     { limit: 10, windowMs: 60_000 },
@@ -178,7 +178,7 @@ export async function recordDisposition(formData: FormData) {
   const session = await getServerAuth();
   if (!session?.user?.id) throw new Error("Not found");
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `disposition:${session.user.id}:${ip}`,
     { limit: 30, windowMs: 60_000 },

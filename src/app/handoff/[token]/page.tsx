@@ -52,7 +52,7 @@ export default async function HandoffPublicPage({
 
   // Only log successful lookups so a 404 isn't mistaken for a valid access
   // in the owner's dashboard.
-  const h = headers();
+  const h = await headers();
   await recordHandoffAccess(
     bundle.package.id,
     clientIp(h),
@@ -363,4 +363,3 @@ function ExpiredView({ bundle }: { bundle: HandoffBundle }) {
     </div>
   );
 }
-

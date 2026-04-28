@@ -16,7 +16,7 @@ async function checkMutationLimit(
   bucket: string,
   memberId: string,
 ): Promise<boolean> {
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const result = await checkRateLimit(
     `${bucket}:${memberId}:${ip}`,
     MUTATION_POLICY,

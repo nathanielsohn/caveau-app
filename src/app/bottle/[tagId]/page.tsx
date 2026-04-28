@@ -48,7 +48,7 @@ export default async function BottleLandingPage({
 
   // Only log successful lookups so a 404 isn't mistaken for a valid tap
   // in the owner's dashboard.
-  const h = headers();
+  const h = await headers();
   await recordNfcScan(
     bundle.tag.id,
     clientIp(h),
@@ -239,7 +239,7 @@ function BottleView({ bundle }: { bundle: BottleBundle }) {
         {/* CTA → Caveau Custody & Condition Report */}
         {certificate ? (
           <Link
-            href={`/report/${certificate.id}`}
+            href={`/verify/${certificate.dataIntegrityHash}`}
             className="block glass-card p-5 hover:border-gold/40 transition-colors group"
           >
             <div className="flex items-center justify-between gap-4">

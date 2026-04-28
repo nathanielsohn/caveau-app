@@ -27,7 +27,7 @@ export default async function ReportPage({
 
   const { id } = await params;
   const certificate = await prisma.provenanceCertificate.findFirst({
-    where: { id, wine: { memberId: session.user.id } },
+    where: { id, revokedAt: null, wine: { memberId: session.user.id } },
     include: {
       wine: {
         select: {

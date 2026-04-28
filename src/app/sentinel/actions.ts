@@ -179,7 +179,7 @@ export async function recordLiveAlert(input: {
   // could still spam this action in a hot loop and grow the alerts table
   // unboundedly. 12/min is comfortably above the legitimate ceiling (one
   // alert per type per cooldown).
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(`live-alert:${memberId}:${ip}`, {
     limit: 12,
     windowMs: 60_000,

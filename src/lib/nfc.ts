@@ -57,6 +57,7 @@ export interface BottleBundle {
   certificate: {
     id: string;
     certificateNumber: string;
+    dataIntegrityHash: string;
     monitoringStart: string;
     monitoringEnd: string;
     createdAt: string;
@@ -109,11 +110,12 @@ export async function loadBottleByTag(tagId: string): Promise<BottleBundle | nul
       select: { price: true, date: true, source: true },
     }),
     prisma.provenanceCertificate.findFirst({
-      where: { wineId: tag.wineId },
+      where: { wineId: tag.wineId, revokedAt: null },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
         certificateNumber: true,
+        dataIntegrityHash: true,
         monitoringStart: true,
         monitoringEnd: true,
         createdAt: true,
@@ -168,6 +170,7 @@ export async function loadBottleByTag(tagId: string): Promise<BottleBundle | nul
       ? {
           id: certificate.id,
           certificateNumber: certificate.certificateNumber,
+          dataIntegrityHash: certificate.dataIntegrityHash,
           monitoringStart: certificate.monitoringStart.toISOString(),
           monitoringEnd: certificate.monitoringEnd.toISOString(),
           createdAt: certificate.createdAt.toISOString(),

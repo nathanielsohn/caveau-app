@@ -35,7 +35,7 @@ export async function createHandoffPackage(
   const session = await getServerAuth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `handoff-create:${session.user.id}:${ip}`,
     { limit: 20, windowMs: 60_000 },

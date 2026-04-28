@@ -19,7 +19,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `valuation-read:${session.user.id}:${ip}`,
     { limit: 60, windowMs: 60_000 },
@@ -68,7 +68,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `valuation-create:${session.user.id}:${ip}`,
     { limit: 30, windowMs: 60_000 },

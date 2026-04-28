@@ -38,6 +38,36 @@ NEXTAUTH_URL=http://localhost:3000
 # Leave unset in production builds.
 NEXT_PUBLIC_SHOW_DEMO_CREDS=true
 
+# Optional — enable insurance partner referral/proof APIs. Production
+# deployments that set INSURANCE_PARTNER_ENABLED=true should also set an
+# independent bearer secret for `/api/insurance/*`.
+INSURANCE_PARTNER_ENABLED=false
+INSURANCE_API_SECRET=<random-base64-string>
+
+# Optional — mobile companion app bearer-token signing. Defaults to
+# NEXTAUTH_SECRET for dev/demo, but production should use an independent
+# random value. TTL is seconds; default is 30 days.
+MOBILE_TOKEN_SECRET=<random-base64-string>
+MOBILE_TOKEN_TTL_SECONDS=2592000
+
+# Optional — Expo push notifications for the mobile app.
+EXPO_PUSH_ENABLED=false
+EXPO_PUSH_ACCESS_TOKEN=
+
+# Optional — Stripe billing. Leave unset to keep the billing surface in its
+# friendly disabled state.
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_COLLECTOR=price_...
+STRIPE_PRICE_RESERVE=price_...
+STRIPE_PRICE_PRIVATE_VAULT=price_...
+STRIPE_PRICE_ESTATE=price_...
+STRIPE_PRICE_COLLECTOR_FOUNDING=price_...
+STRIPE_PRICE_RESERVE_FOUNDING=price_...
+STRIPE_PRICE_PRIVATE_VAULT_FOUNDING=price_...
+STRIPE_PRICE_ESTATE_FOUNDING=price_...
+STRIPE_PRICE_STORAGE_PER_SLOT=price_...
+
 # Optional — dedicated HMAC keys for Caveau Custody & Condition Report hashes and the
 # signed facility-switcher cookie. Both fall back to NEXTAUTH_SECRET when
 # unset (fine for demo/dev); set independent random values in production

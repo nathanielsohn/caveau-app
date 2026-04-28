@@ -362,6 +362,7 @@ describe("GET /api/certificates/[id]", () => {
     const args = (prisma.provenanceCertificate.findFirst as ReturnType<typeof vi.fn>)
       .mock.calls[0]![0];
     expect(args.where.id).toBe(CERT_ID);
+    expect(args.where.revokedAt).toBeNull();
     expect(args.where.wine).toEqual(
       expect.objectContaining({ memberId: MEMBER_ID }),
     );

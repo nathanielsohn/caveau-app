@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(`wine-create:${session.user.id}:${ip}`, {
     limit: 30,
     windowMs: 60_000,

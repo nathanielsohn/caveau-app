@@ -71,7 +71,7 @@ function authorized(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
 
-  const requestId = getRequestId();
+  const requestId = await getRequestId();
 
   // Safety gate: never delete raw readings unless daily rollups have been
   // computed through the cutoff window. Otherwise a stuck rollup cron

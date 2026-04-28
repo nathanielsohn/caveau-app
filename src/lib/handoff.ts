@@ -94,7 +94,7 @@ export async function loadHandoffBundle(
   // reflects the freshest custody record — a new report issued after the
   // package was created should still show up.
   const cert = await prisma.provenanceCertificate.findFirst({
-    where: { wineId: pkg.wineId },
+    where: { wineId: pkg.wineId, revokedAt: null },
     orderBy: { createdAt: "desc" },
     select: { id: true },
   });

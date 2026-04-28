@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Share2, X, ChevronDown, Copy, CheckCircle2 } from "lucide-react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
@@ -158,12 +159,12 @@ export default function HandoffPackageButton({
                       </>
                     )}
                   </button>
-                  <a
+                  <Link
                     href="/handoff"
                     className="text-sm text-secondary hover:text-gold px-3 py-2 transition-colors"
                   >
                     View all
-                  </a>
+                  </Link>
                 </div>
               </div>
             ) : (

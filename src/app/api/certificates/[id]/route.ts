@@ -20,7 +20,11 @@ export async function GET(
   // into "fetch + then check" because that lets attackers distinguish "exists
   // but not yours" from "doesn't exist" via response timing.
   const certificate = await prisma.provenanceCertificate.findFirst({
-    where: { id: idResult.data, wine: { memberId: session.user.id } },
+    where: {
+      id: idResult.data,
+      revokedAt: null,
+      wine: { memberId: session.user.id },
+    },
     include: {
       wine: {
         select: {

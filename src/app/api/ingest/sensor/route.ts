@@ -87,7 +87,7 @@ function authorized(req: NextRequest): boolean {
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
 
-  const requestId = getRequestId();
+  const requestId = await getRequestId();
   let body: unknown;
   try {
     body = await req.json();

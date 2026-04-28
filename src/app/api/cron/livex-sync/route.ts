@@ -173,7 +173,7 @@ async function syncOneWine(
 
 export async function GET(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
-  const requestId = getRequestId();
+  const requestId = await getRequestId();
 
   if (!isLivexConfigured()) {
     logger.info("[cron/livex-sync] skipped — LIVEX_API_KEY unset", { requestId });

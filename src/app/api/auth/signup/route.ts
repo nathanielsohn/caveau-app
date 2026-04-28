@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     // + no Domain attribute) mean a subdomain or sibling origin can't
     // plant a matching cookie on the parent. Falling back to the bare
     // name keeps local dev (http://) working where the prefix is absent.
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const csrfCookie =
       cookieStore.get("__Host-next-auth.csrf-token")?.value ||
       cookieStore.get("next-auth.csrf-token")?.value;

@@ -72,7 +72,7 @@ export async function buildProvenanceBundle(
   memberId: string,
 ): Promise<ProvenanceBundle | null> {
   const cert = await prisma.provenanceCertificate.findFirst({
-    where: { id: certificateId, wine: { memberId } },
+    where: { id: certificateId, revokedAt: null, wine: { memberId } },
     include: {
       wine: {
         select: {

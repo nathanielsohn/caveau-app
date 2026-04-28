@@ -190,8 +190,8 @@ export const AlertsQuerySchema = z.object({
 // bounds for a wine-vault sensor — a value outside these is a malformed
 // packet, not a real reading, so we 400 at the boundary instead of letting
 // `checkThresholds` fire a critical alert + SES email on garbage. The db
-// columns are Decimal(5,2) / Decimal(5,3); the upper bounds here all fit
-// in 5 digits of precision (50.000 mm/s vibration, 120.00 °F).
+// columns are Decimal(7,2) for lux and Decimal(5,2) / Decimal(5,3) for the
+// other readings; the upper bounds here fit those precision limits.
 export const SensorIngestBodySchema = z.object({
   lockerId: UuidSchema,
   temperature: z.coerce.number().finite().min(32).max(120),

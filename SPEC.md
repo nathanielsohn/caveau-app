@@ -156,7 +156,7 @@ When creating `ProvenanceCertificate` (CCR) records, calculate `tempMean`, `temp
 See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
 - The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#62 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
-- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0039.sql).
+- Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0047.sql).
 - Config files: package.json, next.config.mjs, tailwind.config.ts, .env, vitest.config.ts.
 
 ---

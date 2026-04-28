@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   }
 
   const memberId = session.user.id;
-  const requestId = getRequestId();
+  const requestId = await getRequestId();
 
   // Per-member rate limit — 20 requests/hour. Per-IP would be wrong here
   // because multiple members can share a household NAT, and per-member

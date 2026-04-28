@@ -96,9 +96,9 @@ export type BillingActionResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
-function getAppBaseUrlFromHeaders(): string | null {
+async function getAppBaseUrlFromHeaders(): Promise<string | null> {
   if (env.NEXTAUTH_URL) return env.NEXTAUTH_URL.replace(/\/$/, "");
-  const h = headers();
+  const h = await headers();
   const origin = h.get("origin");
   if (origin) return origin.replace(/\/$/, "");
   const host = h.get("x-forwarded-host") ?? h.get("host");
@@ -164,7 +164,7 @@ export async function createCheckoutSessionAction(): Promise<BillingActionResult
     const stripe = getStripeClient();
     if (!stripe) return { ok: false, error: "Billing is not configured." };
 
-    const baseUrl = getAppBaseUrlFromHeaders();
+    const baseUrl = await getAppBaseUrlFromHeaders();
     if (!baseUrl) {
       return {
         ok: false,
@@ -248,7 +248,7 @@ export async function createBillingPortalAction(): Promise<BillingActionResult> 
     const stripe = getStripeClient();
     if (!stripe) return { ok: false, error: "Billing is not configured." };
 
-    const baseUrl = getAppBaseUrlFromHeaders();
+    const baseUrl = await getAppBaseUrlFromHeaders();
     if (!baseUrl) {
       return {
         ok: false,

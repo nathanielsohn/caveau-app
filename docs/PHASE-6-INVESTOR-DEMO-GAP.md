@@ -4,7 +4,7 @@
 **Author:** Nathaniel Sohn (CTO)
 **Purpose:** Inventory of features the app needs so Rob + Samuel can demo the full investor narrative solo.
 
-**Status as of 2026-04-22:** Phase 6 is complete — everything in **§1–§15 shipped**. Remaining P1 items from the original gap list are **§16 Insurance referral program** (roadmap #31) and **§18 staff check-in/out** (roadmap #25).
+**Status as of 2026-04-28:** Phase 6 and the original P1 remainder are covered in code. `SPEC.md` is the current source of truth: insurance partner program (#31), staff locker check-in/out (#25), mobile companion app (#29), multi-location management (#32), and home cellar program (#48) are marked shipped.
 
 The body below is preserved as the original gap framing **as of 2026-04-16**. Any “missing” language refers to that date, not the current app.
 

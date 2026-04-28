@@ -66,7 +66,7 @@ function addDays(date: Date, days: number): Date {
 export async function GET(req: NextRequest) {
   if (!authorized(req)) return unauthorized();
 
-  const requestId = getRequestId();
+  const requestId = await getRequestId();
   const startedAt = Date.now();
   const now = new Date();
 
@@ -120,9 +120,9 @@ export async function GET(req: NextRequest) {
       ROUND(AVG(sr."vibration")::numeric, 3)::DECIMAL(5,3),
       MIN(sr."vibration")::DECIMAL(5,3),
       MAX(sr."vibration")::DECIMAL(5,3),
-      ROUND(AVG(sr."light_lux")::numeric, 2)::DECIMAL(5,2),
-      MIN(sr."light_lux")::DECIMAL(5,2),
-      MAX(sr."light_lux")::DECIMAL(5,2),
+      ROUND(AVG(sr."light_lux")::numeric, 2)::DECIMAL(7,2),
+      MIN(sr."light_lux")::DECIMAL(7,2),
+      MAX(sr."light_lux")::DECIMAL(7,2),
       COUNT(*)::int,
       CURRENT_TIMESTAMP
     FROM "sensor_readings" sr
@@ -177,9 +177,9 @@ export async function GET(req: NextRequest) {
       ROUND(AVG(sr."vibration")::numeric, 3)::DECIMAL(5,3),
       MIN(sr."vibration")::DECIMAL(5,3),
       MAX(sr."vibration")::DECIMAL(5,3),
-      ROUND(AVG(sr."light_lux")::numeric, 2)::DECIMAL(5,2),
-      MIN(sr."light_lux")::DECIMAL(5,2),
-      MAX(sr."light_lux")::DECIMAL(5,2),
+      ROUND(AVG(sr."light_lux")::numeric, 2)::DECIMAL(7,2),
+      MIN(sr."light_lux")::DECIMAL(7,2),
+      MAX(sr."light_lux")::DECIMAL(7,2),
       COUNT(*)::int,
       CURRENT_TIMESTAMP
     FROM "sensor_readings" sr
@@ -243,4 +243,3 @@ export async function GET(req: NextRequest) {
     durationMs,
   });
 }
-

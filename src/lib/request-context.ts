@@ -14,9 +14,9 @@
  */
 import { headers } from "next/headers";
 
-export function getRequestId(): string | undefined {
+export async function getRequestId(): Promise<string | undefined> {
   try {
-    const id = headers().get("x-request-id");
+    const id = (await headers()).get("x-request-id");
     return id && id.length > 0 ? id : undefined;
   } catch {
     // `headers()` throws when called outside a request scope (tests,

@@ -1,5 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { isStaffAdminPath } from "@/lib/admin-routes";
 import { checkRateLimit, clientIp, type RateLimitPolicy } from "@/lib/rate-limit";
 import { safeCallback } from "@/lib/safe-callback";
 
@@ -247,6 +248,7 @@ export async function middleware(req: NextRequest) {
   // request.headers override replays the request with the mutated set.
   const forwardHeaders = new Headers(req.headers);
   forwardHeaders.set("x-request-id", requestId);
+  forwardHeaders.set("x-pathname", pathname);
   const nextWithId = () =>
     NextResponse.next({ request: { headers: forwardHeaders } });
 
@@ -379,9 +381,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // --- Admin gate (feature #28) ---
-  // The /admin panel is staff-only. Non-admins bounce to the dashboard
-  // rather than 403 — keeps the surface undiscoverable to members.
-  if (pathname.startsWith("/admin") && token.role !== "admin") {
+  // Most /admin surfaces are admin-only. Staff can reach the explicit
+  // operator routes listed in src/lib/admin-routes.ts; pages/actions still
+  // re-check roles server-side.
+  const canAccessAdmin =
+    token.role === "admin" ||
+    (token.role === "staff" && isStaffAdminPath(pathname));
+  if (pathname.startsWith("/admin") && !canAccessAdmin) {
     return applySecurityHeaders(
       NextResponse.redirect(new URL("/", req.url)),
       csp,

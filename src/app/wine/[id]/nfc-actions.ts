@@ -70,7 +70,7 @@ export async function requestTagUploadUrl(
   const session = await getServerAuth();
   if (!session?.user?.id) throw new Error("Not authenticated");
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `nfc-upload:${session.user.id}:${ip}`,
     { limit: 10, windowMs: 60_000 },
@@ -125,7 +125,7 @@ export async function assignNfcTag(formData: FormData): Promise<AssignTagResult>
   const session = await getServerAuth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `nfc-assign:${session.user.id}:${ip}`,
     { limit: 30, windowMs: 60_000 },
@@ -211,7 +211,7 @@ export async function removeNfcTag(formData: FormData): Promise<AssignTagResult>
   const session = await getServerAuth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `nfc-remove:${session.user.id}:${ip}`,
     { limit: 30, windowMs: 60_000 },

@@ -10,6 +10,7 @@ import {
   Lock,
   Bell,
   CalendarDays,
+  CloudLightning,
   Cpu,
   FileInput,
   FileText,
@@ -22,24 +23,30 @@ import {
 } from "lucide-react";
 
 const adminNavItems = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/facilities", label: "Facilities", icon: Building2 },
-  { href: "/admin/transfers", label: "Transfers", icon: ArrowRightLeft },
-  { href: "/admin/members", label: "Members", icon: Users },
-  { href: "/admin/lockers", label: "Lockers", icon: Lock },
-  { href: "/admin/sentinels", label: "Devices", icon: Cpu },
-  { href: "/admin/alerts", label: "Alerts", icon: Bell },
-  { href: "/admin/events", label: "Events", icon: CalendarDays },
-  { href: "/admin/allocations", label: "Allocations", icon: Gem },
-  { href: "/admin/acquisitions", label: "Sourcing", icon: Search },
-  { href: "/admin/exits", label: "Exits", icon: Target },
-  { href: "/admin/appraisals", label: "Appraisals", icon: FileText },
-  { href: "/admin/migrations", label: "Migrations", icon: FileInput },
+  { href: "/admin", label: "Overview", icon: LayoutDashboard, minRole: "admin" },
+  { href: "/admin/facilities", label: "Facilities", icon: Building2, minRole: "admin" },
+  { href: "/admin/transfers", label: "Transfers", icon: ArrowRightLeft, minRole: "admin" },
+  { href: "/admin/members", label: "Members", icon: Users, minRole: "admin" },
+  { href: "/admin/lockers", label: "Lockers", icon: Lock, minRole: "admin" },
+  { href: "/admin/sentinels", label: "Devices", icon: Cpu, minRole: "admin" },
+  { href: "/admin/alerts", label: "Alerts", icon: Bell, minRole: "admin" },
+  { href: "/admin/events", label: "Events", icon: CalendarDays, minRole: "admin" },
+  { href: "/admin/allocations", label: "Allocations", icon: Gem, minRole: "admin" },
+  { href: "/admin/acquisitions", label: "Sourcing", icon: Search, minRole: "admin" },
+  { href: "/admin/exits", label: "Exits", icon: Target, minRole: "admin" },
+  { href: "/admin/appraisals", label: "Appraisals", icon: FileText, minRole: "admin" },
+  { href: "/admin/migrations", label: "Migrations", icon: FileInput, minRole: "admin" },
+  { href: "/admin/hurricane", label: "Hurricane", icon: CloudLightning, minRole: "staff" },
+  { href: "/admin/waitlist", label: "Waitlist", icon: Users, minRole: "staff" },
 ];
 
 export default function AdminNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const role = session?.user?.role === "admin" ? "admin" : "staff";
+  const visibleItems = adminNavItems.filter(
+    (item) => role === "admin" || item.minRole === "staff",
+  );
 
   return (
     <>
@@ -59,7 +66,7 @@ export default function AdminNav() {
         </div>
 
         <nav className="flex-1 px-3 mt-2">
-          {adminNavItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive =
               item.href === "/admin"
                 ? pathname === "/admin"
@@ -96,7 +103,9 @@ export default function AdminNav() {
           <p className="text-sm text-primary font-medium truncate">
             {session?.user?.name || "—"}
           </p>
-          <p className="text-xs text-gold-text">Admin</p>
+          <p className="text-xs text-gold-text">
+            {role === "staff" ? "Staff" : "Admin"}
+          </p>
           <button
             onClick={() => signOut({ callbackUrl: "/auth/login" })}
             className="flex items-center gap-1.5 text-xs text-muted hover:text-primary mt-3 transition-colors"
@@ -134,7 +143,7 @@ export default function AdminNav() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-around h-16">
-          {adminNavItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive =
               item.href === "/admin"
                 ? pathname === "/admin"

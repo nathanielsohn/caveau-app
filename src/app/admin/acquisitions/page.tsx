@@ -122,13 +122,13 @@ export default async function AdminAcquisitionsPage({
             </p>
           </div>
         </div>
-        <a
+        <Link
           href="/admin/acquisitions/export"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#2A2A30] text-primary text-sm hover:border-gold/40 transition-colors"
         >
           <Download className="w-4 h-4" />
           Export CSV
-        </a>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2 mb-5 flex-wrap">

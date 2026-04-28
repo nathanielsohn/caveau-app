@@ -90,6 +90,9 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
         },
       },
       certificates: {
+        where: { revokedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
         select: { id: true, certificateNumber: true },
       },
       valuations: {
@@ -157,7 +160,7 @@ export default async function WineDetailPage({ params }: WineDetailPageProps) {
   // request headers so dev, staging, and prod each resolve to their own
   // host without an extra env var.
   const nfcTag = wine.nfcTags[0] ?? null;
-  const reqHeaders = headers();
+  const reqHeaders = await headers();
   const forwardedProto = reqHeaders.get("x-forwarded-proto");
   const host = reqHeaders.get("host") ?? "localhost:3000";
   const proto = forwardedProto ?? (host.startsWith("localhost") ? "http" : "https");

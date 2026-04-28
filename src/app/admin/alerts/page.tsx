@@ -17,12 +17,13 @@ function severityClass(sev: string): string {
 export default async function AdminAlertsPage({
   searchParams,
 }: {
-  searchParams?: { filter?: string };
+  searchParams: Promise<{ filter?: string }>;
 }) {
+  const params = await searchParams;
   const filter: Filter =
-    searchParams?.filter === "resolved"
+    params.filter === "resolved"
       ? "resolved"
-      : searchParams?.filter === "all"
+      : params.filter === "all"
         ? "all"
         : "open";
 

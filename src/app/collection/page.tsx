@@ -25,7 +25,7 @@ async function addWine(formData: FormData) {
   const session = await getServerAuth();
   if (!session?.user?.id) throw new Error("Not authenticated");
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(`wine-create:${session.user.id}:${ip}`, {
     limit: 30,
     windowMs: 60_000,

@@ -30,7 +30,8 @@ export async function setCurrentFacility(
   // cookie outlives the session and leaves a stale facility preference
   // active after logout — we'd rather the nav default to the first
   // membership than a cookie the user can't see.
-  cookies().set(FACILITY_COOKIE, signValue(facilityId), {
+  const cookieStore = await cookies();
+  cookieStore.set(FACILITY_COOKIE, signValue(facilityId), {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",

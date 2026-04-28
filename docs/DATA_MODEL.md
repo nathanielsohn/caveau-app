@@ -1,6 +1,6 @@
 # Data Model
 
-> Last updated: 2026-04-23 | 36 Prisma models, 31 Postgres enums, 39 SQL migrations (0001..0039). Source of truth: `prisma/schema.prisma`.
+> Last updated: 2026-04-28 | 43 Prisma models, 34 Postgres enums, 47 SQL migrations (0001..0047). Source of truth: `prisma/schema.prisma`.
 
 ## Principles
 
@@ -123,4 +123,3 @@ Prisma returns `Decimal` columns as `Prisma.Decimal` objects (string-backed), **
 - Many finance fields in Phase 5–6 tables (appraisals, acquisitions, exits)
 
 Always convert before arithmetic — use `toNumber()` from `src/lib/utils.ts` (accepts `Decimal | string | number | null | undefined`).
-

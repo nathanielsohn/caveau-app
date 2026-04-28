@@ -7,6 +7,7 @@ import {
   VintageSchema,
   SignupBodySchema,
   CreateWineBodySchema,
+  SensorIngestBodySchema,
   ValuationBodySchema,
   SensorHistoryQuerySchema,
   parseOr400,
@@ -178,6 +179,28 @@ describe("SensorHistoryQuerySchema", () => {
         lockerId: "550e8400-e29b-41d4-a716-446655440000",
         range: "5m",
       }),
+    ).toThrow();
+  });
+});
+
+describe("SensorIngestBodySchema", () => {
+  const valid = {
+    lockerId: "550e8400-e29b-41d4-a716-446655440000",
+    temperature: 55.25,
+    humidity: 62.5,
+    vibration: 0.125,
+    lightLux: 50_000,
+    timestamp: "2026-04-28T12:00:00.000Z",
+    deviceSignature: "device-serial-1",
+  };
+
+  it("accepts light readings that fit the widened Decimal(7,2) column", () => {
+    expect(() => SensorIngestBodySchema.parse(valid)).not.toThrow();
+  });
+
+  it("rejects impossible light readings above the device envelope", () => {
+    expect(() =>
+      SensorIngestBodySchema.parse({ ...valid, lightLux: 50_000.01 }),
     ).toThrow();
   });
 });

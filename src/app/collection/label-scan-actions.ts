@@ -69,7 +69,7 @@ export async function requestScanUploadUrl(
     return { ok: false, error: "Image must be 5MB or smaller." };
   }
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `scan-upload:${session.user.id}:${ip}`,
     { limit: 10, windowMs: 60_000 },
@@ -109,7 +109,7 @@ export async function scanWineLabel(key: string): Promise<ScanWineLabelResult> {
     return { ok: false, error: "Invalid object key" };
   }
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(
     `scan-label:${session.user.id}:${ip}`,
     { limit: 10, windowMs: 60_000 },

@@ -8,10 +8,12 @@ export interface EnvelopeStats {
   humidity: { min: number; max: number; avg: number } | null;
 }
 
-function floorToUtcHour(date: Date): Date {
-  const d = new Date(date);
-  d.setUTCMinutes(0, 0, 0);
-  return d;
+function isUtcHourBoundary(date: Date): boolean {
+  return (
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0
+  );
 }
 
 /**
@@ -26,59 +28,65 @@ export async function getLockerEnvelope(
   start: Date,
   end: Date,
 ): Promise<EnvelopeStats> {
-  const bucketStart = floorToUtcHour(start);
-  const bucketEnd = floorToUtcHour(end);
+  const canUseWholeHourRollups =
+    end.getTime() > start.getTime() &&
+    isUtcHourBoundary(start) &&
+    isUtcHourBoundary(end);
 
-  const rollups = await prisma.$queryRaw<
-    {
-      sample_count: bigint | number | null;
-      temp_min: Prisma.Decimal | number | null;
-      temp_max: Prisma.Decimal | number | null;
-      temp_avg: Prisma.Decimal | number | null;
-      humidity_min: Prisma.Decimal | number | null;
-      humidity_max: Prisma.Decimal | number | null;
-      humidity_avg: Prisma.Decimal | number | null;
-    }[]
-  >`
-    SELECT
-      SUM(r."sample_count") AS sample_count,
-      MIN(r."temperature_min") AS temp_min,
-      MAX(r."temperature_max") AS temp_max,
-      SUM(r."temperature_avg" * r."sample_count") / NULLIF(SUM(r."sample_count"), 0) AS temp_avg,
-      MIN(r."humidity_min") AS humidity_min,
-      MAX(r."humidity_max") AS humidity_max,
-      SUM(r."humidity_avg" * r."sample_count") / NULLIF(SUM(r."sample_count"), 0) AS humidity_avg
-    FROM "sensor_reading_hourly_rollups" r
-    WHERE r."locker_id" = ${lockerId}
-      AND r."bucket" >= ${bucketStart}
-      AND r."bucket" <= ${bucketEnd}
-  `;
+  if (canUseWholeHourRollups) {
+    const rollups = await prisma.$queryRaw<
+      {
+        sample_count: bigint | number | null;
+        temp_min: Prisma.Decimal | number | null;
+        temp_max: Prisma.Decimal | number | null;
+        temp_avg: Prisma.Decimal | number | null;
+        humidity_min: Prisma.Decimal | number | null;
+        humidity_max: Prisma.Decimal | number | null;
+        humidity_avg: Prisma.Decimal | number | null;
+      }[]
+    >`
+      SELECT
+        SUM(r."sample_count") AS sample_count,
+        MIN(r."temperature_min") AS temp_min,
+        MAX(r."temperature_max") AS temp_max,
+        SUM(r."temperature_avg" * r."sample_count") / NULLIF(SUM(r."sample_count"), 0) AS temp_avg,
+        MIN(r."humidity_min") AS humidity_min,
+        MAX(r."humidity_max") AS humidity_max,
+        SUM(r."humidity_avg" * r."sample_count") / NULLIF(SUM(r."sample_count"), 0) AS humidity_avg
+      FROM "sensor_reading_hourly_rollups" r
+      WHERE r."locker_id" = ${lockerId}
+        AND r."bucket" >= ${start}
+        AND r."bucket" < ${end}
+    `;
 
-  const rollup = rollups[0];
-  const rollupCount = rollup?.sample_count ? Number(rollup.sample_count) : 0;
+    const rollup = rollups[0];
+    const rollupCount = rollup?.sample_count ? Number(rollup.sample_count) : 0;
 
-  if (rollup && rollupCount > 0) {
-    return {
-      sampleCount: rollupCount,
-      temp:
-        rollup.temp_min != null && rollup.temp_max != null && rollup.temp_avg != null
-          ? {
-              min: toNumber(rollup.temp_min),
-              max: toNumber(rollup.temp_max),
-              avg: toNumber(rollup.temp_avg),
-            }
-          : null,
-      humidity:
-        rollup.humidity_min != null &&
-        rollup.humidity_max != null &&
-        rollup.humidity_avg != null
-          ? {
-              min: toNumber(rollup.humidity_min),
-              max: toNumber(rollup.humidity_max),
-              avg: toNumber(rollup.humidity_avg),
-            }
-          : null,
-    };
+    if (rollup && rollupCount > 0) {
+      return {
+        sampleCount: rollupCount,
+        temp:
+          rollup.temp_min != null &&
+          rollup.temp_max != null &&
+          rollup.temp_avg != null
+            ? {
+                min: toNumber(rollup.temp_min),
+                max: toNumber(rollup.temp_max),
+                avg: toNumber(rollup.temp_avg),
+              }
+            : null,
+        humidity:
+          rollup.humidity_min != null &&
+          rollup.humidity_max != null &&
+          rollup.humidity_avg != null
+            ? {
+                min: toNumber(rollup.humidity_min),
+                max: toNumber(rollup.humidity_max),
+                avg: toNumber(rollup.humidity_avg),
+              }
+            : null,
+      };
+    }
   }
 
   const agg = await prisma.sensorReading.aggregate({

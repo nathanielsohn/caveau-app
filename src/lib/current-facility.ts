@@ -86,7 +86,7 @@ export async function getCurrentFacility(
   const facilities = await getMemberFacilities(memberId);
   if (facilities.length === 0) return null;
 
-  const raw = cookies().get(FACILITY_COOKIE)?.value;
+  const raw = (await cookies()).get(FACILITY_COOKIE)?.value;
   const cookieId = raw ? verifySigned(raw) : null;
   if (cookieId) {
     const match = facilities.find((f) => f.id === cookieId);

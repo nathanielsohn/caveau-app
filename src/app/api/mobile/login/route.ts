@@ -7,7 +7,7 @@ import { createMobileToken } from "@/lib/mobile-token";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const limit = await checkRateLimit(`mobile-login:${ip}`, {
     limit: 10,
     windowMs: 60_000,
@@ -73,4 +73,3 @@ export async function POST(request: NextRequest) {
     { headers: { "Cache-Control": "no-store" } },
   );
 }
-
