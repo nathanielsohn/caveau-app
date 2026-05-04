@@ -38,7 +38,7 @@ API routes are implemented. Member-facing endpoints require authentication via N
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/signup` | Create account (email validated, 10-char min password with upper+lower+digit, CSRF double-submit) — 5/60s per IP, fail-closed |
+| POST | `/api/auth/signup` | Create account (email validated, 12-char min password with upper+lower+digit+symbol, CSRF double-submit) — 5/60s per IP, fail-closed |
 | `*` | `/api/auth/[...nextauth]` | NextAuth handlers (login, CSRF, session) — login 10/60s per IP, fail-closed |
 
 ### Public / token-scoped

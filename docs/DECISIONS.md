@@ -13,29 +13,31 @@
 
 **Decision:** RDS + Prisma.
 
-**Why:**
+**Why at the time:**
 - Database stays on AWS alongside future backend services (IoT ingestion, background jobs)
 - RDS free tier is generous (12 months, db.t3.micro, 20GB)
 - Prisma provides type-safe queries and auto-generated TypeScript types from the schema
 - No vendor lock-in — standard Postgres, can migrate anywhere
-- Supabase auth/REST features aren't needed (demo has no real auth)
+- Supabase auth/REST features were not needed for the initial demo; Caveau now uses NextAuth.js directly.
 
 **Trade-offs:**
 - More manual setup than Supabase (security groups, connection strings)
-- No built-in auth — will need NextAuth.js or Clerk in Phase 1
+- No built-in auth — required a separate auth layer, now implemented with NextAuth.js
 
 ---
 
-## ADR-002: Next.js 14 (not 15)
+## ADR-002: Next.js App Router Version
 
 **Date:** 2026-04-10
-**Status:** Accepted
+**Status:** Superseded by upgrade to Next.js 15
 
 **Context:** Next.js 15 was available but brought breaking changes and newer patterns.
 
-**Decision:** Pin to Next.js 14 via `create-next-app@14`.
+**Original decision:** Pin to Next.js 14 via `create-next-app@14`.
 
-**Why:**
+**Current state:** The app now runs on Next.js 15 (`package.json`), still using the App Router and the same conservative Server Component / Server Action patterns.
+
+**Why at the time:**
 - Next.js 14 App Router is stable and well-documented
 - Wider ecosystem compatibility (tutorials, Stack Overflow answers, library support)
 - "Tried-and-true tech only" principle — no bleeding-edge patterns for a demo
@@ -53,7 +55,7 @@
 **Decision:** Pin to Prisma 5.x.
 
 **Why:**
-- Prisma 5 is the most battle-tested version with Next.js 14
+- Prisma 5 remains the app's pinned ORM while the framework runs on Next.js 15.
 - Traditional `schema.prisma` with `url = env("DATABASE_URL")` — simpler, well-documented
 - No need for Prisma 7's new features (Prisma Accelerate, etc.) in a demo app
 - Avoids configuration complexity for a project maintained by one developer

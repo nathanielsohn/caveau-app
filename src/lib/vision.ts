@@ -11,7 +11,7 @@
  * `./email.ts`.
  *
  * The API key must be restricted to Vision API only in Google Cloud Console;
- * we can't enforce that from app code, but it's documented in CLAUDE.md.
+ * we can't enforce that from app code, but it's documented in docs/GETTING_STARTED.md.
  */
 import { env } from "./env";
 import { logger } from "./logger";

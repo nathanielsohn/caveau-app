@@ -297,9 +297,9 @@ export async function middleware(req: NextRequest) {
     // page + its server action POST are both unauthenticated by design.
     pathname === "/waitlist" ||
     // Public events list + detail pages (feature #53). Non-members browse
-    // the list and submit a lead via the event-scoped signup form on the
-    // detail page; authenticated members get a richer RSVP UI on the same
-    // URL. Draft and cancelled events 404 at the page layer.
+    // public events and submit a lead via the event-scoped signup form;
+    // authenticated members get a richer RSVP UI on the same URL. Member-only
+    // details redirect to login before rendering private metadata.
     pathname === "/events" ||
     pathname.startsWith("/events/") ||
     // Allocations list (feature #60). Unauthenticated visitors see the

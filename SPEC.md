@@ -2,7 +2,7 @@
 
 ## Context
 
-Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder (Rob Saenz) and an investor are excited about the tech stack: a wine cellar management app + Sentinel IoT monitoring + Caveau Custody & Condition Reports (CCRs). Nathaniel (developer) has been brought in by Sam (GM) to build a working demo app by Monday April 13, 2026. The app will be built by Claude Code in ~3 autonomous sessions over the weekend.
+Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder (Rob Saenz) and an investor are excited about the tech stack: a wine cellar management app + Sentinel IoT monitoring + Caveau Custody & Condition Reports (CCRs). Nathaniel (developer) has been brought in by Sam (GM) to build a working demo app by Monday April 13, 2026. The app was originally prototyped over that weekend with an AI coding assistant; it’s now maintained with ChatGPT/Codex.
 
 **Constraints:**
 - One developer maintaining this long-term
@@ -16,7 +16,7 @@ Caveau is a luxury wine bar/retail/speakeasy concept for Naples, FL. The founder
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Framework | **Next.js 14** (App Router, TypeScript) | Industry standard, stable, huge ecosystem |
+| Framework | **Next.js 15** (App Router, TypeScript) | App Router baseline currently used by the repo; stable ecosystem and Vercel support |
 | Styling | **Tailwind CSS v3** | Proven, fast to iterate, great dark theme support |
 | Charts | **Recharts v2** | Most popular React charting lib, well-documented |
 | Animations | **Framer Motion** | Standard for React animations, simple API |
@@ -153,7 +153,7 @@ When creating `ProvenanceCertificate` (CCR) records, calculate `tempMean`, `temp
 
 ## Project Structure
 
-See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
+See `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 
 - The original demo was scoped to ~20 source files; the file count is now larger as roadmap features #15–#62 added pages, API routes, and lib helpers. The "keep it simple, colocate sub-components" principle still applies.
 - Prisma files live in `prisma/` (schema.prisma, seed.ts, seed-sensors.ts, migrations/0001..0047.sql).
@@ -167,7 +167,7 @@ See CLAUDE.md and `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key
 
 ### Session 1: Foundation + Dashboard + Collection
 
-1. **Scaffold** — `npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir --use-npm --no-import-alias` (use `@14`, not `@latest`, to ensure scaffolded files match Next.js 14 conventions)
+1. **Scaffold** — originally bootstrapped with `npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir --use-npm --no-import-alias`; the maintained app now runs on Next.js 15.
 2. **Install deps** — `prisma @prisma/client recharts@^2 framer-motion@^11 lucide-react@^0`
 3. **Configure** — tailwind.config.ts (colors, fonts), globals.css (dark theme, glass-card utility), layout.tsx (Playfair + Inter fonts, dark bg, nav shell)
 4. **Lib files** — prisma.ts (client singleton), utils.ts, sensors.ts
@@ -237,7 +237,7 @@ Custom domain (optional): Add in Vercel Dashboard → Settings → Domains.
 
 ## What to Skip
 
-See "Not Yet Implemented" in CLAUDE.md for the exclusion list. Auth (#15), membership + payments (#27), the admin panel (#28), Liv-ex live pricing (#39), and Sentinel device ingest (#21) are all now implemented. Still excluded from the demo path: Wine-Searcher integration, the mobile app (#29), and carrier-API integrations for insurance (#31).
+For anything intentionally out of scope (or gated on production vendor agreements), use the Post‑Demo Roadmap below as the source of truth. In particular: Wine‑Searcher integration and carrier‑API insurance integrations (#31) are excluded from the demo path.
 
 ---
 

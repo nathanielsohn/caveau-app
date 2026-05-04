@@ -323,6 +323,7 @@ export async function getActiveAlerts(): Promise<ActiveAlert[]> {
   const alerts = await prisma.alert.findMany({
     where: {
       resolved: false,
+      source: "device",
       locker: { memberId },
     },
     orderBy: { timestamp: "desc" },

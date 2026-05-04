@@ -22,7 +22,7 @@
  *   - Notification (Delivery):  ignored — SES sends these on every
  *     successful send and we don't need the noise.
  *
- * Operator setup (out of band, see CLAUDE.md):
+ * Operator setup (out of band, see docs/DEPLOYMENT.md):
  *   1. Create an SNS topic in the same region as the SES sender.
  *   2. Subscribe this route's URL (HTTPS) to the topic.
  *   3. In the SES Configuration Set or Identity, attach Bounce +

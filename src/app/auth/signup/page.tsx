@@ -143,9 +143,9 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={10}
+                minLength={12}
                 className="w-full px-4 py-3 rounded-xl bg-[#1C1C20] border border-[#2A2A30]/50 text-primary placeholder-muted text-sm focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/25 transition-colors"
-                placeholder="Min 10 chars, upper + lower + number"
+                placeholder="12 chars, upper/lower, number + symbol"
               />
             </div>
 

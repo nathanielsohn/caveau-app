@@ -158,6 +158,7 @@ describe("cross-member scoping (jailbreak barrier)", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           resolved: false,
+          source: "device",
           locker: expect.objectContaining({ memberId: MEMBER_A }),
         }),
       }),

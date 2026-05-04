@@ -1,18 +1,18 @@
 # Architecture
 
-> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
+> Last updated: 2026-05-04 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
 
-For the authoritative `src/` tree, see CLAUDE.md — the "Project Structure" block there is kept in lockstep with the code. The directory overview below is a conceptual map of the major surfaces and may not list every nested file.
+The directory overview below is a conceptual map of the major surfaces and may not list every nested file. For setup and day‑to‑day workflow, see `docs/GETTING_STARTED.md` and `AGENTS.md`.
 
 ## Overview
 
-Caveau is a **Next.js 14 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and Caveau Custody & Condition Reports.
+Caveau is a **Next.js 15 App Router** application with a **PostgreSQL** backend via **Prisma ORM**. It serves as a luxury wine cellar management demo combining wine inventory, locker visualization, IoT environmental monitoring, and Caveau Custody & Condition Reports.
 
 ## Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| Framework | Next.js 14 (App Router) | Full-stack React with SSR/SSG |
+| Framework | Next.js 15 (App Router) | Full-stack React with SSR/SSG |
 | Language | TypeScript | Type safety across the entire stack |
 | Styling | Tailwind CSS v3 | Utility-first CSS with custom dark theme |
 | Charts | Recharts v2 | Data visualization (sensor charts) |
@@ -44,7 +44,7 @@ caveau-app/
 │   │   ├── certificate/[id]/   # Legacy redirect → /report/[id]
 │   │   ├── collection/         # Wine inventory + label-scan action
 │   │   ├── deliveries/[id]/    # Deliver Now member ladder (#51)
-│   │   ├── events/             # Events & tastings — public list, detail, RSVP (#53)
+│   │   ├── events/             # Events & tastings — public list, gated private detail, RSVP (#53)
 │   │   ├── exits/              # Member-initiated consignment (#47)
 │   │   ├── facility/           # Facility views (#16) + resilience post-event reports (#42)
 │   │   ├── handoff/[token]/    # Auction/broker recipient scan (#41) — public
@@ -206,7 +206,7 @@ See [DECISIONS.md](./DECISIONS.md) for the full decision log.
 | Handoff driver (`/handoff-driver/[token]`, #51) | Server + Client hybrid | **Public** (token-scoped) | Prisma (delivery token → ladder, rate-limited) |
 | Advisor (`/advisor`, #50) | Client Component | Required | SSE streaming `/api/advisor/chat` |
 | Portfolio (`/portfolio`, #45) | Server Component | Required | Prisma (portfolio + Liv-ex benchmark) |
-| Events (`/events`, `/events/[slug]`, #53) | Server + Client hybrid | **Public** (auth-aware) | Prisma + server actions (RSVP / signup) |
+| Events (`/events`, `/events/[slug]`, #53) | Server + Client hybrid | **Public** for list/public detail; member-only detail redirects to login | Prisma + server actions (RSVP / signup) |
 | Allocations (`/allocations`, #60) | Server Component | **Public** (auth-aware teaser) | Prisma (teaser) / member feed |
 | Allocation detail (`/allocations/[slug]`, #60) | Server + Client hybrid | Required | Prisma + server actions (request) |
 | Appraisals (`/appraisals/*`, #61) | Server + Client hybrid | Required | Prisma + server actions + PDF route |

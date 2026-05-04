@@ -48,7 +48,7 @@ See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature s
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript)
+- **Next.js 15** (App Router, TypeScript)
 - **Tailwind CSS v3** (custom dark luxury theme)
 - **Recharts v2** (sensor data visualization)
 - **Framer Motion** (animations)
@@ -67,6 +67,7 @@ See [SPEC.md](./SPEC.md#post-demo-roadmap) for the current roadmap and feature s
 
 Detailed docs are in the [`docs/`](./docs) folder:
 
+- [Agent Guide](./AGENTS.md) — ChatGPT/Codex workflow and repo conventions
 - [Architecture](./docs/ARCHITECTURE.md) — stack, directory structure, data flow
 - [Data Model](./docs/DATA_MODEL.md) — entities, relationships, ER diagram
 - [Getting Started](./docs/GETTING_STARTED.md) — setup, scripts, troubleshooting

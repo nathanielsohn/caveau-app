@@ -95,7 +95,7 @@ sequenceDiagram
     alt CSRF fails
         API-->>U: 400 "Invalid request" (generic)
     else CSRF passes
-        API->>API: Zod parse: name, email, password policy<br/>(min 10 chars, upper + lower + digit)
+        API->>API: Zod parse: name, email, password policy<br/>(min 12 chars, upper + lower + digit + symbol)
         alt Validation fails
             API-->>U: 400 (Zod errors)
         else Validation passes

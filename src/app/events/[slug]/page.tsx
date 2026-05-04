@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, MapPin, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getServerAuth } from "@/lib/auth";
@@ -18,10 +18,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const event = await prisma.event.findUnique({
     where: { slug },
-    select: { title: true, summary: true, status: true },
+    select: { title: true, summary: true, status: true, memberOnly: true },
   });
   if (!event || event.status !== "published") {
     return { title: "Event · Caveau" };
+  }
+  if (event.memberOnly) {
+    const session = await getServerAuth();
+    if (!session?.user?.id) {
+      return { title: "Members-only event · Caveau" };
+    }
   }
   return {
     title: `${event.title} · Caveau`,
@@ -64,6 +70,11 @@ export default async function EventDetailPage({
     },
   });
   if (!event || event.status !== "published") notFound();
+  if (event.memberOnly && !memberId) {
+    redirect(
+      `/auth/login?callbackUrl=${encodeURIComponent(`/events/${event.slug}`)}`,
+    );
+  }
 
   // Seats taken sum (accounting for multi-seat RSVPs).
   const takenAgg = await prisma.eventRsvp.aggregate({

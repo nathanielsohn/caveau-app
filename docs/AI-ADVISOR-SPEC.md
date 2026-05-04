@@ -108,7 +108,7 @@ The advisor **does not**:
 
 ## Model Choice
 
-**Claude (Anthropic).** Fits the "trained on every market move" framing in the deck. Tool-use reliability and refusal quality — both load-bearing for an advisor that must decline rather than hallucinate — are strengths vs. alternatives. Predictable pricing tier. Same vendor as the Claude Code workflow already shipping the product, so no second API relationship to stand up.
+**Claude (Anthropic).** Fits the "trained on every market move" framing in the deck. Tool-use reliability and refusal quality — both load-bearing for an advisor that must decline rather than hallucinate — are strengths vs. alternatives. Predictable pricing tier. Keeps the advisor model and tool-use on a single AI vendor.
 
 **Model locked in (2026-04-17):** `claude-sonnet-4-6` for production turns. Pinned in `src/app/api/advisor/chat/route.ts`. Bump to Opus only if Sonnet's reasoning on the five canonical questions turns out to be uneven under load.
 

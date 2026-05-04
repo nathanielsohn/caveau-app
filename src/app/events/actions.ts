@@ -75,63 +75,72 @@ export async function rsvpToEvent(
     }
     const { eventId, seats, notes } = parsed.data;
 
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      select: {
-        id: true,
-        slug: true,
-        capacity: true,
-        status: true,
-        memberOnly: true,
-      },
-    });
-    if (!event || event.status !== "published") {
-      return {
-        submittedAt: now,
-        ok: false,
-        error: "This event is not available.",
-        confirmedSeats: null,
-        cancelled: false,
-      };
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM events WHERE id = ${eventId}::uuid FOR UPDATE`;
 
-    // Capacity check: only active (non-cancelled) RSVPs count. We hold the
-    // existing row's seat count in mind so a member editing their own RSVP
-    // isn't charged twice against capacity.
-    const [takenAgg, existing] = await Promise.all([
-      prisma.eventRsvp.aggregate({
-        where: { eventId, cancelledAt: null },
-        _sum: { seats: true },
-      }),
-      prisma.eventRsvp.findUnique({
+      const event = await tx.event.findUnique({
+        where: { id: eventId },
+        select: {
+          id: true,
+          slug: true,
+          capacity: true,
+          status: true,
+          memberOnly: true,
+        },
+      });
+      if (!event || event.status !== "published") {
+        return {
+          ok: false as const,
+          error: "This event is not available.",
+        };
+      }
+
+      // Capacity check: only active (non-cancelled) RSVPs count. The row lock
+      // on the event serializes competing RSVP writes for the same capacity.
+      const [takenAgg, existing] = await Promise.all([
+        tx.eventRsvp.aggregate({
+          where: { eventId, cancelledAt: null },
+          _sum: { seats: true },
+        }),
+        tx.eventRsvp.findUnique({
+          where: { eventId_memberId: { eventId, memberId } },
+          select: { id: true, seats: true, cancelledAt: true },
+        }),
+      ]);
+      const taken = takenAgg._sum.seats ?? 0;
+      const ownedSeats =
+        existing && !existing.cancelledAt ? existing.seats : 0;
+      const free = remainingSeats(event.capacity, taken - ownedSeats);
+      if (seats > free) {
+        return {
+          ok: false as const,
+          error:
+            free === 0
+              ? "This event is full."
+              : `Only ${free} seat${free === 1 ? "" : "s"} remaining.`,
+        };
+      }
+
+      await tx.eventRsvp.upsert({
         where: { eventId_memberId: { eventId, memberId } },
-        select: { id: true, seats: true, cancelledAt: true },
-      }),
-    ]);
-    const taken = takenAgg._sum.seats ?? 0;
-    const ownedSeats =
-      existing && !existing.cancelledAt ? existing.seats : 0;
-    const free = remainingSeats(event.capacity, taken - ownedSeats);
-    if (seats > free) {
+        create: { eventId, memberId, seats, notes },
+        update: { seats, notes, cancelledAt: null },
+      });
+
+      return { ok: true as const, slug: event.slug };
+    });
+
+    if (!result.ok) {
       return {
         submittedAt: now,
         ok: false,
-        error:
-          free === 0
-            ? "This event is full."
-            : `Only ${free} seat${free === 1 ? "" : "s"} remaining.`,
+        error: result.error,
         confirmedSeats: null,
         cancelled: false,
       };
     }
 
-    await prisma.eventRsvp.upsert({
-      where: { eventId_memberId: { eventId, memberId } },
-      create: { eventId, memberId, seats, notes },
-      update: { seats, notes, cancelledAt: null },
-    });
-
-    revalidatePath(`/events/${event.slug}`);
+    revalidatePath(`/events/${result.slug}`);
     revalidatePath("/events");
 
     return {
