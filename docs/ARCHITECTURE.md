@@ -28,7 +28,7 @@ Caveau is a **Next.js 15 App Router** application with a **PostgreSQL** backend 
 caveau-app/
 ├── prisma/                     # Database layer (43 models, 34 enums)
 │   ├── schema.prisma
-│   ├── migrations/             # Flat SQL migrations 0001..0047
+│   ├── migrations/             # Prisma migrations 0001..0048
 │   ├── seed.ts
 │   └── seed-sensors.ts
 ├── src/

@@ -334,6 +334,9 @@ model Facility {
   sentinelDevices       SentinelDevice[]
   homeCellarInstaller   HomeCellarInstaller? @relation(fields: [homeCellarInstallerId], references: [id], onDelete: SetNull)
 
+  @@index([type])
+  @@index([homeCellarCertifiedAt])
+  @@index([homeCellarInstallerId])
   @@map("facilities")
 }
 

@@ -1,6 +1,6 @@
 # Data Model
 
-> Last updated: 2026-04-28 | 43 Prisma models, 34 Postgres enums, 47 SQL migrations (0001..0047). Source of truth: `prisma/schema.prisma`.
+> Last updated: 2026-05-04 | 43 Prisma models, 34 Postgres enums, 48 Prisma migrations (0001..0048). Source of truth: `prisma/schema.prisma`.
 
 ## Principles
 

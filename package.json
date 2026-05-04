@@ -16,7 +16,7 @@
     "ci": "npm run lint && npm run typecheck && npm run test:run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.92.0",
     "@aws-sdk/client-s3": "^3.1029.0",
     "@aws-sdk/client-ses": "^3.1029.0",
     "@aws-sdk/s3-request-presigner": "^3.1029.0",
@@ -46,7 +46,7 @@
     "eslint": "^8",
     "eslint-config-next": "^15.5.15",
     "jsdom": "^29.0.2",
-    "postcss": "^8",
+    "postcss": "^8.5.13",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.0",
     "typescript": "^5",
@@ -59,7 +59,8 @@
     "next-auth": {
       ".": "$next-auth",
       "uuid": "14.0.0"
-    }
+    },
+    "postcss": "$postcss"
   },
   "engines": {
     "node": ">=20.0.0"
