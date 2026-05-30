@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Lock, Plus, ShieldCheck } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Lock, MapPin, Plus, Search, ShieldCheck, X } from "lucide-react";
 import LockerGrid, { type SlotData, type UnassignedWine } from "@/components/locker-grid";
 import { FacilityPill } from "@/components/facility-context";
 import type {
@@ -30,6 +30,31 @@ interface LockerSelectorProps {
   scanWineLabelAction: (key: string) => Promise<ScanWineLabelResult>;
 }
 
+interface AssignedBottleOption {
+  id: string;
+  label: string;
+  lockerIndex: number;
+  lockerNumber: number;
+  slotPosition: number;
+  row: number;
+  column: number;
+  searchText: string;
+}
+
+function slotLocation(slotPosition: number) {
+  return {
+    row: Math.ceil(slotPosition / 8),
+    column: ((slotPosition - 1) % 8) + 1,
+  };
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 export default function LockerSelector({
   lockers,
   unassignedWines,
@@ -40,7 +65,51 @@ export default function LockerSelector({
 }: LockerSelectorProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [addTrigger, setAddTrigger] = useState(0);
+  const [locatedWineId, setLocatedWineId] = useState<string | null>(null);
+  const [locatorQuery, setLocatorQuery] = useState("");
+  const [locatorOpen, setLocatorOpen] = useState(false);
   const locker = lockers[activeIndex] ?? lockers[0];
+
+  const assignedBottles = useMemo<AssignedBottleOption[]>(() => {
+    return lockers.flatMap((l, lockerIndex) =>
+      l.slots.flatMap((slot) => {
+        if (!slot.wine) return [];
+        const location = slotLocation(slot.slotPosition);
+        const label = `${slot.wine.vintage} ${slot.wine.name}`;
+        return {
+          id: slot.wine.id,
+          label,
+          lockerIndex,
+          lockerNumber: l.lockerNumber,
+          slotPosition: slot.slotPosition,
+          row: location.row,
+          column: location.column,
+          searchText: normalizeSearch([
+            label,
+            slot.wine.region,
+            slot.wine.varietal,
+            `locker ${l.lockerNumber}`,
+            `slot ${slot.slotPosition}`,
+            `row ${location.row}`,
+          ].join(" ")),
+        };
+      }),
+    );
+  }, [lockers]);
+
+  const locatedBottle =
+    locatedWineId != null
+      ? assignedBottles.find((bottle) => bottle.id === locatedWineId) ?? null
+      : null;
+
+  const locatorResults = useMemo(() => {
+    const query = normalizeSearch(locatorQuery.trim());
+    const matches = query
+      ? assignedBottles.filter((bottle) => bottle.searchText.includes(query))
+      : assignedBottles;
+    return matches.slice(0, 8);
+  }, [assignedBottles, locatorQuery]);
+
   if (!locker) {
     return (
       <div className="glass-card p-8 text-center">
@@ -51,7 +120,26 @@ export default function LockerSelector({
       </div>
     );
   }
+
   const hasEmptySlot = locker.slots.some((s) => !s.wine);
+
+  function clearLocator() {
+    setLocatedWineId(null);
+    setLocatorQuery("");
+    setLocatorOpen(false);
+  }
+
+  function selectBottle(bottle: AssignedBottleOption) {
+    setLocatedWineId(bottle.id);
+    setLocatorQuery(bottle.label);
+    setActiveIndex(bottle.lockerIndex);
+    setLocatorOpen(false);
+  }
+
+  function selectLocker(index: number) {
+    setActiveIndex(index);
+    clearLocator();
+  }
 
   return (
     <>
@@ -78,7 +166,7 @@ export default function LockerSelector({
                   key={l.id}
                   role="tab"
                   aria-selected={i === activeIndex}
-                  onClick={() => setActiveIndex(i)}
+                  onClick={() => selectLocker(i)}
                   className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 ${
                     i === activeIndex
                       ? "bg-gold/10 text-gold border border-gold/30"
@@ -106,7 +194,7 @@ export default function LockerSelector({
       </div>
 
       {/* Locker info header */}
-      <div className="glass-card p-5 mb-6">
+      <div className="glass-card p-5 mb-6 relative z-20">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
             <Lock size={22} className="text-gold" />
@@ -143,6 +231,108 @@ export default function LockerSelector({
             </p>
           </div>
         </div>
+
+        {assignedBottles.length > 0 && (
+          <div className="pt-4 mt-4 border-t border-[#2A2A30]/50">
+            <label
+              htmlFor="locker-bottle-locator"
+              className="text-[10px] uppercase tracking-wider text-muted mb-2 block"
+            >
+              Bottle locator
+            </label>
+            <div
+              className="relative z-30"
+              onBlur={(e) => {
+                const currentTarget = e.currentTarget;
+                window.setTimeout(() => {
+                  if (!currentTarget.contains(document.activeElement)) {
+                    setLocatorOpen(false);
+                  }
+                }, 0);
+              }}
+            >
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
+              <input
+                id="locker-bottle-locator"
+                type="text"
+                value={locatorQuery}
+                onFocus={() => setLocatorOpen(true)}
+                onChange={(e) => {
+                  setLocatorQuery(e.target.value);
+                  setLocatedWineId(null);
+                  setLocatorOpen(true);
+                }}
+                placeholder="Search stored bottles..."
+                className="w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl pl-9 pr-10 py-2.5 min-h-[44px] text-sm text-primary placeholder:text-muted focus:outline-none focus:border-gold/50 transition-colors"
+              />
+              {locatorQuery && (
+                <button
+                  type="button"
+                  onClick={clearLocator}
+                  aria-label="Clear bottle locator"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary hover:bg-[#141416]"
+                >
+                  <X size={14} />
+                </button>
+              )}
+
+              {locatorOpen && !locatedBottle && (
+                <div className="absolute z-50 left-0 right-0 top-full mt-2 max-h-72 overflow-y-auto rounded-xl border border-[#2A2A30] bg-[#141416] shadow-2xl p-1">
+                  {locatorResults.length === 0 ? (
+                    <p className="px-3 py-4 text-center text-sm text-muted">
+                      No stored bottles found
+                    </p>
+                  ) : (
+                    locatorResults.map((bottle) => (
+                      <button
+                        key={`${bottle.id}-${bottle.lockerNumber}`}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectBottle(bottle);
+                        }}
+                        onClick={() => selectBottle(bottle)}
+                        className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gold/5 focus:bg-gold/5 transition-colors"
+                      >
+                        <p className="text-sm text-primary truncate">
+                          {bottle.label}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Locker #{bottle.lockerNumber} - Row {bottle.row},
+                          Slot {bottle.column}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {locatedBottle && (
+              <div className="mt-3 rounded-xl bg-gold/10 border border-gold/30 p-3 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+                  <MapPin size={16} className="text-gold" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-wider text-gold mb-1">
+                    Located
+                  </p>
+                  <p className="text-sm text-primary font-medium truncate">
+                    {locatedBottle.label}
+                  </p>
+                  <p className="text-xs text-secondary">
+                    Locker #{locatedBottle.lockerNumber} - Row{" "}
+                    {locatedBottle.row}, Slot {locatedBottle.column} (position{" "}
+                    {locatedBottle.slotPosition})
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Insurance + Grid legend */}
@@ -163,9 +353,11 @@ export default function LockerSelector({
 
       {/* Locker grid */}
       <LockerGrid
+        lockerNumber={locker.lockerNumber}
         slots={locker.slots}
         unassignedWines={unassignedWines}
         addTrigger={addTrigger}
+        locatedWineId={locatedWineId}
         s3Configured={s3Configured}
         visionConfigured={visionConfigured}
         requestScanUploadUrlAction={requestScanUploadUrlAction}

@@ -13,6 +13,7 @@ import {
   Settings as SettingsIcon,
   Building2,
   ShieldCheck,
+  ChartPie,
   LineChart,
   Sparkles,
   CalendarDays,
@@ -35,6 +36,7 @@ const primaryNavItems = [
 ];
 
 const secondaryNavItems = [
+  { href: "/insights", label: "Insights", icon: ChartPie },
   { href: "/locker", label: "Locker", icon: Lock },
   { href: "/sentinel", label: "Sentinel", icon: Activity },
   { href: "/allocations", label: "Allocations", icon: Gem },

@@ -19,11 +19,11 @@ interface ChatClientProps {
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatError = { kind: "config" | "rate" | "network"; text: string };
 
-const STARTER_PROMPTS = [
-  "What's my best exit opportunity right now?",
-  "How am I tracking vs the Liv-ex 100?",
-  "I'm grilling ribeye tonight — what should I open?",
-  "Which bottles are closest to peak right now?",
+const QUICK_PROMPTS = [
+  "What should I open tonight?",
+  "Pair a bottle with steak",
+  "Which bottles are ready now?",
+  "What should I sell or hold?",
 ];
 
 // Matches the seven tools exposed by src/lib/advisor-dispatch.ts. A future
@@ -291,7 +291,7 @@ export default function ChatClient({ memberName, tierSlug }: ChatClientProps) {
                 tonight.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
-                {STARTER_PROMPTS.map((prompt) => (
+                {QUICK_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
@@ -340,6 +340,21 @@ export default function ChatClient({ memberName, tierSlug }: ChatClientProps) {
 
       <footer className="shrink-0 px-4 md:px-8 py-3 border-t border-[#2A2A30]/40 bg-caveau-black/80 backdrop-blur">
         <div className="max-w-3xl mx-auto">
+          {messages.length > 0 && (
+            <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              {QUICK_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => void send(prompt)}
+                  disabled={streaming}
+                  className="shrink-0 px-3 py-2 min-h-[36px] rounded-full bg-[#141416]/80 border border-[#2A2A30]/60 text-xs text-secondary hover:text-primary hover:border-gold/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
           <form onSubmit={onSubmit} className="flex items-end gap-2">
             <textarea
               ref={textareaRef}

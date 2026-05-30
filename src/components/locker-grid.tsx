@@ -66,10 +66,13 @@ export interface UnassignedWine {
 }
 
 interface LockerGridProps {
+  lockerNumber: number;
   slots: SlotData[];
   unassignedWines: UnassignedWine[];
   /** Incremented by parent to request opening the add-wine form on the first empty slot */
   addTrigger?: number;
+  /** Selected by the locker-level bottle locator. */
+  locatedWineId?: string | null;
   /** Wine label scanner (#24) — passed in from server component. */
   s3Configured: boolean;
   visionConfigured: boolean;
@@ -95,10 +98,19 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function slotLocation(slotPosition: number) {
+  return {
+    row: Math.ceil(slotPosition / 8),
+    column: ((slotPosition - 1) % 8) + 1,
+  };
+}
+
 export default function LockerGrid({
+  lockerNumber,
   slots,
   unassignedWines,
   addTrigger,
+  locatedWineId,
   s3Configured,
   visionConfigured,
   requestScanUploadUrlAction,
@@ -443,11 +455,15 @@ export default function LockerGrid({
           const color = isOccupied ? varietalColor(slot!.wine!.varietal) : undefined;
           const isEmpty = !isOccupied && slot;
           const matches = slotMatchesFilters(slot);
-          const dimmed = filtersActive && !matches;
+          const isLocated = locatedWineId != null && slot?.wine?.id === locatedWineId;
+          const filteredOut = filtersActive && !matches && !isLocated;
+          const locatorDimmed = locatedWineId != null && !isLocated;
+          const dimmed = filteredOut || locatorDimmed;
 
           return (
             <button
               key={position}
+              data-located-slot={isLocated ? "true" : undefined}
               onClick={() => handleSlotClick(slot)}
               aria-label={
                 isOccupied
@@ -467,6 +483,7 @@ export default function LockerGrid({
                     : "border-2 border-dashed border-[#2A2A30]/50 bg-[#141416]/30 cursor-default"
                 }
                 ${dimmed ? "opacity-30 pointer-events-none" : ""}
+                ${isLocated ? "ring-2 ring-gold ring-offset-2 ring-offset-caveau-black scale-[1.03] shadow-[0_0_22px_rgba(255,209,102,0.3)]" : ""}
               `}
               style={
                 isOccupied
@@ -551,7 +568,7 @@ export default function LockerGrid({
 
                 {/* Slot number badge */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium mb-6">
-                  Slot {selectedSlot.slotPosition}
+                  Locker #{lockerNumber} - Slot {selectedSlot.slotPosition}
                 </div>
 
                 {/* Wine name */}
@@ -564,6 +581,23 @@ export default function LockerGrid({
 
                 {/* Details */}
                 <div className="space-y-4">
+                  <div className="glass-card p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
+                      <MapPin size={16} className="text-gold" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted">Location</p>
+                      <p className="text-sm text-primary font-medium">
+                        Locker #{lockerNumber} - Row{" "}
+                        {slotLocation(selectedSlot.slotPosition).row}, Slot{" "}
+                        {slotLocation(selectedSlot.slotPosition).column}
+                      </p>
+                      <p className="text-xs text-secondary truncate">
+                        {selectedSlot.wine.name}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="glass-card p-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
                       <MapPin size={16} className="text-gold" />
