@@ -52,8 +52,8 @@ export default function AdminNav() {
     <>
       {/* Desktop sidebar — mirrors the member nav width so the root layout's
           md:ml-56 offset still lands content correctly. */}
-      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-56 flex-col border-r border-[#2A2A30]/50 bg-caveau-charcoal/80 backdrop-blur-xl z-40">
-        <div className="px-6 py-6">
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen min-h-0 w-56 flex-col border-r border-[#2A2A30]/50 bg-caveau-charcoal/80 backdrop-blur-xl z-40">
+        <div className="shrink-0 px-6 py-6">
           <Link href="/admin" className="flex items-center gap-2">
             <span className="text-gold text-2xl">◈</span>
             <span className="font-serif text-xl text-primary tracking-wide">
@@ -65,7 +65,7 @@ export default function AdminNav() {
           </p>
         </div>
 
-        <nav className="flex-1 px-3 mt-2">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 mt-2 pb-2">
           {visibleItems.map((item) => {
             const isActive =
               item.href === "/admin"
@@ -96,7 +96,7 @@ export default function AdminNav() {
           </Link>
         </nav>
 
-        <div className="px-6 py-5 border-t border-[#2A2A30]/50">
+        <div className="shrink-0 px-6 py-5 border-t border-[#2A2A30]/50">
           <p className="text-xs text-muted uppercase tracking-wider mb-1">
             Signed in
           </p>
