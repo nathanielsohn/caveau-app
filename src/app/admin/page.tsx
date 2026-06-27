@@ -22,8 +22,8 @@ export default async function AdminOverviewPage() {
     totalValueAgg,
     unresolvedAlertCount,
     criticalAlertCount,
-    homeCellarCount,
-    certifiedHomeCellarCount,
+    privateLocationCount,
+    certifiedPrivateLocationCount,
     recentAlerts,
     facilities,
   ] = await Promise.all([
@@ -39,9 +39,9 @@ export default async function AdminOverviewPage() {
     prisma.alert.count({
       where: { resolved: false, severity: "critical", source: "device" },
     }),
-    prisma.facility.count({ where: { type: "home_cellar" } }),
+    prisma.facility.count({ where: { type: "private_location" } }),
     prisma.facility.count({
-      where: { type: "home_cellar", homeCellarCertifiedAt: { not: null } },
+      where: { type: "private_location", privateLocationCertifiedAt: { not: null } },
     }),
     prisma.alert.findMany({
       where: { resolved: false, source: "device" },
@@ -76,12 +76,12 @@ export default async function AdminOverviewPage() {
       href: "/admin/lockers",
     },
     {
-      label: "Certified cellars",
-      value: certifiedHomeCellarCount.toLocaleString(),
+      label: "Certified locations",
+      value: certifiedPrivateLocationCount.toLocaleString(),
       sub:
-        homeCellarCount > 0
-          ? `${homeCellarCount} home cellars enrolled`
-          : "no home cellars yet",
+        privateLocationCount > 0
+          ? `${privateLocationCount} private locations enrolled`
+          : "no private locations yet",
       icon: BadgeCheck,
       href: "/admin/facilities",
     },

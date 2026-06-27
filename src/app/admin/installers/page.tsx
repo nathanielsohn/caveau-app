@@ -21,29 +21,29 @@ function pill(active: boolean): { label: string; className: string } {
 }
 
 export default async function AdminInstallersPage() {
-  const installers = await prisma.homeCellarInstaller.findMany({
+  const installers = await prisma.locationInstaller.findMany({
     orderBy: [{ active: "desc" }, { createdAt: "desc" }],
     include: {
       facilities: {
-        where: { type: "home_cellar" },
+        where: { type: "private_location" },
         orderBy: { name: "asc" },
         select: {
           id: true,
           name: true,
           location: true,
-          homeCellarCertifiedAt: true,
+          privateLocationCertifiedAt: true,
         },
       },
     },
   });
 
   const activeCount = installers.filter((i) => i.active).length;
-  const assignedCellars = installers.reduce(
+  const assignedLocations = installers.reduce(
     (acc, i) => acc + i.facilities.length,
     0,
   );
-  const certifiedCellars = installers.reduce(
-    (acc, i) => acc + i.facilities.filter((f) => Boolean(f.homeCellarCertifiedAt)).length,
+  const certifiedLocations = installers.reduce(
+    (acc, i) => acc + i.facilities.filter((f) => Boolean(f.privateLocationCertifiedAt)).length,
     0,
   );
 
@@ -56,11 +56,11 @@ export default async function AdminInstallersPage() {
           </div>
           <div>
             <h1 className="font-serif text-2xl text-primary">
-              Certified installers
+              Location installers
             </h1>
             <p className="text-sm text-muted">
               {installers.length} installers · {activeCount} active ·{" "}
-              {certifiedCellars}/{assignedCellars} certified home cellars
+              {certifiedLocations}/{assignedLocations} certified locations
             </p>
           </div>
         </div>
@@ -80,7 +80,8 @@ export default async function AdminInstallersPage() {
       {installers.length === 0 ? (
         <div className="glass-card p-10 text-center">
           <p className="text-sm text-muted">
-            No installers yet. Add one above to start tracking Home Cellar installs.
+            No installers yet. Add one above to start tracking private
+            location installs.
           </p>
         </div>
       ) : (
@@ -88,7 +89,7 @@ export default async function AdminInstallersPage() {
           {installers.map((i) => {
             const status = pill(i.active);
             const certifiedCountForInstaller = i.facilities.filter((f) =>
-              Boolean(f.homeCellarCertifiedAt),
+              Boolean(f.privateLocationCertifiedAt),
             ).length;
             return (
               <div key={i.id} className="glass-card p-5">
@@ -130,7 +131,7 @@ export default async function AdminInstallersPage() {
 
                   <div className="text-right shrink-0">
                     <p className="text-xs text-muted uppercase tracking-widest">
-                      Home cellars
+                      Locations
                     </p>
                     <p className="font-serif text-xl text-primary tabular-nums mt-0.5">
                       {i.facilities.length}

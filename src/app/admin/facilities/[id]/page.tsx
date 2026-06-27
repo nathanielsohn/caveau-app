@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
-  Home,
+  MapPin,
   BadgeCheck,
   Users,
   Lock,
@@ -16,7 +16,7 @@ import { getFacilityAnalyticsKpis } from "@/lib/facility-analytics";
 import { UuidSchema } from "@/lib/schemas";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/utils";
 import OccupancyDonut from "../occupancy-donut";
-import { setHomeCellarCertification, setHomeCellarInstaller } from "./actions";
+import { setPrivateLocationCertification, setLocationInstaller } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,12 @@ export default async function AdminFacilityDetailPage({
     getFacilityAnalyticsKpis(idCheck.data),
     prisma.facility.findUnique({
       where: { id: idCheck.data },
-      include: { homeCellarInstaller: true },
+      include: {
+        locationInstaller: true,
+        ownerMember: { select: { name: true, email: true } },
+      },
     }),
-    prisma.homeCellarInstaller.findMany({
+    prisma.locationInstaller.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, company: true, region: true },
@@ -133,43 +136,61 @@ export default async function AdminFacilityDetailPage({
         ))}
       </div>
 
-      {facility.type === "home_cellar" && (
+      {facility.type === "private_location" && (
         <div className="glass-card p-5 mb-6">
           <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
             <div className="flex items-center gap-2">
-              <Home className="w-4 h-4 text-gold" />
+              <MapPin className="w-4 h-4 text-gold" />
               <h2 className="font-serif text-lg text-primary">
-                Home cellar program
+                Private location monitoring
               </h2>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${
-                facility.homeCellarCertifiedAt
+                facility.privateLocationCertifiedAt
                   ? "bg-gold/10 text-gold border-gold/30"
                   : "bg-warn/10 text-warn border-warn/30"
               }`}
             >
               <BadgeCheck className="w-3.5 h-3.5" />
-              {facility.homeCellarCertifiedAt ? "Certified" : "Pending"}
+              {facility.privateLocationCertifiedAt ? "Certified" : "Pending"}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4">
               <p className="text-[10px] uppercase tracking-wider text-muted">
-                Installer
+                Owner
               </p>
-              {facility.homeCellarInstaller ? (
+              {facility.ownerMember ? (
                 <>
                   <p className="text-sm text-primary font-medium mt-1">
-                    {facility.homeCellarInstaller.name}
+                    {facility.ownerMember.name}
                   </p>
                   <p className="text-xs text-muted mt-1">
-                    {facility.homeCellarInstaller.company
-                      ? facility.homeCellarInstaller.company
+                    {facility.ownerMember.email}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted mt-1 italic">Unassigned</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted">
+                Installation partner
+              </p>
+              {facility.locationInstaller ? (
+                <>
+                  <p className="text-sm text-primary font-medium mt-1">
+                    {facility.locationInstaller.name}
+                  </p>
+                  <p className="text-xs text-muted mt-1">
+                    {facility.locationInstaller.company
+                      ? facility.locationInstaller.company
                       : "Caveau partner"}
-                    {facility.homeCellarInstaller.region
-                      ? ` · ${facility.homeCellarInstaller.region}`
+                    {facility.locationInstaller.region
+                      ? ` · ${facility.locationInstaller.region}`
                       : ""}
                   </p>
                 </>
@@ -179,7 +200,7 @@ export default async function AdminFacilityDetailPage({
             </div>
 
             <form
-              action={setHomeCellarInstaller}
+              action={setLocationInstaller}
               className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4"
             >
               <input type="hidden" name="facilityId" value={facility.id} />
@@ -188,7 +209,7 @@ export default async function AdminFacilityDetailPage({
               </p>
               <select
                 name="installerId"
-                defaultValue={facility.homeCellarInstallerId ?? ""}
+                defaultValue={facility.locationInstallerId ?? ""}
                 className="mt-2 w-full bg-caveau-graphite border border-[#2A2A30] rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-gold/60"
               >
                 <option value="">Unassigned</option>
@@ -209,7 +230,7 @@ export default async function AdminFacilityDetailPage({
             </form>
 
             <form
-              action={setHomeCellarCertification}
+              action={setPrivateLocationCertification}
               className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-4"
             >
               <input type="hidden" name="facilityId" value={facility.id} />
@@ -217,8 +238,8 @@ export default async function AdminFacilityDetailPage({
                 Certification
               </p>
               <p className="text-sm text-secondary mt-1">
-                {facility.homeCellarCertifiedAt
-                  ? `Certified at ${facility.homeCellarCertifiedAt.toLocaleDateString(
+                {facility.privateLocationCertifiedAt
+                  ? `Certified at ${facility.privateLocationCertifiedAt.toLocaleDateString(
                       "en-US",
                       { dateStyle: "medium" },
                     )}`
@@ -227,17 +248,17 @@ export default async function AdminFacilityDetailPage({
               <input
                 type="hidden"
                 name="certified"
-                value={facility.homeCellarCertifiedAt ? "0" : "1"}
+                value={facility.privateLocationCertifiedAt ? "0" : "1"}
               />
               <button
                 type="submit"
                 className={`mt-3 inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl text-sm font-medium transition-colors w-full ${
-                  facility.homeCellarCertifiedAt
+                  facility.privateLocationCertifiedAt
                     ? "bg-danger/10 text-danger border border-danger/30 hover:bg-danger/15"
                     : "bg-gold text-black hover:bg-gold/90"
                 }`}
               >
-                {facility.homeCellarCertifiedAt
+                {facility.privateLocationCertifiedAt
                   ? "Revoke certification"
                   : "Mark certified"}
               </button>

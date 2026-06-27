@@ -11,6 +11,7 @@ import {
   Sparkles,
   ChevronRight,
   Shield,
+  MapPin,
 } from "lucide-react";
 import { AppraisalStatus, InsuranceReferralStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -106,6 +107,9 @@ export default async function SettingsPage() {
     ? foundingSavingsUsd(tierSpec)
     : 0;
   const reservedSlots = await getReservedSlotCountForMember(session.user.id);
+  const privateLocationCount = await prisma.facility.count({
+    where: { type: "private_location", ownerMemberId: session.user.id },
+  });
   const activeMembership = hasActiveStripeMembership(member.stripeSubscriptionStatus);
   const badge = billingBadge(member.stripeSubscriptionStatus);
 
@@ -337,6 +341,31 @@ export default async function SettingsPage() {
               <p className="text-xs text-muted mt-0.5">
                 Insurance, estate, and tax valuation documents for your
                 collection
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+        </div>
+      </Link>
+
+      {/* Locations card — vault memberships + member-owned private locations */}
+      <Link
+        href="/settings/locations"
+        className="glass-card p-6 md:p-8 mb-6 block hover:bg-[#1C1C20]/40 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4 text-gold" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-serif text-lg text-primary">Locations</h2>
+              <p className="text-xs text-muted mt-0.5">
+                {privateLocationCount > 0
+                  ? `${privateLocationCount} private location${
+                      privateLocationCount === 1 ? "" : "s"
+                    }`
+                  : "Add private monitoring locations"}
               </p>
             </div>
           </div>

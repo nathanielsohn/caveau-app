@@ -59,12 +59,22 @@ enum LockerActivityAction {
   check_out
 }
 
-// Facility type (feature #48). Vault facilities are Caveau-operated
-// storage locations; home_cellar facilities represent a member's
-// on-prem cellar enrolled in the Home Cellar Program.
+// Facility type. Vault facilities are Caveau-operated storage locations;
+// private_location facilities are member-owned monitoring locations such as
+// residences, restaurants, private clubs, retail rooms, or warehouses.
 enum FacilityType {
   vault
-  home_cellar
+  private_location
+}
+
+enum PrivateLocationKind {
+  residence
+  restaurant
+  retail
+  hospitality
+  office
+  warehouse
+  other
 }
 
 enum FacilityEventType {
@@ -315,28 +325,32 @@ enum AcquisitionSource {
 }
 
 model Facility {
-  id                    String              @id @default(uuid())
-  type                  FacilityType        @default(vault)
-  name                  String
-  location              String
-  elevationFt           Int?                @map("elevation_ft")
-  generatorStatus       String              @default("operational") @map("generator_status")
-  fireSuppressionStatus String              @default("operational") @map("fire_suppression_status")
-  lastInspectionAt      DateTime?           @map("last_inspection_at")
-  homeCellarCertifiedAt DateTime?           @map("home_cellar_certified_at")
-  homeCellarInstallerId String?             @map("home_cellar_installer_id")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  lockers               Locker[]
-  members               FacilityMember[]
-  events                FacilityEvent[]
-  hurricaneProtocols    HurricaneProtocol[]
-  tastingEvents         Event[]
-  sentinelDevices       SentinelDevice[]
-  homeCellarInstaller   HomeCellarInstaller? @relation(fields: [homeCellarInstallerId], references: [id], onDelete: SetNull)
+  id                         String               @id @default(uuid())
+  type                       FacilityType         @default(vault)
+  privateLocationKind        PrivateLocationKind? @map("private_location_kind")
+  ownerMemberId              String?              @map("owner_member_id")
+  name                       String
+  location                   String
+  elevationFt                Int?                 @map("elevation_ft")
+  generatorStatus            String               @default("operational") @map("generator_status")
+  fireSuppressionStatus      String               @default("operational") @map("fire_suppression_status")
+  lastInspectionAt           DateTime?            @map("last_inspection_at")
+  privateLocationCertifiedAt DateTime?            @map("private_location_certified_at")
+  locationInstallerId        String?              @map("location_installer_id")
+  createdAt                  DateTime             @default(now()) @map("created_at")
+  lockers                    Locker[]
+  members                    FacilityMember[]
+  events                     FacilityEvent[]
+  hurricaneProtocols         HurricaneProtocol[]
+  tastingEvents              Event[]
+  sentinelDevices            SentinelDevice[]
+  ownerMember                Member?              @relation("PrivateLocationOwner", fields: [ownerMemberId], references: [id], onDelete: Restrict)
+  locationInstaller          LocationInstaller?   @relation(fields: [locationInstallerId], references: [id], onDelete: SetNull)
 
   @@index([type])
-  @@index([homeCellarCertifiedAt])
-  @@index([homeCellarInstallerId])
+  @@index([privateLocationCertifiedAt])
+  @@index([locationInstallerId])
+  @@index([ownerMemberId, type])
   @@map("facilities")
 }
 
@@ -368,9 +382,8 @@ model FacilityMember {
   @@map("facility_members")
 }
 
-// Certified installer network (feature #48). Used to track who installed
-// and certified a member's enrolled home cellar.
-model HomeCellarInstaller {
+// Certified installation partner network for private locations.
+model LocationInstaller {
   id        String    @id @default(uuid())
   name      String
   company   String?
@@ -383,7 +396,7 @@ model HomeCellarInstaller {
   facilities Facility[]
 
   @@index([active, createdAt(sort: Desc)])
-  @@map("home_cellar_installers")
+  @@map("location_installers")
 }
 
 model Member {
@@ -440,6 +453,7 @@ model Member {
   lockers                       Locker[]
   dispositions                  WineDisposition[]
   facilities                    FacilityMember[]
+  ownedPrivateLocations         Facility[]                 @relation("PrivateLocationOwner")
   handoffPackages               HandoffPackage[]
   hurricaneProtocolMemberships  HurricaneProtocolMember[]
   deliveryRequests              DeliveryRequest[]

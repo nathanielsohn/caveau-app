@@ -54,6 +54,8 @@ export interface FacilityOption {
   id: string;
   name: string;
   location: string;
+  type: "vault" | "private_location";
+  privateLocationKind: string | null;
 }
 
 /**
@@ -64,9 +66,23 @@ export async function getMemberFacilities(
   memberId: string,
 ): Promise<FacilityOption[]> {
   const rows = await prisma.facilityMember.findMany({
-    where: { memberId },
+    where: {
+      memberId,
+      OR: [
+        { facility: { type: "vault" } },
+        { facility: { type: "private_location", ownerMemberId: memberId } },
+      ],
+    },
     include: {
-      facility: { select: { id: true, name: true, location: true } },
+      facility: {
+        select: {
+          id: true,
+          name: true,
+          location: true,
+          type: true,
+          privateLocationKind: true,
+        },
+      },
     },
     orderBy: { facility: { name: "asc" } },
   });

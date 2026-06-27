@@ -9,6 +9,8 @@ interface FacilityOption {
   id: string;
   name: string;
   location: string;
+  type: "vault" | "private_location";
+  privateLocationKind: string | null;
 }
 
 interface FacilityContextValue {
@@ -77,7 +79,7 @@ export function FacilityPill() {
       >
         {facilities.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.name}
+            {f.type === "private_location" ? `Private: ${f.name}` : f.name}
           </option>
         ))}
       </select>

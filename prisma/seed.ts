@@ -6,6 +6,7 @@ import {
   AlertType,
   Severity,
   FacilityType,
+  PrivateLocationKind,
   FacilityEventType,
   DispositionType,
   WineStatus,
@@ -221,18 +222,20 @@ async function main() {
     prisma.wine.deleteMany(),
     prisma.locker.deleteMany(),
     prisma.facilityEvent.deleteMany(),
-      prisma.facilityMember.deleteMany(),
-      prisma.member.deleteMany(),
-      prisma.facility.deleteMany(),
-      prisma.homeCellarInstaller.deleteMany(),
-    ]);
+    prisma.facilityMember.deleteMany(),
+    // Private locations restrict-delete their owner member, so wipe
+    // facilities before members after all facility dependents are gone.
+    prisma.facility.deleteMany(),
+    prisma.member.deleteMany(),
+    prisma.locationInstaller.deleteMany(),
+  ]);
 
   // 1. Facilities — Naples is the flagship, Miami opened later as a 2nd location
   const naples = await prisma.facility.create({
     data: {
       name: 'Caveau Naples',
       location: 'Naples, FL',
-      // Above-sea-level siting is the whole pitch vs. a home cellar
+      // Above-sea-level siting is the whole pitch vs. unmanaged private storage
       // in flood-zone Naples — 18 ft sits above the FEMA BFE for the
       // surrounding blocks.
       elevationFt: 18,
@@ -319,8 +322,8 @@ async function main() {
   });
   console.log('  ✓ Facility events: 6 (Naples: 3, Miami: 3)');
 
-  // 1c. Home Cellar Program installer network (feature #48)
-  const installer = await prisma.homeCellarInstaller.create({
+  // 1c. Private Location Monitoring installation partner network (feature #48)
+  const installer = await prisma.locationInstaller.create({
     data: {
       name: 'Gulf Coast Cellarworks',
       company: 'Gulf Coast Cellarworks',
@@ -330,7 +333,7 @@ async function main() {
       active: true,
     },
   });
-  console.log(`  ✓ Home cellar installer: ${installer.name}`);
+  console.log(`  ✓ Location installer: ${installer.name}`);
 
   // 2. Member (password: demo1234)
   const passwordHash = await bcrypt.hash('demo1234', 10);
@@ -357,28 +360,30 @@ async function main() {
   });
   console.log(`  ✓ Member: ${member.name}`);
 
-  // 2b. Home Cellar Program — enrolled location (feature #48).
-  const homeCellar = await prisma.facility.create({
+  // 2b. Private Location Monitoring — enrolled residence (feature #48).
+  const privateLocation = await prisma.facility.create({
     data: {
-      type: FacilityType.home_cellar,
-      name: 'Saenz Home Cellar',
+      type: FacilityType.private_location,
+      privateLocationKind: PrivateLocationKind.residence,
+      ownerMemberId: member.id,
+      name: 'Saenz Residence Wine Room',
       location: 'Port Royal, Naples, FL',
       elevationFt: 7,
-      homeCellarInstallerId: installer.id,
-      homeCellarCertifiedAt: daysAgo(34),
+      locationInstallerId: installer.id,
+      privateLocationCertifiedAt: daysAgo(34),
     },
   });
-  console.log(`  ✓ Home cellar facility: ${homeCellar.name}`);
+  console.log(`  ✓ Private location: ${privateLocation.name}`);
 
-  // 2c. Facility memberships — Robert holds wine in both vault locations + his home cellar
+  // 2c. Facility memberships — Robert holds wine in both vault locations + his private location
   await prisma.facilityMember.createMany({
     data: [
       { memberId: member.id, facilityId: naples.id },
       { memberId: member.id, facilityId: miami.id },
-      { memberId: member.id, facilityId: homeCellar.id },
+      { memberId: member.id, facilityId: privateLocation.id },
     ],
   });
-  console.log('  ✓ Facility memberships: Naples + Miami + Home cellar');
+  console.log('  ✓ Facility memberships: Naples + Miami + private location');
 
   // 2d. Admin user — staff-facing /admin panel (feature #28). Seeded
   // alongside Robert so the panel has someone to log in as during demos;
@@ -440,17 +445,17 @@ async function main() {
   });
   console.log('  ✓ Lockers: Naples #7/#12/#19, Miami #24');
 
-  // 4b. Home cellar monitor locker (feature #48). Monitor-only — no slots,
+  // 4b. Private location monitor locker (feature #48). Monitor-only — no slots,
   // so it does not count toward storage billing.
   const homeLocker = await prisma.locker.create({
     data: {
       lockerNumber: 1,
       zone: 'HC',
-      facilityId: homeCellar.id,
+      facilityId: privateLocation.id,
       memberId: member.id,
     },
   });
-  console.log('  ✓ Home cellar monitor locker: #1 (HC)');
+  console.log('  ✓ Private location monitor locker: #1 (HC)');
 
   // 5. Locker slots — all 32 per locker, some occupied
   let wineIndex = 0;
@@ -600,14 +605,14 @@ async function main() {
       batteryPct: 17,
       lastHeartbeatAt: hoursAgo(0.1),
     },
-    // Home Cellar Program sensor (feature #48). Phase 1 is a white-label
-    // SensorPush unit; represented as a locker sensor in the demo model.
+    // Private Location Monitoring sensor (feature #48). Phase 1 is a
+    // white-label SensorPush unit represented as a locker sensor in the demo model.
     {
       serialNumber: 'HCP-2026-00001',
       model: SentinelModel.sentinel_locker,
       hardwareRev: 'SP1',
       firmwareVersion: '2.4.1',
-      facilityId: homeCellar.id,
+      facilityId: privateLocation.id,
       lockerId: homeLocker.id,
       memberId: member.id,
       wineId: null,

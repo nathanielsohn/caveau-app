@@ -8,7 +8,7 @@ export interface FacilityAnalyticsKpis {
     name: string;
     location: string;
     type: FacilityType;
-    homeCellarCertifiedAt: Date | null;
+    privateLocationCertifiedAt: Date | null;
   };
   membersCount: number;
   lockers: {
@@ -49,7 +49,7 @@ export async function listFacilityAnalyticsKpis(): Promise<
       name: true,
       location: true,
       type: true,
-      homeCellarCertifiedAt: true,
+      privateLocationCertifiedAt: true,
     },
   });
   if (facilities.length === 0) return [];
@@ -187,7 +187,7 @@ export async function getFacilityAnalyticsKpis(
       name: true,
       location: true,
       type: true,
-      homeCellarCertifiedAt: true,
+      privateLocationCertifiedAt: true,
     },
   });
   if (!facility) return null;

@@ -22,9 +22,18 @@ export async function setCurrentFacility(
     where: {
       memberId_facilityId: { memberId: session.user.id, facilityId },
     },
-    select: { facilityId: true },
+    select: {
+      facilityId: true,
+      facility: { select: { type: true, ownerMemberId: true } },
+    },
   });
   if (!membership) return { ok: false, error: "Not a member of that facility" };
+  if (
+    membership.facility.type === "private_location" &&
+    membership.facility.ownerMemberId !== session.user.id
+  ) {
+    return { ok: false, error: "Not a member of that facility" };
+  }
 
   // Scope the cookie to the current NextAuth session (4h). A year-long
   // cookie outlives the session and leaves a stale facility preference

@@ -106,16 +106,16 @@ export default async function AdminFacilitiesPage() {
                         <p className="font-serif text-lg text-primary truncate">
                           {row.facility.name}
                         </p>
-                        {row.facility.type === "home_cellar" && (
+                        {row.facility.type === "private_location" && (
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-medium ${
-                              row.facility.homeCellarCertifiedAt
+                              row.facility.privateLocationCertifiedAt
                                 ? "bg-gold/10 text-gold border-gold/30"
                                 : "bg-warn/10 text-warn border-warn/30"
                             }`}
                           >
-                            Home cellar
-                            {row.facility.homeCellarCertifiedAt
+                            Private location
+                            {row.facility.privateLocationCertifiedAt
                               ? " · Certified"
                               : " · Pending"}
                           </span>

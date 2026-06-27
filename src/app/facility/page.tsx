@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ShieldCheck,
-  Home,
+  MapPin,
   Mountain,
   Zap,
   Flame,
@@ -50,6 +50,16 @@ const EVENT_LABELS: Record<FacilityEventType, string> = {
   incident: "Incident",
 };
 
+const PRIVATE_LOCATION_KIND_LABELS: Record<string, string> = {
+  residence: "Residence",
+  restaurant: "Restaurant",
+  retail: "Retail",
+  hospitality: "Hospitality",
+  office: "Office",
+  warehouse: "Warehouse",
+  other: "Private location",
+};
+
 function statusLabel(status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
@@ -63,14 +73,14 @@ export default async function FacilityPage() {
     include: {
       events: { orderBy: { startedAt: "desc" }, take: 25 },
       _count: { select: { lockers: true } },
-      homeCellarInstaller: true,
+      locationInstaller: true,
     },
   });
   if (!facility) redirect("/");
 
-  if (facility.type === "home_cellar") {
-    const certified = Boolean(facility.homeCellarCertifiedAt);
-    const installer = facility.homeCellarInstaller;
+  if (facility.type === "private_location") {
+    const certified = Boolean(facility.privateLocationCertifiedAt);
+    const installer = facility.locationInstaller;
 
     const devices = await prisma.sentinelDevice.findMany({
       where: { facilityId: facility.id, retiredAt: null },
@@ -93,34 +103,47 @@ export default async function FacilityPage() {
         <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
-              <Home className="w-5 h-5 text-gold" />
+              <MapPin className="w-5 h-5 text-gold" />
             </div>
             <div>
               <h1 className="font-serif text-2xl text-primary">
                 {facility.name}
               </h1>
-              <p className="text-sm text-muted">{facility.location}</p>
+              <p className="text-sm text-muted">
+                {PRIVATE_LOCATION_KIND_LABELS[
+                  facility.privateLocationKind ?? "other"
+                ] ?? "Private location"}{" "}
+                · {facility.location}
+              </p>
             </div>
           </div>
 
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${
-              certified
-                ? "bg-gold/10 text-gold border-gold/30"
-                : "bg-warn/10 text-warn border-warn/30"
-            }`}
-          >
-            {certified ? "Caveau Certified" : "Pending certification"}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/settings/locations"
+              className="inline-flex items-center min-h-[32px] px-3 rounded-full border border-[#2A2A30] text-xs text-secondary hover:text-primary hover:bg-[#1C1C20]/60 transition-colors"
+            >
+              Edit location
+            </Link>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${
+                certified
+                  ? "bg-gold/10 text-gold border-gold/30"
+                  : "bg-warn/10 text-warn border-warn/30"
+              }`}
+            >
+              {certified ? "Caveau Certified" : "Pending certification"}
+            </span>
+          </div>
         </div>
 
         <div className="glass-card p-6 md:p-8 mb-6">
           <h2 className="font-serif text-lg text-primary mb-1">
-            Home Cellar Program
+            Private Location Monitoring
           </h2>
           <p className="text-xs text-muted mb-5">
-            Sentinel monitoring for your on-prem cellar. Vault facilities remain
-            the system of record for Caveau custody documentation.
+            Sentinel monitoring for client-controlled storage. Caveau vaults
+            remain the system of record for custody documentation.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -132,15 +155,15 @@ export default async function FacilityPage() {
                 {certified ? "Certified" : "In progress"}
               </p>
               <p className="text-xs text-muted mt-1">
-                {facility.homeCellarCertifiedAt
-                  ? `Certified ${formatDate(facility.homeCellarCertifiedAt)}`
+                {facility.privateLocationCertifiedAt
+                  ? `Certified ${formatDate(facility.privateLocationCertifiedAt)}`
                   : "Installer visit required to activate certification."}
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#2A2A30]/50 bg-[#0F0F10]/60 p-5">
               <p className="text-[10px] uppercase tracking-widest text-muted">
-                Certified installer
+                Installation partner
               </p>
               {installer ? (
                 <>
@@ -194,12 +217,12 @@ export default async function FacilityPage() {
             Devices
           </h2>
           <p className="text-xs text-muted mb-5">
-            Environmental sensors installed at your home cellar location.
+            Environmental sensors installed at this private location.
           </p>
 
           {devices.length === 0 ? (
             <p className="text-sm text-muted italic">
-              No devices registered for this home cellar yet.
+              No devices registered for this private location yet.
             </p>
           ) : (
             <div className="overflow-x-auto">

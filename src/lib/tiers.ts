@@ -120,7 +120,7 @@ export const TIERS: readonly TierSpec[] = [
       "Dedicated concierge + bonded courier",
       "Insurance-grade custody documentation",
       "Auction / broker handoff package",
-      "Home Cellar Program enrollment",
+      "Private Location Monitoring enrollment",
       "Hurricane Emergency Collection Protection",
     ],
     dbTier: Tier.black,

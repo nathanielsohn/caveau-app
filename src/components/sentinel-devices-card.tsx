@@ -102,8 +102,8 @@ export default async function SentinelDevicesCard({
                 : d.facility.name;
               const modelLabel = isProbe
                 ? "Bottle Probe"
-                : d.facility.type === "home_cellar"
-                  ? "Sentinel (home cellar)"
+                : d.facility.type === "private_location"
+                  ? "Sentinel (private location)"
                   : "Sentinel (locker)";
               const pairingText = isProbe
                 ? d.wine

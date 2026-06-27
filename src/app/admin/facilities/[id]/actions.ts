@@ -11,7 +11,7 @@ async function requireAdmin(): Promise<boolean> {
   return Boolean(session?.user?.id && session.user.role === Role.admin);
 }
 
-export async function setHomeCellarInstaller(formData: FormData) {
+export async function setLocationInstaller(formData: FormData) {
   if (!(await requireAdmin())) return;
 
   const facilityId = formData.get("facilityId");
@@ -31,8 +31,8 @@ export async function setHomeCellarInstaller(formData: FormData) {
   }
 
   await prisma.facility.updateMany({
-    where: { id: facilityCheck.data, type: "home_cellar" },
-    data: { homeCellarInstallerId: installerId },
+    where: { id: facilityCheck.data, type: "private_location" },
+    data: { locationInstallerId: installerId },
   });
 
   revalidatePath("/admin");
@@ -41,7 +41,7 @@ export async function setHomeCellarInstaller(formData: FormData) {
   revalidatePath("/admin/installers");
 }
 
-export async function setHomeCellarCertification(formData: FormData) {
+export async function setPrivateLocationCertification(formData: FormData) {
   if (!(await requireAdmin())) return;
 
   const facilityId = formData.get("facilityId");
@@ -54,12 +54,11 @@ export async function setHomeCellarCertification(formData: FormData) {
     certifiedRaw === "true" || certifiedRaw === "1" || certifiedRaw === "on";
 
   await prisma.facility.updateMany({
-    where: { id: facilityCheck.data, type: "home_cellar" },
-    data: { homeCellarCertifiedAt: certified ? new Date() : null },
+    where: { id: facilityCheck.data, type: "private_location" },
+    data: { privateLocationCertifiedAt: certified ? new Date() : null },
   });
 
   revalidatePath("/admin");
   revalidatePath("/admin/facilities");
   revalidatePath(`/admin/facilities/${facilityCheck.data}`);
 }
-

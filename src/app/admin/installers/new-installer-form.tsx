@@ -37,7 +37,7 @@ export default function NewInstallerForm() {
         <div>
           <h2 className="font-serif text-lg text-primary">Add installer</h2>
           <p className="text-xs text-muted mt-1">
-            Certified home cellar installer network entry.
+            Certified private location installer network entry.
           </p>
         </div>
         {state.submittedAt && state.ok && state.message && (

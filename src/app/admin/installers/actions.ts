@@ -77,7 +77,7 @@ export async function createInstaller(
 
   const { name, company, region, email, phone } = parsed.data;
 
-  await prisma.homeCellarInstaller.create({
+  await prisma.locationInstaller.create({
     data: {
       name,
       company: company ?? null,
@@ -112,7 +112,7 @@ export async function toggleInstallerActive(formData: FormData) {
   const nextActive =
     active === "true" || active === "1" || active === "on" ? true : false;
 
-  await prisma.homeCellarInstaller.update({
+  await prisma.locationInstaller.update({
     where: { id: idCheck.data },
     data: { active: nextActive },
     select: { id: true },

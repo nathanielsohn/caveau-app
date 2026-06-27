@@ -1,11 +1,12 @@
 # Data Model
 
-> Last updated: 2026-05-04 | 43 Prisma models, 34 Postgres enums, 48 Prisma migrations (0001..0048). Source of truth: `prisma/schema.prisma`.
+> Last updated: 2026-06-27 | 43 Prisma models, 35 Postgres enums, 49 Prisma migrations (0001..0049). Source of truth: `prisma/schema.prisma`.
 
 ## Principles
 
 - **Member-scoped data.** Nearly every row ultimately attaches to `Member` (`memberId`) and is enforced via `getServerAuth()` scoping in Server Components/Actions and API routes.
 - **Multi-facility by join table.** Members can belong to multiple facilities via `FacilityMember`; the facility switcher writes a signed cookie and the server reads it to scope facility-specific queries.
+- **Private locations are owner-scoped.** `Facility.type = private_location` rows represent member-defined monitoring locations such as residences, restaurants, retail rooms, warehouses, or clubs. They keep a `FacilityMember` row for switching, but `Facility.ownerMemberId` is the ownership boundary.
 - **Audit-first workflows.** Dispositions, deliveries, handoff access, and NFC scans are modeled as append-only logs; foreign keys use `Restrict` where deleting the parent would erase history.
 - **Decimals everywhere.** Money and sensor columns are `Decimal` — always convert before arithmetic (see “Prisma Decimal Fields” below).
 
@@ -18,6 +19,7 @@ erDiagram
   Facility ||--o{ Locker : "houses"
   Facility ||--o{ FacilityMember : "has"
   Member ||--o{ FacilityMember : "joins"
+  Member ||--o{ Facility : "owns private"
 
   Member ||--o{ Wine : "owns"
   Member ||--o{ Locker : "rents"
@@ -54,6 +56,7 @@ erDiagram
 - `DeliveryRequest` + `DeliveryRequestItem` + `DeliveryEvent` + `AuthorizedRecipient` — Deliver Now ladder + door-side ID match (#51).
 - `HurricaneProtocol` + `HurricaneProtocolMember` — activation state machine + per-member enrollment (#46).
 - `Waitlist` — founding-member waitlist lead capture (#49).
+- `LocationInstaller` — certified installation partner network for Private Location Monitoring (#48).
 
 ### Growth + operations
 
@@ -103,10 +106,13 @@ Enums are real Postgres enum types (not free-form strings). Values below mirror 
 | `AppraisalPurpose` | `insurance`, `estate`, `tax_donation`, `divorce`, `gift`, `personal` |
 | `AcquisitionStatus` | `requested`, `sourcing`, `fulfilled`, `declined`, `cancelled` |
 | `AcquisitionSource` | `livex`, `broker`, `auction`, `caveau_private` |
+| `FacilityType` | `vault`, `private_location` |
+| `PrivateLocationKind` | `residence`, `restaurant`, `retail`, `hospitality`, `office`, `warehouse`, `other` |
 
 ## Notable constraints and delete behavior
 
 - **`FacilityMember`** is a composite primary key `(memberId, facilityId)` — membership existence is the signal.
+- **Private location ownership** is enforced by `Facility.ownerMemberId` and a DB check constraint: private locations require an owner and kind; vaults have neither. Member-facing facility listing filters private locations to the owner.
 - **`LockerSlot`** has `@@unique([lockerId, slotPosition])` and `@@unique([wineId])` so a bottle can only sit in one slot at a time.
 - **`WineValuation`** has `@@unique([wineId, date, source])` to prevent duplicate price points.
 - **`SensorReading`** has `@@unique([lockerId, timestamp])` to make ingest idempotent.
