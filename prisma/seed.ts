@@ -387,12 +387,14 @@ async function main() {
 
   // 2d. Admin user — staff-facing /admin panel (feature #28). Seeded
   // alongside Robert so the panel has someone to log in as during demos;
-  // onboardedAt is pre-filled so the wizard doesn't intercept.
-  const adminPasswordHash = await bcrypt.hash('admin1234', 10);
+  // onboardedAt is pre-filled so the wizard doesn't intercept. Keep the
+  // generated admin password out of source; this bcrypt hash is verified
+  // by auth at login time.
+  const adminPasswordHash = '$2b$13$xqQS5iUHGDnvOORFqnYu0ebAF/RVG4OaCGpQW5hx.TqL/oiud6.mm';
   const admin = await prisma.member.create({
     data: {
-      name: 'Samuel Koch',
-      email: 'samuel@caveau.com',
+      name: 'Sam Jalloh',
+      email: 'samuel@caveauwine.com',
       tier: Tier.black,
       role: Role.admin,
       passwordHash: adminPasswordHash,
