@@ -1,6 +1,6 @@
 # Getting Started
 
-> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
+> Last updated: 2026-06-27 | Current through migration 0049 and member-owned Private Location Monitoring (#48).
 
 ## Prerequisites
 

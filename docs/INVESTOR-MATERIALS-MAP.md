@@ -1,6 +1,6 @@
 # Investor Materials → App Proof Points (Batch 2)
 
-> Last updated: 2026-04-27
+> Last updated: 2026-06-27
 > Purpose: map Rob’s April 15–16 “batch 2” investor materials to concrete in-app proof points (or a clean “roadmap” answer) so messaging stays unified.
 
 ## Materials (received 2026-04-15 unless noted)
@@ -10,7 +10,7 @@
 | Pitch deck (18 slides) | `caveau-docs/investor/Caveau_Pitch_Deck_FINAL.pptx` | Canonical narrative + pillars + pricing |
 | Equity / investor summary | `caveau-docs/investor/Caveau_Equity_Investor_Summary_BN.docx` | Anticipated investor Qs + operating plan |
 | 10-bottle portfolio PDF | `caveau-docs/investor/Caveau_10_Bottles .pdf` | Demo asset set + valuation storyline |
-| Home Cellar Program | `caveau-docs/programs/Caveau_Home_Cellar_Program.docx` | Year-2 expansion + Sentinel hardware narrative |
+| Original #48 location-expansion source doc | `caveau-docs/programs/Caveau_Home_Cellar_Program.docx` | Year-2 expansion + Sentinel hardware narrative; the app-facing implementation is now branded as Private Location Monitoring |
 | Sentinel hardware render | `caveau-docs/hardware/hardware v1.heic` | Hardware credibility (visual) |
 | NFC collar design | `caveau-docs/hardware/Caveau Wine Collar_Final.png` | Bottle-level identity + scan narrative |
 | Domain/workspace thread (Apr 16) | `caveau-docs/communications/2026-04-16-domain-workspace-thread.md` | Confirms “feature gap list + talk track” priority |
@@ -71,7 +71,7 @@ In-app proof points that match revenue streams:
 - Events: `/events`, public event details, member-only event details after sign-in, and `/admin/events/*`
 - Appraisal documents: `/appraisals/*` + `/admin/appraisals/*`
 - Hurricane protection: `/settings` + `/admin/hurricane/*`
-- Home Cellar Program stub: `/admin/installers`, facilities of type `home_cellar`
+- Private Location Monitoring: member setup at `/settings/locations`, admin installer/certification workflow at `/admin/installers` and `/admin/facilities/*`, facilities of type `private_location`
 
 ### Slide 17 (competitive moat)
 
@@ -81,7 +81,7 @@ In-app proof points that match revenue streams:
 - **Provenance chain:** `/report/:id` + `/verify/:hash` + provenance timeline surfaces
 - **Insurance partnership narrative:** insurance partner program (#31) + insurance savings estimate surfaces
 - **Event/community network:** `/events` plus public/member-gated event detail pages
-- **Certified home cellar network:** Home Cellar Program stub + installer tracking in admin
+- **Certified private location network:** Private Location Monitoring + installer/certification tracking in admin
 
 ## Investor summary (docx) → where it shows up
 
@@ -99,11 +99,14 @@ The investor summary is mostly **messaging + ops plan**, not UI. Use it as the s
   - `/wine/:id` (valuation history + storage + signals)
   - `/portfolio` (benchmark comparison)
 
-## Home Cellar Program (docx) → current hooks
+## Original #48 Source Doc → Private Location Monitoring Hooks
 
-- Current “minimum hooks” shipped:
+- Current shipped hooks:
+  - Member-owned private location setup: `/settings/locations`
+  - Dedicated private-location view: `/facility` when the active facility is type `private_location`
   - Admin installer registry: `/admin/installers`
-  - Facility support for home-cellar locations (type `home_cellar`)
+  - Admin certification workflow: `/admin/facilities/[id]`
+  - Facility support for private locations (type `private_location`) with `ownerMemberId` and `PrivateLocationKind`
 - Roadmap/spec items to describe carefully (don’t imply they’re deployed hardware):
   - LTE‑M fallback, bottle probe accessory, and full hardware manufacturing roadmap.
 

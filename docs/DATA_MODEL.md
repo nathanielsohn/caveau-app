@@ -113,6 +113,7 @@ Enums are real Postgres enum types (not free-form strings). Values below mirror 
 
 - **`FacilityMember`** is a composite primary key `(memberId, facilityId)` — membership existence is the signal.
 - **Private location ownership** is enforced by `Facility.ownerMemberId` and a DB check constraint: private locations require an owner and kind; vaults have neither. Member-facing facility listing filters private locations to the owner.
+- **Private location monitoring** uses a member-owned, monitor-only `Locker` row so existing Sentinel readings, alerts, and device assignment stay attached to a facility-scoped context without creating storage slots or custody billing.
 - **`LockerSlot`** has `@@unique([lockerId, slotPosition])` and `@@unique([wineId])` so a bottle can only sit in one slot at a time.
 - **`WineValuation`** has `@@unique([wineId, date, source])` to prevent duplicate price points.
 - **`SensorReading`** has `@@unique([lockerId, timestamp])` to make ingest idempotent.

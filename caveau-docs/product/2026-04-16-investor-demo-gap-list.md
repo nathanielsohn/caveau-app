@@ -140,9 +140,9 @@ Tier metadata in place, billing not. Not strictly demo-blocking — "Stripe wiri
 
 ## P2 — Year 2 roadmap items that would strengthen the demo
 
-### 20. Home Cellar Program minimum hooks (#48)
+### 20. Private Location Monitoring minimum hooks (#48)
 
-Year 2 per the Home Cellar Program doc. Cheap stub: "home cellar" location type alongside "vault," Sentinel-at-home attachment, certification badge on location. *"X certified Caveau cellars active"* becomes a live metric.
+Year 2 per the original #48 location-expansion source doc. The app-facing implementation is now broader: **Private Location Monitoring** covers member-defined residences, restaurants, retail rooms, warehouses, clubs, and other client-controlled spaces. Minimum hooks are shipped as `private_location` facilities with owner scoping, Sentinel-compatible monitoring, installer/certification tracking, and a certified-location admin metric.
 
 ### 21. Mobile push + SMS alerts (#29)
 

@@ -5,16 +5,16 @@
 Heads-down build sprint update (Apr 13 → Apr 27):
 
 - Shipped the full Phase 6 “investor demo gap” set (#50–#62): AI Advisor chat + tools, Deliver Now biometric + driver handoff flow, concierge CSV migration (CellarTracker/Vivino), Events module (Naples Winter Wine Festival seed), Founding Member pricing, exit signals → exit facilitation, insurance savings estimate, portfolio vs Liv-ex 100, Sentinel fleet + tier-bundled device assignment, private allocations, welcome appraisals (PDF + verify), acquisition sourcing (margin tracked).
-- Also landed “Rob materials” roadmap items: mobile companion app (#29), insurance partner program (#31), multi-location management (#32), home cellar program stub (#48).
+- Also landed “Rob materials” roadmap items: mobile companion app (#29), insurance partner program (#31), multi-location management (#32), and Private Location Monitoring (#48; originally scoped as a narrower private-residence program).
 - Hardened security + operational edges: webhook hardening, safer public verify + image handling, timing-safe bearer comparisons, race-safe admin transitions, CSP tightening, retention sweep for sensor_readings, test coverage on key helpers.
-- Business/source materials now live in-repo under `caveau-docs/` (pitch deck + investor summary + home cellar program + comms threads) so we can map deck claims ↔ app surfaces.
+- Business/source materials now live in-repo under `caveau-docs/` (pitch deck + investor summary + original #48 source doc + comms threads) so we can map deck claims ↔ app surfaces.
 
 Next deliverables (so Rob/Sam can demo solo with unified messaging):
 - “App Inventory / Demo Map” doc (what exists, where to click, what’s simulated vs real).
 - Investor demo talk track (3-min + 10-min versions) aligned to the deck.
 - Deck→App mapping checklist (each slide claim has a proof point in-app or a clear “roadmap” answer).
 
-Known remaining gap from the original investor-demo gap list: none in code. Staff locker check-in/out (#25), insurance partner program (#31), mobile companion app (#29), multi-location management (#32), and home cellar program (#48) are all covered; the next deliverables are the non-code demo/reference materials above.
+Known remaining gap from the original investor-demo gap list: none in code. Staff locker check-in/out (#25), insurance partner program (#31), mobile companion app (#29), multi-location management (#32), and Private Location Monitoring (#48) are all covered; the next deliverables are the non-code demo/reference materials above.
 
 ## What Shipped (high-level)
 

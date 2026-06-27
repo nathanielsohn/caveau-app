@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-05-04 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
+> Last updated: 2026-06-27 | Post-demo roadmap current through #62; Private Location Monitoring (#48) generalized for member-defined private locations.
 
 The directory overview below is a conceptual map of the major surfaces and may not list every nested file. For setup and day‑to‑day workflow, see `docs/GETTING_STARTED.md` and `AGENTS.md`.
 
@@ -26,9 +26,9 @@ Caveau is a **Next.js 15 App Router** application with a **PostgreSQL** backend 
 
 ```
 caveau-app/
-├── prisma/                     # Database layer (43 models, 34 enums)
+├── prisma/                     # Database layer (43 models, 35 enums)
 │   ├── schema.prisma
-│   ├── migrations/             # Prisma migrations 0001..0048
+│   ├── migrations/             # Prisma migrations 0001..0049
 │   ├── seed.ts
 │   └── seed-sensors.ts
 ├── src/
@@ -46,7 +46,7 @@ caveau-app/
 │   │   ├── deliveries/[id]/    # Deliver Now member ladder (#51)
 │   │   ├── events/             # Events & tastings — public list, gated private detail, RSVP (#53)
 │   │   ├── exits/              # Member-initiated consignment (#47)
-│   │   ├── facility/           # Facility views (#16) + resilience post-event reports (#42)
+│   │   ├── facility/           # Facility/private-location views (#16/#48) + resilience post-event reports (#42)
 │   │   ├── handoff/[token]/    # Auction/broker recipient scan (#41) — public
 │   │   ├── handoff-driver/[token]/ # Deliver Now driver portal (#51) — public
 │   │   ├── locker/             # 4×8 slot grid + server actions
@@ -55,7 +55,7 @@ caveau-app/
 │   │   ├── portfolio/          # Portfolio vs. Liv-ex 100 investor view (#45)
 │   │   ├── report/[id]/        # Caveau Custody & Condition Report + QR (#30, #40)
 │   │   ├── sentinel/           # IoT monitoring + live sim
-│   │   ├── settings/           # Alert prefs (#19), hurricane prefs (#46)
+│   │   ├── settings/           # Alert prefs (#19), hurricane prefs (#46), private locations (#48)
 │   │   ├── verify/[hash]/      # Public CCR + appraisal verification (#30, #61)
 │   │   ├── waitlist/           # Public founding-member waitlist (#49)
 │   │   ├── wine/[id]/          # Wine detail + disposition/valuation/image actions
@@ -156,7 +156,7 @@ sequenceDiagram
 1. **Historical** — queried from `sensor_readings` table via Server Action (for 6H+ ranges)
 2. **Live** — generated client-side by `lib/sensors.ts` every 5 seconds (for 1H range)
 
-Live alerts are ephemeral (in-memory only, never written to the database).
+Live simulation alerts are shown in-memory first. The Sentinel page can also persist rate-limited simulation alerts through `recordLiveAlert()` for the demo notification path; normal alert lists exclude those rows unless the page explicitly asks to include simulation alerts.
 
 ### Auth Flow
 

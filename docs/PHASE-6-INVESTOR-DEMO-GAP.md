@@ -4,7 +4,7 @@
 **Author:** Nathaniel Sohn (CTO)
 **Purpose:** Inventory of features the app needs so Rob + Samuel can demo the full investor narrative solo.
 
-**Status as of 2026-04-28:** Phase 6 and the original P1 remainder are covered in code. `SPEC.md` is the current source of truth: insurance partner program (#31), staff locker check-in/out (#25), mobile companion app (#29), multi-location management (#32), and home cellar program (#48) are marked shipped.
+**Status as of 2026-06-27:** Phase 6 and the original P1 remainder are covered in code. `SPEC.md` is the current source of truth: insurance partner program (#31), staff locker check-in/out (#25), mobile companion app (#29), multi-location management (#32), and Private Location Monitoring (#48; originally framed as a narrower private-residence program) are marked shipped.
 
 The body below is preserved as the original gap framing **as of 2026-04-16**. Any “missing” language refers to that date, not the current app.
 
@@ -142,9 +142,9 @@ Tier metadata in place, billing not. Not strictly demo-blocking — "Stripe wiri
 
 ## P2 — Year 2 roadmap items that would strengthen the demo
 
-### 20. Home Cellar Program minimum hooks (#48)
+### 20. ~~Private Location Monitoring minimum hooks (#48)~~ — shipped 2026-06-27
 
-Year 2 per the Home Cellar Program doc. Cheap stub: "home cellar" location type alongside "vault," Sentinel-at-home attachment, certification badge on location. *"X certified Caveau cellars active"* becomes a live metric.
+~~Original 2026 framing: year-2 support for a member-controlled location type alongside `vault`, Sentinel-at-location attachment, certification badge, and a live certified-location metric.~~ Shipped as the broader **Private Location Monitoring** model: member-owned `private_location` facilities with `ownerMemberId`, `PrivateLocationKind`, `/settings/locations` self-service setup, Sentinel-compatible monitor locker, admin installer/certification workflow, and a live certified-location metric.
 
 ### 21. Mobile push + SMS alerts (#29)
 

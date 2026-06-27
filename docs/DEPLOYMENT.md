@@ -1,6 +1,6 @@
 # Deployment
 
-> Last updated: 2026-04-23 | Phase 6 complete; 40 of 47 post-demo roadmap features done (excluding #33)
+> Last updated: 2026-06-27 | Current through migration 0049 and Vercel cron configuration.
 
 ## Infrastructure
 
@@ -119,11 +119,12 @@ The AWS, Google, Upstash, Liv-ex, Sentinel, and Anthropic vars all degrade grace
 
 ### 3. Scheduled cron jobs (`vercel.json`)
 
-Two cron jobs are declared in `vercel.json` and execute via Vercel Cron:
+Three cron jobs are declared in `vercel.json` and execute via Vercel Cron:
 
 | Schedule | Route | Purpose |
 |---------|-------|---------|
 | `0 9 * * *` (daily 09:00 UTC) | `/api/cron/livex-sync` | Refreshes `WineValuation` rows from Liv-ex (feature #39). No-ops if `LIVEX_API_KEY` is unset. |
+| `30 2 * * *` (daily 02:30 UTC) | `/api/cron/sensor-rollups` | Builds hourly/daily `SensorReading` rollups used by longer Sentinel windows. |
 | `0 3 * * *` (daily 03:00 UTC) | `/api/cron/sensor-retention` | Deletes raw `SensorReading` rows older than 90 days. Interim retention policy until full partitioning + rollups (#22). |
 
 Both routes are guarded by `CRON_SECRET` in production via timing-safe Bearer comparison. In development they are reachable without auth so local testing doesn't need extra wiring.
