@@ -171,7 +171,7 @@ See `docs/ARCHITECTURE.md` for the canonical `src/` file tree. Key points:
 2. **Install deps** — `prisma @prisma/client recharts@^2 framer-motion@^11 lucide-react@^0`
 3. **Configure** — tailwind.config.ts (colors, fonts), globals.css (dark theme, glass-card utility), layout.tsx (Playfair + Inter fonts, dark bg, nav shell)
 4. **Lib files** — prisma.ts (client singleton), utils.ts, sensors.ts
-5. **Nav component** — Sidebar with Caveau ◈ logo + 4 links (desktop), bottom tab bar (mobile)
+5. **Nav component** — Sidebar with Caveau ◈ logo + full member nav list (desktop), bottom tab bar + More sheet (mobile)
 6. **Metric card component** — Reusable: icon + value + label + optional trend
 7. **Database setup** — Create RDS instance, configure schema.prisma, run `prisma migrate deploy`, seed data
 8. **Dashboard page** — 4 metric cards, recent alerts, top wines, current conditions

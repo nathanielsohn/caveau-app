@@ -25,7 +25,7 @@ Thin client wrapper around NextAuth's `SessionProvider`. Exists as a separate fi
 **Status:** Complete (Feature 03)
 
 The app shell navigation. Two layouts:
-- **Desktop:** Fixed left sidebar — Caveau ◈ logo, facility switcher (when the member has >1 facility and is on a facility-scoped page), full nav list (Dashboard, Collection, Portfolio, AI Advisor, Locker, Sentinel, Allocations, Sourcing, Exits, Appraisals, Events, Facility, Settings), member line + sign out at bottom.
+- **Desktop:** Fixed left sidebar — Caveau ◈ logo, facility switcher (when the member has >1 facility and is on a facility-scoped page), full nav list (Dashboard, Collection, Portfolio, AI Advisor, Insights, Locker, Sentinel, Allocations, Sourcing, Exits, Appraisals, Events, Facility, Settings), member line + sign out at bottom.
 - **Mobile (<768px):** Top member line + sign out; bottom tab bar with 4 primary items (Dashboard, Collection, Portfolio, AI Advisor) plus a **More** button that opens a sheet for the secondary items.
 
 **Used in:** `layout.tsx` (wraps all pages)

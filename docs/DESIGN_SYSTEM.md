@@ -102,8 +102,8 @@ Expands to: `bg-[#141416]/80 backdrop-blur-xl border border-[#2A2A30]/80 rounded
 
 - **Dark theme always.** No light mode, no toggle.
 - **Mobile-first.** All layouts must work at 375px width.
-- **Desktop sidebar** — fixed left nav with logo, 4 links, member name.
-- **Mobile bottom tabs** — 4-icon tab bar replacing the sidebar.
+- **Desktop sidebar** — fixed left nav with logo, full member nav list, member name, and sign out.
+- **Mobile bottom tabs** — 4 primary tabs plus a More sheet for secondary routes.
 - **Content area** — scrollable, padded `p-6` (desktop) / `p-4` (mobile).
 - **Card grid** — `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4`
 
