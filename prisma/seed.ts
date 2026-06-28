@@ -390,7 +390,7 @@ async function main() {
   // onboardedAt is pre-filled so the wizard doesn't intercept. Keep the
   // generated admin password out of source; this bcrypt hash is verified
   // by auth at login time.
-  const adminPasswordHash = '$2b$13$xqQS5iUHGDnvOORFqnYu0ebAF/RVG4OaCGpQW5hx.TqL/oiud6.mm';
+  const adminPasswordHash = '$2b$13$6tRedBMrWEuJPBshCjdvLOTx8hPjqfNEyZ7Z0lk/ylXyEpH3Q5C1a';
   const admin = await prisma.member.create({
     data: {
       name: 'Sam Jalloh',
